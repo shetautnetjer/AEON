@@ -1,0 +1,853 @@
+{
+  "format_version": 1,
+  "verified_on": "2026-09-30",
+  "scope": "Local AEON navigation index for already inventoried memory and observability components. Availability, deployment/configuration and retained qualification are distinct. Local IDs and source pointers do not replace the Dictionary, existing schema/code owners, permissions or runtime contracts; no network, database or private-session-content use is implied.",
+  "components": [
+    {
+      "id": "local-basic-memory",
+      "label": "Local Basic Memory qualification",
+      "area": "memory",
+      "status": {
+        "availability": "Local aya-working supporting projection and qualification adapter source exist.",
+        "deployment": "Adapter source selects local aya-working and disables cloud; no always-on service or effective-session provider readback established here.",
+        "qualification": "Retained September 30 source-linked local retrieval and capability-metadata qualification; no general memory admission or learned-utility acceptance."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/aya/basic-memory-mirror",
+        "role": "Existing local supporting memory projection; native runtime owns adapter and provider selection."
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/.aya/workspace/tools/aya_memory_gate.py",
+          "role": "bounded local qualification adapter",
+          "line": 5
+        },
+        {
+          "path": "/home/aya-hmw/aya/basic-memory-mirror/qualification/aya-terminal-2026-09-30/AYA Terminal Discovery Qualification 2026-09-30.md",
+          "role": "retained local retrieval qualification"
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/worktree-relocation-2026-09-30.md",
+          "role": "source/config separation and untested effective-session limits"
+        }
+      ],
+      "notes": "Navigation pointers only. Native .aya files and local stores remain at their owners. Adapter correctness is not permission to save or migrate memory; SQLite selection does not imply a Firecrawl PostgreSQL connection."
+    },
+    {
+      "id": "brainstem-continuation",
+      "label": "Brainstem continuation worktree",
+      "area": "memory",
+      "status": {
+        "availability": "Existing linked checkout under AEON preserves the original Brainstem Git owner.",
+        "deployment": "Development checkout relocated on September 30; no runtime, database or service moved.",
+        "qualification": "Relocation retained 116 tracked file hashes; 105 relevant offline tests passed with scope unchanged."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation",
+        "role": "Current continuation checkout; original Git/source owner remains /home/aya-hmw/aya/projects/developmental-lab/brainstem"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/worktree-relocation-2026-09-30.md",
+          "role": "approved path map and relocation verification"
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/README.md",
+          "role": "project architecture and installed-versus-candidate boundaries"
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/docs/reports/2026-09-30-aya-continuation/README.md",
+          "role": "source reconciliation and receipt navigation"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/architecture.html",
+          "role": "original project contract owner"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/machine-bible/README.md",
+          "role": "local Machine Bible source and retained authority boundaries"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/machine-bible/projects/adi-dictionary/books/core.v0.schema.json",
+          "role": "retained source-context schema; not a Brainstem binding"
+        }
+      ],
+      "notes": "Original dirty source and historical receipts remain unchanged at their original owner. Local Bible IDs are navigation keys; they do not replace existing Dictionary, semantic IDs, project contracts or runtime authority."
+    },
+    {
+      "id": "brainstem-offline-evaluator",
+      "label": "Brainstem exposed development evaluator",
+      "area": "memory",
+      "status": {
+        "availability": "Reviewed offline adapter, selected development material and existing v1 selector schema are present.",
+        "deployment": "Fixed local artifact-checking CLI only; no model consumer, memory admission or runtime binding deployed.",
+        "qualification": "19 focused tests and 105 relevant-suite tests passed; utility_qualified=false and release_evaluated=false."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/scripts/compare_candidate_artifacts.py",
+        "role": "Bounded continuation artifact comparator implementation"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/scripts/compare_candidate_artifacts.py",
+          "role": "implementation"
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/schemas/memory-artifact-comparison.v1.development.schema.json",
+          "role": "schema"
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/evaluation/candidate-v1/README.md",
+          "role": "exposed development material and source-pin boundaries"
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/docs/reports/2026-09-30-aya-continuation/offline-evaluator-adapter.md",
+          "role": "binding contract and retained review"
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/docs/reports/2026-09-30-aya-continuation/offline-evaluator-verification.json",
+          "role": "retained verification receipt"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/schemas/memory-artifact-comparison.v0.development.schema.json",
+          "role": "schema"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/schemas/memory-artifact-batch.v0.development.schema.json",
+          "role": "schema"
+        }
+      ],
+      "notes": "V1 contains case and batch definitions in one present schema. Original v0 schemas govern their existing binding and are not cut over. Consumer custody, judge, accepted freeze/evidence class, treatment and budgets remain unresolved experiment decisions."
+    },
+    {
+      "id": "firecrawl-redis",
+      "label": "Firecrawl Redis",
+      "area": "memory",
+      "status": {
+        "availability": "Redis 8.10.2 running image and separate cached Redis 7 image were inventoried.",
+        "deployment": "Running Firecrawl-owned Redis; internal 6379 with no host publication or persistence mount.",
+        "qualification": "No fresh connectivity test or AYA memory/cache-loss qualification."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/aya/projects/firecrawl",
+        "role": "Existing Firecrawl Compose source and storage owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/aya/projects/firecrawl/docker-compose.yaml",
+          "role": "source configuration for Firecrawl Redis",
+          "line": 125
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "dated running-state inventory"
+        }
+      ],
+      "notes": "Firecrawl cache/store availability does not establish an AYA memory binding. Caura Redis configuration remains a separate owner; no shared-memory edge is inferred."
+    },
+    {
+      "id": "firecrawl-postgresql",
+      "label": "Firecrawl PostgreSQL 17",
+      "area": "memory",
+      "status": {
+        "availability": "Firecrawl PG17 build/source and running PostgreSQL 17.11 were inventoried.",
+        "deployment": "Running Firecrawl queue store with its existing anonymous Docker data volume.",
+        "qualification": "No AYA memory acceptance or database-content audit; no fresh database query performed."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/aya/projects/firecrawl/apps/nuq-postgres",
+        "role": "Existing Firecrawl queue-store build owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/aya/projects/firecrawl/docker-compose.yaml",
+          "role": "source configuration for Firecrawl PostgreSQL",
+          "line": 160
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/firecrawl/apps/nuq-postgres/Dockerfile",
+          "role": "PG17 build source",
+          "line": 3
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/firecrawl/apps/api/src/services/worker/nuq.ts",
+          "role": "queue selectors",
+          "line": 13
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/worktree-relocation-2026-09-30.md",
+          "role": "explicit AYA/Firecrawl separation"
+        }
+      ],
+      "notes": "Firecrawl PG17 is distinct from stopped Brainstem synthetic PG16 and any proposed durable AYA memory target. No explicit AYA memory to Firecrawl PostgreSQL connection was found in inspected routes."
+    },
+    {
+      "id": "brainstem-synthetic-postgresql",
+      "label": "Brainstem synthetic PostgreSQL M0",
+      "area": "memory",
+      "status": {
+        "availability": "Existing M0 and validation-successor source, request schemas and retained synthetic receipts are present.",
+        "deployment": "Three inventoried PG16.15 synthetic containers were stopped; network none, no published ports, distinct local test-data bindings.",
+        "qualification": "Independent post-fix SCOPED_PASS qualifies only bounded synthetic M0 mechanism; fair baseline and memory outcomes tied."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem",
+        "role": "Original synthetic-binding source and historical qualification owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/postgres-m0/bootstrap.py",
+          "role": "isolated synthetic bootstrap",
+          "line": 19
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/postgres-m0/request.schema.json",
+          "role": "schema"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/postgres-m0-validation-v1/request.schema.json",
+          "role": "schema"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-m0-postfix-review/REPORT.md",
+          "role": "independent post-fix scoped qualification"
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "dated stopped-state and binding inventory"
+        }
+      ],
+      "notes": "Original failures and successor corrected receipts remain distinct. Test data is not production AYA memory, and no PGDATA or database contents were opened for this index."
+    },
+    {
+      "id": "proposed-qdrant",
+      "label": "Proposed Qdrant projection",
+      "area": "memory",
+      "status": {
+        "availability": "Existing Brainstem HLD and proposed binding name Qdrant; server not found in inventoried scopes; client availability unknown.",
+        "deployment": "Proposed rebuildable candidate index only; no configured/deployed Qdrant service established.",
+        "qualification": "No deployed projection, recall/currentness or AYA utility qualification."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence",
+        "role": "Existing Brainstem storage proposal owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/Guide.md",
+          "role": "projection and relational eligibility design",
+          "line": 86
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/storage-hld.proposed-1.json",
+          "role": "proposed binding; not installed",
+          "line": 3
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/storage-hld.proposed-1.schema.json",
+          "role": "schema"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/AYA-HLD-review-technical-appendix-2026-09-29.md",
+          "role": "source-backed proposed projection boundaries",
+          "line": 162
+        }
+      ],
+      "notes": "Qdrant candidates require PostgreSQL eligibility and hydration in the proposed design. Provisioning, private ingestion and provider cutover remain unapproved/unperformed; Firecrawl stores are not the relational target."
+    },
+    {
+      "id": "jev-monty-probe",
+      "label": "Jev cached Monty probe",
+      "area": "memory",
+      "status": {
+        "availability": "Pydantic Monty 1.0.0 client/runtime cached in isolated uv archives; four Jev integration files are untracked.",
+        "deployment": "Optional offline feasibility probe only; Monty absent from normal Jev dependency metadata; no live Jev/Decide/Hermes or memory binding.",
+        "qualification": "Retained mock/catalog feasibility, snapshot restoration and receipt-reuse qualification only."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/aya/projects/jev-cli/integrations/monty",
+        "role": "Existing untracked Jev optional integration owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/aya/projects/jev-cli/integrations/monty/README.md",
+          "role": "probe scope and host callback boundaries",
+          "line": 3
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/jev-cli/integrations/monty/probe.py",
+          "role": "probe implementation"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/jev-cli/integrations/monty/qualification.json",
+          "role": "retained mock feasibility receipt"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/jev-cli/src/jev_cli/catalog.py",
+          "role": "existing contract, question and outcome code owner"
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "cached versus normal-environment availability inventory"
+        }
+      ],
+      "notes": "HEAD does not pin the four untracked integration files. Cached binary presence and mock receipt reuse do not qualify unrestricted host callbacks or useful memory procedures."
+    },
+    {
+      "id": "dspy-design",
+      "label": "DSPy calibration design",
+      "area": "memory",
+      "status": {
+        "availability": "Existing creator/HLD references; no runtime distribution, version or downloaded checkout found in inspected scopes.",
+        "deployment": "Design reference only; no fitted task or deployed learning pipeline established.",
+        "qualification": "No fit, independent outcome calibration or utility receipt found."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/Guide.md",
+        "role": "Existing compatible-task calibration design owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/Guide.md",
+          "role": "later calibration placement",
+          "line": 234
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/AYA-HLD-review-technical-appendix-2026-09-29.md",
+          "role": "independent labels and held-out limits",
+          "line": 263
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "bounded availability inventory"
+        }
+      ],
+      "notes": "Calibration comes after independently labeled outcomes and compatible task APIs. Naming DSPy is not evidence that memory learns."
+    },
+    {
+      "id": "reanchor-design",
+      "label": "ReAnchor experimental calibration",
+      "area": "memory",
+      "status": {
+        "availability": "Exact local spelling ReAnchor appears in creator/HLD sources; no separate installed implementation owner found.",
+        "deployment": "Experimental DSPy threshold/weight calibration proposal only.",
+        "qualification": "No optimization, fitted task or useful-learning result established."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/AYA-HLD-review-technical-appendix-2026-09-29.md",
+        "role": "Existing local reviewed design appendix owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/machine-bible/sources/Adi bible.md",
+          "role": "byte-preserved creator source",
+          "line": 609
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/AYA-HLD-review-technical-appendix-2026-09-29.md",
+          "role": "compatible-task calibration limits",
+          "line": 263
+        },
+        {
+          "path": "/home/aya-hmw/aya/basic-memory-mirror/engineering/Brainstem memory integration research — 2026-09-29.md",
+          "role": "existing local research owner",
+          "line": 26
+        }
+      ],
+      "notes": "Preserve exact source attribution and spelling. No substitute project, accepted global semantics or deployed optimization mechanism is inferred."
+    },
+    {
+      "id": "brainstem-observer-prototype",
+      "label": "Brainstem Observer prototype",
+      "area": "memory",
+      "status": {
+        "availability": "brainstem-observer-probe 0.2.0 Rust source, Python host binding and built debug binary were inventoried.",
+        "deployment": "Explicit selected-session metadata capture and passive synthetic replay prototype; no continuous Observer hook or accepted memory pipeline.",
+        "qualification": "Retained bounded Milestone A/B/native receipts; native isolation reviews failed and source/contract gaps remain open."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/observer-probe",
+        "role": "Original Observer candidate source and retained evidence owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/observer-probe/README.md",
+          "role": "prototype intake/effect boundaries",
+          "line": 1
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/observer-probe/host_effect.py",
+          "role": "candidate native host binding"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/schemas/effect-receipt.v0.2.candidate.schema.json",
+          "role": "schema"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/schemas/native-hermes-effect-link.v0.1.candidate.schema.json",
+          "role": "schema"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/observer-probe/evidence/milestone-a-report.md",
+          "role": "retained selected capture qualification"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/observer-probe/evidence/milestone-b-report.md",
+          "role": "retained passive fixture qualification"
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/reports/native-hermes-one-effect-report.md",
+          "role": "native effect review failures and alignment gaps",
+          "line": 13
+        }
+      ],
+      "notes": "Original source is dirty and host files are untracked. Build presence is not reproducible-build attestation. Native session DB and private checkpoints stay with owners; no DB was opened. Metadata projection does not make source identifiers or hashes export-safe."
+    },
+    {
+      "id": "hermes-otel-sdk",
+      "label": "Hermes OpenTelemetry SDK",
+      "area": "observability",
+      "status": {
+        "availability": "Hermes managed Python 3.14 API/SDK/OTLP HTTP/common exporters 1.39.1 and semconv 0.60b1 installed; separate Basic Memory SDK is 1.44.0.",
+        "deployment": "Local package availability supports Hermes instrumentation; SDK installation alone is not a standalone deployed service.",
+        "qualification": "No separate SDK-wide or cross-runtime delivery/correlation qualification."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/.hermes/installs/97d05de94d92cbdc/environments/0da83f1922664b0e9b7b2b82926b4cfd/venv/lib/python3.14/site-packages/opentelemetry_sdk-1.39.1.dist-info",
+        "role": "Existing managed-environment SDK distribution owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/.hermes/installs/97d05de94d92cbdc/environments/0da83f1922664b0e9b7b2b82926b4cfd/venv/lib/python3.14/site-packages/opentelemetry_sdk-1.39.1.dist-info/METADATA",
+          "role": "package metadata"
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "separate environment and instrumentation inventory"
+        }
+      ],
+      "notes": "Installed OpenTelemetry SDK is distinct from absent OpenLLMetry. Instrumentation requires an explicit parent/context bridge and duplicate-span policy; sharing a provider alone does not establish context propagation."
+    },
+    {
+      "id": "hermes-otel-plugin",
+      "label": "Hermes OTel plugin",
+      "area": "observability",
+      "status": {
+        "availability": "hermes_otel 1.17.0 installed and enabled in default profile; gateway observed active.",
+        "deployment": "Default-profile plugin enabled and gateway observed active. Current YAML config selects traces to loopback 4320 with content capture, logs, metrics, history and sender capture off; effective process overrides were not inspected.",
+        "qualification": "Retained September 26 harmless-turn route/readback only; no fresh delivery test in this inventory."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/.hermes/plugins/hermes_otel",
+        "role": "Existing installed Hermes telemetry plugin implementation owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/.hermes/hermes_otel.yaml",
+          "role": "existing trace/privacy configuration",
+          "line": 3
+        },
+        {
+          "path": "/home/aya-hmw/.codex/.chatgpt-projects/g-p-6a82790181a88191870a073a144e3eca/aya-otel-bootstrap/HERMES_RESPAN_ROUTE.md",
+          "role": "retained bounded route qualification",
+          "line": 9
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "dated instrumentation/deployment inventory"
+        },
+        {
+          "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/plugin.yaml",
+          "role": "installed manifest and full-capture default",
+          "line": 1
+        },
+        {
+          "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/__init__.py",
+          "role": "lifecycle hook registration",
+          "line": 31
+        },
+        {
+          "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/tracer.py",
+          "role": "SDK/HTTP-exporter instrumentation implementation",
+          "line": 53
+        },
+        {
+          "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/plugin_config.py",
+          "role": "YAML loading and environment override precedence",
+          "line": 572
+        }
+      ],
+      "notes": "Content capture off still allows command, target and error attributes in plugin spans; dedicated collector keeps allowed identity metadata and clears status/name fields. Environment scalar overrides supersede YAML, and plugin default capture is full. Local dashboard store defaults on; its availability, contents and effective state were not inspected. Parent/context bridging and duplicate-span policy remain later instrumentation decisions; no Traceloop.init default is enabled."
+    },
+    {
+      "id": "primary-otel-collector",
+      "label": "Primary OTel Collector Contrib",
+      "area": "observability",
+      "status": {
+        "availability": "Existing bootstrap source and Collector Contrib 0.160.0 image were inventoried.",
+        "deployment": "Running aya-otel-qualification collector; ordered four-file Compose owner; loopback 4317/4318/4320/13133 and existing local state binding.",
+        "qualification": "September 26 Hermes route/readback retained; current config is wiring evidence, not fresh delivery or every-exporter qualification."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/.codex/.chatgpt-projects/g-p-6a82790181a88191870a073a144e3eca/aya-otel-bootstrap",
+        "role": "Existing primary collector Compose/configuration owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/.codex/.chatgpt-projects/g-p-6a82790181a88191870a073a144e3eca/aya-otel-bootstrap/compose.yaml",
+          "role": "base Compose owner",
+          "line": 4
+        },
+        {
+          "path": "/home/aya-hmw/.codex/.chatgpt-projects/g-p-6a82790181a88191870a073a144e3eca/aya-otel-bootstrap/HERMES_RESPAN_ROUTE.md",
+          "role": "dedicated Hermes route and retained readback",
+          "line": 9
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "exact Compose order, mounts and route separation"
+        },
+        {
+          "path": "/home/aya-hmw/.codex/.chatgpt-projects/g-p-6a82790181a88191870a073a144e3eca/aya-otel-bootstrap/collector.yaml",
+          "role": "base signal pipelines and rotating file export",
+          "line": 54
+        },
+        {
+          "path": "/home/aya-hmw/.codex/.chatgpt-projects/g-p-6a82790181a88191870a073a144e3eca/aya-otel-bootstrap/collector.grafana.yaml",
+          "role": "separate base-receiver Grafana fan-out",
+          "line": 18
+        },
+        {
+          "path": "/home/aya-hmw/.codex/.chatgpt-projects/g-p-6a82790181a88191870a073a144e3eca/aya-otel-bootstrap/collector.datadog.yaml",
+          "role": "separate base-receiver Datadog fan-out",
+          "line": 20
+        },
+        {
+          "path": "/home/aya-hmw/.codex/.chatgpt-projects/g-p-6a82790181a88191870a073a144e3eca/aya-otel-bootstrap/compose.hermes-respan.yaml",
+          "role": "dedicated 4320 overlay and four-config order",
+          "line": 3
+        },
+        {
+          "path": "/home/aya-hmw/.codex/.chatgpt-projects/g-p-6a82790181a88191870a073a144e3eca/aya-otel-bootstrap/collector.hermes-respan.yaml",
+          "role": "dedicated Hermes filter/transform/export route",
+          "line": 46
+        }
+      ],
+      "notes": "Base routes fan out to local JSONL/Grafana/Datadog; dedicated Hermes 4320 route targets Respan only and retains allowed session/model/provider/tool/call-ID metadata. The dedicated keep-list is not the base routes privacy contract. Credential files and trace state are excluded; existing ownership and content-capture custody remain unchanged."
+    },
+    {
+      "id": "model-metrics-collector",
+      "label": "Model metrics collector with missing target",
+      "area": "observability",
+      "status": {
+        "availability": "Existing nervous-system-bus-v0 Compose/config and Collector Contrib 0.160.0 image present.",
+        "deployment": "Running collector; receiver configured to scrape spark:8000/metrics every five seconds and export to collector:4317; Spark target absent in current inventory.",
+        "qualification": "Running status and configuration do not prove current scrape or export delivery."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/aya/projects/developmental-lab/nervous-system-bus-v0",
+        "role": "Existing model metrics collector source/configuration owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/nervous-system-bus-v0/compose.metrics.yaml",
+          "role": "metrics Compose owner",
+          "line": 1
+        },
+        {
+          "path": "/home/aya-hmw/aya/projects/developmental-lab/nervous-system-bus-v0/model-metrics-collector.yaml",
+          "role": "configured scrape and export route",
+          "line": 2
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "missing Spark target and runtime snapshot"
+        }
+      ],
+      "notes": "Read-only configuration and external networks remain owned by the existing bus project. A fresh target/export qualification is unresolved."
+    },
+    {
+      "id": "alloy-unwired",
+      "label": "Grafana Alloy local tooling",
+      "area": "observability",
+      "status": {
+        "availability": "Alloy 1.20.1 downloaded; existing local binary resolves to retained installation.",
+        "deployment": "No matching deployed process, service, container or image observed; installed but unwired.",
+        "qualification": "Retained checksum and inert validation qualify local tooling only."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/.local/opt/observability/alloy-1.20.1",
+        "role": "Existing downloaded local observability binary owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/.local/opt/observability/alloy-1.20.1/alloy-linux-amd64",
+          "role": "installed binary"
+        },
+        {
+          "path": "/home/aya-hmw/aya/basic-memory-mirror/engineering/Alloy Prometheus and Paperclip — local tooling qualification.md",
+          "role": "retained inert tooling qualification",
+          "line": 18
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "version, checksum and deployment inventory"
+        }
+      ],
+      "notes": "Alloy is not either running OTel Collector. No new collector or trace/metrics binding follows from downloaded tooling."
+    },
+    {
+      "id": "prometheus-unwired",
+      "label": "Prometheus local tooling",
+      "area": "observability",
+      "status": {
+        "availability": "Prometheus/promtool 3.15.0 downloaded with local links under existing installation.",
+        "deployment": "No matching deployed process, service, container or image observed; only bundled localhost self-scrape sample established.",
+        "qualification": "Retained checksum and inert validation qualify local tooling; no live scrape or AEON TSDB owner established."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/.local/opt/observability/prometheus-3.15.0",
+        "role": "Existing downloaded local Prometheus tooling owner"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/.local/opt/observability/prometheus-3.15.0/prometheus-3.15.0.linux-amd64/prometheus.yml",
+          "role": "bundled self-scrape sample",
+          "line": 23
+        },
+        {
+          "path": "/home/aya-hmw/aya/basic-memory-mirror/engineering/Alloy Prometheus and Paperclip — local tooling qualification.md",
+          "role": "retained inert tooling qualification",
+          "line": 18
+        },
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "version, checksum and unwired inventory"
+        }
+      ],
+      "notes": "A TSDB location, retention, scrape targets and lifecycle remain later decisions. Existing metrics collector does not establish a Prometheus server."
+    },
+    {
+      "id": "openllmetry-not-found",
+      "label": "OpenLLMetry not found in inspected scopes",
+      "area": "observability",
+      "status": {
+        "availability": "No traceloop-sdk distribution or source checkout found in bounded inventory; optional LiteLLM adapter source exists.",
+        "deployment": "No configured/deployed OpenLLMetry or installed provider instrumentors established.",
+        "qualification": "No OpenLLMetry route, export, privacy or correlation qualification."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+        "role": "Dated bounded absence-report owner; no implementation owner established"
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/stack-inventory-2026-09-30.md",
+          "role": "bounded missing-package/source/deployment inventory"
+        },
+        {
+          "path": "/home/aya-hmw/.local/share/uv/tools/basic-memory/lib/python3.12/site-packages/litellm/integrations/traceloop.py",
+          "role": "existing optional adapter handles absent traceloop.sdk",
+          "line": 14
+        }
+      ],
+      "notes": "A traceloop.span.kind attribute is not package-install proof. Do not equate OpenTelemetry installation with OpenLLMetry or enable Traceloop.init by default."
+    },
+    {
+      "id": "tempo-proposed",
+      "label": "Tempo local trace storage proposal",
+      "area": "observability",
+      "status": {
+        "availability": "No PATH/package/cached image/container found in scoped local checks; artifact acquisition unapproved.",
+        "deployment": "Planned local trace backend only; no service/configuration created.",
+        "qualification": "No pilot config validation, startup or local end-to-end readback yet."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/local-observability-plan-2026-09-30.md",
+        "role": "AEON planning owner only; runtime/source custody must be accepted before deployment."
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/local-observability-plan-2026-09-30.md",
+          "role": "source-linked unactivated integration proposal"
+        }
+      ],
+      "notes": "Separate deployment approval required. Existing collectors and external routes remain unchanged."
+    },
+    {
+      "id": "grafana-proposed",
+      "label": "Grafana local trace/metric viewer proposal",
+      "area": "observability",
+      "status": {
+        "availability": "No PATH/package/cached image/container found in scoped local checks; artifact acquisition unapproved.",
+        "deployment": "Planned local viewer only; no service/configuration created.",
+        "qualification": "No pilot config validation, startup or local end-to-end readback yet."
+      },
+      "owner": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/local-observability-plan-2026-09-30.md",
+        "role": "AEON planning owner only; runtime/source custody must be accepted before deployment."
+      },
+      "files": [
+        {
+          "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/local-observability-plan-2026-09-30.md",
+          "role": "source-linked unactivated integration proposal"
+        }
+      ],
+      "notes": "Separate deployment approval required. Existing collectors and external routes remain unchanged."
+    }
+  ],
+  "relationships": [
+    {
+      "from": "brainstem-continuation",
+      "to": "brainstem-offline-evaluator",
+      "kind": "contains reviewed offline adapter",
+      "state": "Existing development checkout and fixed exposed-development binding; no consumer experiment/runtime deployment.",
+      "source": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/docs/reports/2026-09-30-aya-continuation/offline-evaluator-adapter.md",
+        "line": 5
+      }
+    },
+    {
+      "from": "brainstem-continuation",
+      "to": "brainstem-synthetic-postgresql",
+      "kind": "shares original source owner and preserves synthetic storage boundary",
+      "state": "Source-owner navigation only; worktree move did not relocate or start stopped test databases.",
+      "source": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/worktree-relocation-2026-09-30.md"
+      }
+    },
+    {
+      "from": "brainstem-continuation",
+      "to": "brainstem-observer-prototype",
+      "kind": "retains existing Observer contract and candidate source references",
+      "state": "Existing project/source relationship; original dirty prototype and unresolved native review failures remain separate.",
+      "source": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/README.md",
+        "line": 5
+      }
+    },
+    {
+      "from": "brainstem-continuation",
+      "to": "local-basic-memory",
+      "kind": "documents local provider boundary",
+      "state": "Source/config navigation; no explicit AYA memory to Firecrawl PostgreSQL connection found; effective-session provider not tested.",
+      "source": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/worktree-relocation-2026-09-30.md"
+      }
+    },
+    {
+      "from": "brainstem-synthetic-postgresql",
+      "to": "proposed-qdrant",
+      "kind": "preceding isolated mechanism for proposed projection adoption",
+      "state": "Design sequencing only; synthetic M0 does not deploy Qdrant or establish production PostgreSQL eligibility.",
+      "source": {
+        "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/Guide.md",
+        "line": 204
+      }
+    },
+    {
+      "from": "dspy-design",
+      "to": "reanchor-design",
+      "kind": "proposes compatible-task calibration",
+      "state": "Design only after independent labels and compatible APIs; no installed/fitted implementation or utility result.",
+      "source": {
+        "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/AYA-HLD-review-technical-appendix-2026-09-29.md",
+        "line": 263
+      }
+    },
+    {
+      "from": "jev-monty-probe",
+      "to": "brainstem-continuation",
+      "kind": "candidate bounded procedure execution path",
+      "state": "HLD proposal only; retained Jev mock probe is not a live Brainstem or memory binding.",
+      "source": {
+        "path": "/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/Guide.md",
+        "line": 228
+      }
+    },
+    {
+      "from": "hermes-otel-plugin",
+      "to": "hermes-otel-sdk",
+      "kind": "uses installed telemetry SDK",
+      "state": "Installed Hermes instrumentation dependency; SDK/provider sharing alone does not establish context propagation.",
+      "source": {
+        "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/tracer.py",
+        "line": 53
+      }
+    },
+    {
+      "from": "hermes-otel-plugin",
+      "to": "primary-otel-collector",
+      "kind": "configured dedicated trace export",
+      "state": "Configured loopback 4320 Hermes route; bounded September 26 readback retained, fresh delivery untested.",
+      "source": {
+        "path": "/home/aya-hmw/.codex/.chatgpt-projects/g-p-6a82790181a88191870a073a144e3eca/aya-otel-bootstrap/collector.hermes-respan.yaml",
+        "line": 46
+      }
+    },
+    {
+      "from": "model-metrics-collector",
+      "to": "primary-otel-collector",
+      "kind": "configured OTLP metrics export",
+      "state": "Configured collector:4317 route; missing Spark scrape target prevents a current scrape/delivery claim.",
+      "source": {
+        "path": "/home/aya-hmw/aya/projects/developmental-lab/nervous-system-bus-v0/model-metrics-collector.yaml",
+        "line": 30
+      }
+    },
+    {
+      "from": "hermes-otel-plugin",
+      "to": "alloy-unwired",
+      "kind": "proposed metadata-only isolated receiver",
+      "state": "Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.",
+      "source": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/local-observability-plan-2026-09-30.md"
+      }
+    },
+    {
+      "from": "alloy-unwired",
+      "to": "tempo-proposed",
+      "kind": "proposed trace export",
+      "state": "Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.",
+      "source": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/local-observability-plan-2026-09-30.md"
+      }
+    },
+    {
+      "from": "grafana-proposed",
+      "to": "tempo-proposed",
+      "kind": "proposed trace datasource",
+      "state": "Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.",
+      "source": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/local-observability-plan-2026-09-30.md"
+      }
+    },
+    {
+      "from": "grafana-proposed",
+      "to": "prometheus-unwired",
+      "kind": "proposed metrics datasource",
+      "state": "Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.",
+      "source": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/local-observability-plan-2026-09-30.md"
+      }
+    },
+    {
+      "from": "alloy-unwired",
+      "to": "prometheus-unwired",
+      "kind": "proposed bounded span-metric remote write",
+      "state": "Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.",
+      "source": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/local-observability-plan-2026-09-30.md"
+      }
+    },
+    {
+      "from": "openllmetry-not-found",
+      "to": "hermes-otel-plugin",
+      "kind": "proposed selected instrumentor provider/context reuse",
+      "state": "Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.",
+      "source": {
+        "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/local-observability-plan-2026-09-30.md"
+      }
+    }
+  ]
+}

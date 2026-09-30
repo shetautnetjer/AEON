@@ -18,6 +18,10 @@ This folder was already initialized as Git and contains existing dispatcher meta
 | AYA native workspace and runtime | [Workspace instructions](/home/aya-hmw/.aya/workspace/AGENTS.md), [persistence instructions](/home/aya-hmw/.aya/codex/INSTRUCTIONS.md) — existing private runtime directories remain in place |
 | Local `aya-working` supporting memory projection | `/home/aya-hmw/aya/basic-memory-mirror`; [bounded qualification adapter](/home/aya-hmw/.aya/workspace/tools/aya_memory_gate.py) — source-backed qualification, not general admission or migration |
 
+## Bible navigation
+
+The [Bible operating rules and examples](bibles/README.md) lead to the [machine-readable source index](bibles/index.json), [generated HTML view](bibles/index.html) and [relationship SVG](bibles/relationships.svg). Memory and observability definitions remain with their existing source/schema owners; these views establish navigation only.
+
 ## Stack navigation
 
 The [September 30 local inventory](docs/stack-inventory-2026-09-30.md) records versions, running/stopped state, source owners, data bindings and retained qualification. The [staged consolidation proposal](docs/stack-consolidation-2026-09-30.md) maps dependencies and rollback before any physical move or deployment.

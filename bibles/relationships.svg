@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1286" role="img" aria-label="Derived navigation relationships">
+<!-- Generated from index.json; edit the index, not this view. -->
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#516278"/></marker></defs>
+<rect width="1200" height="1286" fill="#f7f9fc"/>
+<text x="24" y="30" font-family="sans-serif" font-size="18">Source-backed relationships; state remains in index.json</text>
+<g><title>proposed bounded span-metric remote write — Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.</title>
+<rect x="24" y="60" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="87" font-family="sans-serif" font-size="13">Grafana Alloy local tooling</text>
+<rect x="825" y="60" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="87" font-family="sans-serif" font-size="13">Prometheus local tooling</text>
+<line x1="382" y1="90" x2="810" y2="90" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="75" font-family="sans-serif" font-size="12">proposed bounded span-metric remote write</text></g>
+<g><title>proposed trace export — Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.</title>
+<rect x="24" y="136" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="163" font-family="sans-serif" font-size="13">Grafana Alloy local tooling</text>
+<rect x="825" y="136" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="163" font-family="sans-serif" font-size="13">Tempo local trace storage proposal</text>
+<line x1="382" y1="166" x2="810" y2="166" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="151" font-family="sans-serif" font-size="12">proposed trace export</text></g>
+<g><title>retains existing Observer contract and candidate source references — Existing project/source relationship; original dirty prototype and unresolved native review failures remain separate.</title>
+<rect x="24" y="212" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="239" font-family="sans-serif" font-size="13">Brainstem continuation worktree</text>
+<rect x="825" y="212" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="239" font-family="sans-serif" font-size="13">Brainstem Observer prototype</text>
+<line x1="382" y1="242" x2="810" y2="242" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="227" font-family="sans-serif" font-size="12">retains existing Observer contract and candidate source refe</text></g>
+<g><title>contains reviewed offline adapter — Existing development checkout and fixed exposed-development binding; no consumer experiment/runtime deployment.</title>
+<rect x="24" y="288" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="315" font-family="sans-serif" font-size="13">Brainstem continuation worktree</text>
+<rect x="825" y="288" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="315" font-family="sans-serif" font-size="13">Brainstem exposed development evaluator</text>
+<line x1="382" y1="318" x2="810" y2="318" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="303" font-family="sans-serif" font-size="12">contains reviewed offline adapter</text></g>
+<g><title>shares original source owner and preserves synthetic storage boundary — Source-owner navigation only; worktree move did not relocate or start stopped test databases.</title>
+<rect x="24" y="364" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="391" font-family="sans-serif" font-size="13">Brainstem continuation worktree</text>
+<rect x="825" y="364" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="391" font-family="sans-serif" font-size="13">Brainstem synthetic PostgreSQL M0</text>
+<line x1="382" y1="394" x2="810" y2="394" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="379" font-family="sans-serif" font-size="12">shares original source owner and preserves synthetic storage</text></g>
+<g><title>documents local provider boundary — Source/config navigation; no explicit AYA memory to Firecrawl PostgreSQL connection found; effective-session provider not tested.</title>
+<rect x="24" y="440" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="467" font-family="sans-serif" font-size="13">Brainstem continuation worktree</text>
+<rect x="825" y="440" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="467" font-family="sans-serif" font-size="13">Local Basic Memory qualification</text>
+<line x1="382" y1="470" x2="810" y2="470" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="455" font-family="sans-serif" font-size="12">documents local provider boundary</text></g>
+<g><title>preceding isolated mechanism for proposed projection adoption — Design sequencing only; synthetic M0 does not deploy Qdrant or establish production PostgreSQL eligibility.</title>
+<rect x="24" y="516" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="543" font-family="sans-serif" font-size="13">Brainstem synthetic PostgreSQL M0</text>
+<rect x="825" y="516" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="543" font-family="sans-serif" font-size="13">Proposed Qdrant projection</text>
+<line x1="382" y1="546" x2="810" y2="546" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="531" font-family="sans-serif" font-size="12">preceding isolated mechanism for proposed projection adoptio</text></g>
+<g><title>proposes compatible-task calibration — Design only after independent labels and compatible APIs; no installed/fitted implementation or utility result.</title>
+<rect x="24" y="592" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="619" font-family="sans-serif" font-size="13">DSPy calibration design</text>
+<rect x="825" y="592" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="619" font-family="sans-serif" font-size="13">ReAnchor experimental calibration</text>
+<line x1="382" y1="622" x2="810" y2="622" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="607" font-family="sans-serif" font-size="12">proposes compatible-task calibration</text></g>
+<g><title>proposed metrics datasource — Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.</title>
+<rect x="24" y="668" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="695" font-family="sans-serif" font-size="13">Grafana local trace/metric viewer proposal</text>
+<rect x="825" y="668" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="695" font-family="sans-serif" font-size="13">Prometheus local tooling</text>
+<line x1="382" y1="698" x2="810" y2="698" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="683" font-family="sans-serif" font-size="12">proposed metrics datasource</text></g>
+<g><title>proposed trace datasource — Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.</title>
+<rect x="24" y="744" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="771" font-family="sans-serif" font-size="13">Grafana local trace/metric viewer proposal</text>
+<rect x="825" y="744" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="771" font-family="sans-serif" font-size="13">Tempo local trace storage proposal</text>
+<line x1="382" y1="774" x2="810" y2="774" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="759" font-family="sans-serif" font-size="12">proposed trace datasource</text></g>
+<g><title>proposed metadata-only isolated receiver — Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.</title>
+<rect x="24" y="820" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="847" font-family="sans-serif" font-size="13">Hermes OTel plugin</text>
+<rect x="825" y="820" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="847" font-family="sans-serif" font-size="13">Grafana Alloy local tooling</text>
+<line x1="382" y1="850" x2="810" y2="850" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="835" font-family="sans-serif" font-size="12">proposed metadata-only isolated receiver</text></g>
+<g><title>uses installed telemetry SDK — Installed Hermes instrumentation dependency; SDK/provider sharing alone does not establish context propagation.</title>
+<rect x="24" y="896" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="923" font-family="sans-serif" font-size="13">Hermes OTel plugin</text>
+<rect x="825" y="896" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="923" font-family="sans-serif" font-size="13">Hermes OpenTelemetry SDK</text>
+<line x1="382" y1="926" x2="810" y2="926" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="911" font-family="sans-serif" font-size="12">uses installed telemetry SDK</text></g>
+<g><title>configured dedicated trace export — Configured loopback 4320 Hermes route; bounded September 26 readback retained, fresh delivery untested.</title>
+<rect x="24" y="972" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="999" font-family="sans-serif" font-size="13">Hermes OTel plugin</text>
+<rect x="825" y="972" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="999" font-family="sans-serif" font-size="13">Primary OTel Collector Contrib</text>
+<line x1="382" y1="1002" x2="810" y2="1002" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="987" font-family="sans-serif" font-size="12">configured dedicated trace export</text></g>
+<g><title>candidate bounded procedure execution path — HLD proposal only; retained Jev mock probe is not a live Brainstem or memory binding.</title>
+<rect x="24" y="1048" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="1075" font-family="sans-serif" font-size="13">Jev cached Monty probe</text>
+<rect x="825" y="1048" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="1075" font-family="sans-serif" font-size="13">Brainstem continuation worktree</text>
+<line x1="382" y1="1078" x2="810" y2="1078" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="1063" font-family="sans-serif" font-size="12">candidate bounded procedure execution path</text></g>
+<g><title>configured OTLP metrics export — Configured collector:4317 route; missing Spark scrape target prevents a current scrape/delivery claim.</title>
+<rect x="24" y="1124" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="1151" font-family="sans-serif" font-size="13">Model metrics collector with missing target</text>
+<rect x="825" y="1124" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="1151" font-family="sans-serif" font-size="13">Primary OTel Collector Contrib</text>
+<line x1="382" y1="1154" x2="810" y2="1154" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="1139" font-family="sans-serif" font-size="12">configured OTLP metrics export</text></g>
+<g><title>proposed selected instrumentor provider/context reuse — Proposal only; dependencies, context/privacy tests, inert validation and explicit startup/cutover approval remain pending.</title>
+<rect x="24" y="1200" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="36" y="1227" font-family="sans-serif" font-size="13">OpenLLMetry not found in inspected scopes</text>
+<rect x="825" y="1200" width="350" height="45" rx="5" fill="#e8eef8" stroke="#9fb0c9"/>
+<text x="837" y="1227" font-family="sans-serif" font-size="13">Hermes OTel plugin</text>
+<line x1="382" y1="1230" x2="810" y2="1230" stroke="#516278" marker-end="url(#arrow)"/>
+<text x="395" y="1215" font-family="sans-serif" font-size="12">proposed selected instrumentor provider/context reuse</text></g>
+</svg>
