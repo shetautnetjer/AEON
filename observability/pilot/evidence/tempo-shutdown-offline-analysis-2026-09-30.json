@@ -1,0 +1,177 @@
+{
+  "format_version": 1,
+  "verified_at": "2026-09-30T19:31:45.709751+00:00",
+  "baseline_commit": "a94230342b2aa1599736cd3c93fd1039cb5c486b",
+  "scope": "offline Tempo shutdown diagnosis and approval-pending diagnostic proposal; no runtime/source/config correction",
+  "local_evidence_refs": [
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/tempo-bounded-shutdown-diagnostic.json",
+      "role": "observed bounded unit journal diagnosis",
+      "sha256": "16732b8fd427c0ede4366aabf522716dab7ff2919f4128d85e8a861f3ecfcc9c"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/shutdown.json",
+      "role": "observed final unit results/ownership cleanup",
+      "sha256": "15870a135118a179c7b3383f774afdfd117e452c75472c6107064048ea36c574"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/measured-service-memory-recovery.json",
+      "role": "recorded zero OOM events",
+      "sha256": "e74d1cafac7450a5d4f3d9155cf4ff07e98750b226a8d5850815fec9af6d7042"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/final-preservation-and-shutdown-verification.json",
+      "role": "post-deadline preservation/no listeners",
+      "sha256": "e7c1f3ce5b97443df07aa0da193f7c750701fa2341250e40a90caada4576e21f"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/observability/pilot/config/tempo.yaml",
+      "role": "authored original config",
+      "sha256": "c69cfb0d5016b1cfeb0aca2fdb118869cd3fb9befd0c2dd96c6ce671a271f052"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/observability/pilot/units/aeon-pilot-tempo.service",
+      "role": "original25s unit stop grace",
+      "sha256": "ca052b4cfadc66d24f11914fbcaf251268bada3b1a9f7cd83ac051cffdf117d2"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/Codex/2026-09-30/task-3/evidence/tempo-help.log",
+      "role": "acquired3.1.0supported flags/defaults",
+      "sha256": "1b0aab4f82215e5dff367543ea0cd915981c6e4789907a87d918dca59d2a91af"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/Codex/2026-09-30/task-3/evidence/tempo-version.log",
+      "role": "acquired revision77fc4563d",
+      "sha256": "713463446e7f8eec5b1cf31b1ad9a0015e4d302c0f4dbcb4538383dcd1229928"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/artifacts/observability/tempo-3.1.0/CHANGELOG.md",
+      "role": "3.1.0queue-fix and worker-finishing history",
+      "sha256": "676493a8cc3e8ac2b8d149bea477da11f3aa725b496b3aa2e5b71b0a18ce9e10"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/docs/observability-pilot-result-2026-09-30.md",
+      "role": "committed prior run result",
+      "sha256": "7bfdcdf0fa473d268d3cf0e984f6fe3f4fd42cdb18c110045261366fb49a806f"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/Codex/2026-09-30/task-3/evidence/tempo-offline-original-pins-2026-09-30.json",
+      "role": "pre-turn snapshot of74original authored config/unit and retained pilot evidence file hashes, verified after documentation",
+      "sha256": "7e4bf8762be9fbb063bdb6a8c877485757e703f5e8cbd85ea0fc42c95fd9780e"
+    }
+  ],
+  "official_source_refs": [
+    {
+      "url": "https://raw.githubusercontent.com/grafana/tempo/77fc4563d/modules/backendworker/config.go",
+      "section": "Config and RegisterFlagsAndApplyDefaults",
+      "claim": "supported finish_on_shutdown_timeout default30s"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/grafana/tempo/77fc4563d/cmd/tempo/app/config.go",
+      "section": "Config and RegisterFlagsAndApplyDefaults",
+      "claim": "supported shutdown_delay default0s"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/grafana/tempo/v3.1.0/modules/backendworker/backendworker.go",
+      "section": "running, stopping, createShutdownContext",
+      "claim": "job context finishing allowance; no unconditional30s sleep"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/grafana/tempo/v3.1.0/modules/livestore/live_store.go",
+      "section": "LiveStore.stopping",
+      "claim": "lifecycle stop/WAL cut/background teardown withINFO milestones"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/grafana/tempo/v3.1.0/go.mod",
+      "section": "grafana/dskit dependency",
+      "claim": "dskit revisionde1ec7541c44"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/grafana/dskit/de1ec7541c44/server/server.go",
+      "section": "RegisterFlags and Server.Shutdown",
+      "claim": "30sHTTPgrace; subsequent GRPC.GracefulStop lacks timer in this method"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/grafana/tempo/v3.1.0/cmd/tempo/app/app.go",
+      "section": "writeStatusConfig/statusHandler and Run",
+      "claim": "runtime config/status endpoints and INFO start/stop milestones"
+    }
+  ],
+  "supported_observation": "systemd25s stop grace expired; SIGKILL ended Tempo, no recorded OOM; all owned processes/listeners stopped before original deadline",
+  "unresolved_internal_cause": true,
+  "hypotheses": [
+    "worker job/request finishing",
+    "HTTP or gRPC server drain",
+    "live-store lifecycle/WAL/background teardown"
+  ],
+  "unsupported_claims": [
+    "fixed shutdown_delay caused observedwait",
+    "queue-is-stopped proves knownfrontendbug",
+    "90sgrace is provenfix",
+    "shorter finishing/flush controls are safe or sufficient"
+  ],
+  "deterministic_correction_justified": false,
+  "source_or_runtime_config_changes": 0,
+  "new_unit_tests_run": 0,
+  "verification": "local refs/hash preservation and independent read-only diagnosis; no unit code change to test",
+  "original_config_and_runtime_evidence_files_preserved": 74,
+  "services_started_restarted": 0,
+  "new_packages": 0,
+  "real_sessions": 0,
+  "model_requests": 0,
+  "proposal": {
+    "approval": "PENDING",
+    "duration_seconds_including_stops": 900,
+    "final_stop_reserve_seconds_min": 95,
+    "tempo_stop_grace_seconds": 90,
+    "other_stop_grace_seconds": 25,
+    "span_budget": 25,
+    "expected_traces": 6,
+    "expected_canonical_api_calls": 5,
+    "max_tempo_restart_after_graceful_stop": 1,
+    "new_spans_after_restart": 0,
+    "quiescence_seconds_before_each_stop": 40,
+    "combined_memory_max_mib": 2176,
+    "combined_cpu_percent": 225,
+    "port_list": [
+      14317,
+      14318,
+      12346,
+      13200,
+      24317,
+      24318,
+      19095,
+      19090,
+      13000
+    ],
+    "state_root": "/home/aya-hmw/Documents/ChatGPT/AEON/var/tempo-shutdown-check/<run-id>",
+    "unit_names": "aeon-tempo-check-{tempo,alloy,prometheus,grafana}-<run-id>.service",
+    "age_retention_hours_while_running": 24,
+    "aggregate_disk_budget_bytes": 10737418240,
+    "hard_disk_quota": false,
+    "old_state_preserved": true,
+    "new_artifacts": 0,
+    "external_runtime_destinations": [],
+    "code_binding_implemented": false,
+    "offline_binding_test_review_gate_required_before_start": true,
+    "abort_before_restart_on_timeout_or_failed_gate": true,
+    "final_service_stop_requests_concurrent": true,
+    "emitter_scope": {
+      "name": "aeon-tempo-check-emitter-<run-id>.scope",
+      "memory_max_mib": 256,
+      "cpu_percent": 25,
+      "tasks_max": 64,
+      "swap_max": 0,
+      "timeout_seconds": 60,
+      "kill_grace_seconds": 5,
+      "included_in_absolute_deadline_and_abort_cleanup": true
+    }
+  },
+  "independent_analysis_reviewer": "/root/tempo_shutdown_independent",
+  "independent_analysis_verdict": "Insufficient evidence for deterministic correction; a new bounded lifecycle/durability diagnostic is justified.",
+  "remaining_creator_decision": "Approve exactly one fresh diagnostic runtime window after offline binding/tests/review, or leave services stopped.",
+  "utility_qualified": false,
+  "release_evaluated": false,
+  "pilot_or_provider_endpoint_calls": 0,
+  "official_public_source_reads": true
+}
