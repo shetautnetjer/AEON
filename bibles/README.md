@@ -1,5 +1,7 @@
 # AEON Bible navigation
 
+**Dated current-status correction:** this navigation retains its initial preparation snapshot. The later [finite synthetic lifecycle](../docs/tempo-lifecycle-synthetic-result-2026-09-30.md) passed and stopped its owned resources; [current STATUS](../STATUS.md) governs latest evidence. Older “planned/unactivated/no pilot” wording below is historical for that snapshot; real AYA capture/integration remains unqualified. No component definitions, index paths or generated artifacts are replaced.
+
 Purpose: give agents a small source-linked route to existing memory and observability owners. Read this Markdown for operating boundaries, then [index.json](index.json) for machine navigation. Definitions remain with their existing source and JSON Schemas. [HTML](index.html) and [SVG](relationships.svg) are generated views, not semantic authorities.
 
 - [Memory purpose and examples](memory/README.md).

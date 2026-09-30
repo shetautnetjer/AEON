@@ -1,5 +1,7 @@
 # Observability Bible navigation
 
+**Dated current-status correction:** this navigation retains its initial preparation snapshot. The later [finite synthetic lifecycle](../../docs/tempo-lifecycle-synthetic-result-2026-09-30.md) passed and stopped its owned resources; [current STATUS](../../STATUS.md) governs latest evidence. Older “planned/unactivated/no pilot” wording below is historical for that snapshot; real AYA capture/integration remains unqualified. No component definitions, index paths or generated artifacts are replaced.
+
 Purpose: inspect emitted traces, metrics, errors, timings, token counts and supplied session/tool/decision IDs. This is operational metadata, not access to hidden model reasoning. Use `area=observability` in [the shared machine index](../index.json), then the [source-grounded integration proposal](../../docs/local-observability-plan-2026-09-30.md).
 
 ## Operating boundaries

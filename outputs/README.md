@@ -1,0 +1,3 @@
+# Output routes
+
+Safe retained result owners: [synthetic telemetry lifecycle](../docs/tempo-lifecycle-synthetic-result-2026-09-30.md), [Brainstem failed exposed attempt](../worktrees/brainstem-continuation/docs/reports/2026-09-30-aya-continuation/exposed4-20260930T233131Z-result.md), [compact gate preparation](../worktrees/brainstem-continuation/docs/plans/2026-09-30-exposed4-compact-judge-gate.md). Follow [STATUS.md](../STATUS.md) for current qualified limits. Results remain at these owners; this is an index, not an artifact copy. Raw traces, native logs and binaries remain in their ignored/protected namespaces.
