@@ -32,6 +32,22 @@ def validate_case(case, result):
     if case in ('stream','cancel'): assert result['stream_closed'] is True
 
 
+def export_synthetic(exporter, spans, *, expected_outage=False):
+    from requests.exceptions import ConnectionError
+    from opentelemetry.sdk.trace.export import SpanExportResult
+    try:
+        try:
+            verdict = exporter.export(spans)
+        except ConnectionError:
+            if not expected_outage:
+                raise
+            return {'export_verdict':'FAILURE', 'bounded_export_error_type':'ConnectionError'}
+        assert verdict == (SpanExportResult.FAILURE if expected_outage else SpanExportResult.SUCCESS)
+        return {'export_verdict':verdict.name}
+    finally:
+        exporter.shutdown()
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--fallback-site',type=Path,required=True)
@@ -52,7 +68,6 @@ def main():
     sys.addaudithook(audit)
     import requests
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk.trace.export import SpanExportResult
     from instrumentor_harness import InstrumentorHarness,CANARY
     with InstrumentorHarness() as h:
         results=[]
@@ -82,14 +97,11 @@ def main():
             assert s.status.description is None
         expected=[{'trace_id':format(s.context.trace_id,'032x'),'span_id':format(s.context.span_id,'016x'),'parent_span_id':format(s.parent.span_id,'016x') if s.parent else None,'name':s.name,'status':s.status.status_code.name,'attributes':dict(s.attributes or {})} for s in spans]
         started=datetime.now(timezone.utc).isoformat()
-        verdict_name='NOT_RUN'
+        export_result={'export_verdict':'NOT_RUN'}
         if not args.dry_run:
             session=requests.Session();session.trust_env=False
             exporter=OTLPSpanExporter(endpoint='http://127.0.0.1:14318/v1/traces',session=session,timeout=1.0)
-            verdict=exporter.export(spans)
-            exporter.shutdown()
-            assert verdict==(SpanExportResult.FAILURE if args.outage else SpanExportResult.SUCCESS)
-            verdict_name=verdict.name
+            export_result=export_synthetic(exporter,spans,expected_outage=args.outage)
         origins={}
         for name in ('openai','opentelemetry.trace','opentelemetry.sdk.trace','opentelemetry.instrumentation.openai','opentelemetry.exporter.otlp.proto.http.trace_exporter','requests','yaml'):
             module=sys.modules.get(name)
@@ -100,7 +112,7 @@ def main():
         resources['memory_peak_bytes']=int((group/'memory.peak').read_text())
         resources['memory_events']=dict(line.split() for line in (group/'memory.events').read_text().splitlines())
         assert resources['memory_events']['oom']=='0' and resources['memory_events']['oom_kill']=='0'
-        out={'started_at':started,'ended_at':datetime.now(timezone.utc).isoformat(),'synthetic_only':True,'outage_expected':args.outage,'dry_run':args.dry_run,'export_verdict':verdict_name,'span_count':len(spans),'canonical_api_count':sum(s.name=='api' for s in spans),'categories':dict(Counter(s.name for s in spans)),'case_results':results,'expected_spans':expected,'transport_policy':'httpx.MockTransport only for OpenAI; approved127.0.0.1:14318 only for OTLP','provider_instance_count':1,'effective_emitter_resources':resources,'imported_origins':origins,'sensitive_sentinel_absent':True,'utility_qualified':False,'release_evaluated':False}
+        out={'started_at':started,'ended_at':datetime.now(timezone.utc).isoformat(),'synthetic_only':True,'outage_expected':args.outage,'dry_run':args.dry_run,**export_result,'span_count':len(spans),'canonical_api_count':sum(s.name=='api' for s in spans),'categories':dict(Counter(s.name for s in spans)),'case_results':results,'expected_spans':expected,'transport_policy':'httpx.MockTransport only for OpenAI; approved127.0.0.1:14318 only for OTLP','provider_instance_count':1,'effective_emitter_resources':resources,'imported_origins':origins,'sensitive_sentinel_absent':True,'utility_qualified':False,'release_evaluated':False}
         fd=os.open(args.output,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
         with os.fdopen(fd,'w') as file: file.write(json.dumps(out,indent=2)+'\n')
         print(json.dumps({k:out[k] for k in ('outage_expected','export_verdict','span_count','canonical_api_count','categories')}))
