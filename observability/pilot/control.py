@@ -196,11 +196,52 @@ def wait_ready(window):
  raise RuntimeError('pilot startup readiness timeout')
 def apply_runtime_cap(names,window):
  remaining=remaining_window(window,time.time(),time.monotonic())
- for name in names:
-  run('systemctl','--user','set-property','--runtime',name,'RuntimeMaxSec='+str(remaining)+'s')
-  window['unit_runtime_seconds'][name]=remaining
- save_window(window)
- return remaining
+ assert names and len(names)==len(set(names)) and set(names)<=set(NAMES),'runtime override is outside the pilot unit scope'
+ root=globals().get('RUNTIME_UNIT_ROOT',Path('/run/user/1000/systemd/user'));filename='90-aeon-runtime-window.conf';uid=os.geteuid();opened=[];rootfd=None;proofs={}
+ def owned(fd,kind,mode):
+  state=os.fstat(fd)
+  assert state.st_uid==uid and state.st_mode&0o170000==kind,'runtime override path has unexpected ownership or type'
+  assert state.st_mode&0o7777==mode,'runtime override path is not private'
+ try:
+  rootfd=os.open(root,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+  base=os.fstat(rootfd);assert base.st_uid==uid and not base.st_mode&0o022,'runtime unit parent has unsafe ownership or permissions'
+  for name in names:
+   assert remaining<=window['unit_runtime_seconds'][name]<=MAX_WINDOW_SECONDS,'runtime override would increase a prior bound'
+   directory=name+'.d';path=root/directory/filename;previous=window.get('runtime_overrides',{}).get(name)
+   try:os.stat(directory,dir_fd=rootfd,follow_symlinks=False)
+   except FileNotFoundError:
+    assert previous is None,'recorded runtime override directory is missing'
+    os.mkdir(directory,mode=0o700,dir_fd=rootfd)
+   else:assert previous is not None,'runtime override directory already exists without ownership proof'
+   fd=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=rootfd);opened.append(fd);owned(fd,0o040000,0o700)
+   entries=set(os.listdir(fd))
+   if previous is None:assert not entries,'new runtime override directory is not empty'
+   else:
+    assert entries=={filename},'runtime override directory contains unexpected files'
+    with os.fdopen(os.open(filename,os.O_RDONLY|os.O_NOFOLLOW,dir_fd=fd),'rb') as stream:
+     owned(stream.fileno(),0o100000,0o600);content=stream.read()
+    expected=('[Service]\nRuntimeMaxSec='+str(window['unit_runtime_seconds'][name])+'s\n').encode()
+    assert previous['path']==str(path) and previous['content'].encode()==content==expected and previous['sha256']==hashlib.sha256(content).hexdigest(),'existing runtime override does not match its recorded bytes'
+   content=('[Service]\nRuntimeMaxSec='+str(remaining)+'s\n').encode()
+   proofs[name]={'path':str(path),'content':content.decode(),'sha256':hashlib.sha256(content).hexdigest(),'directory_fd':fd}
+  for name,proof in proofs.items():
+   fd=proof['directory_fd'];temporary='.'+filename+'.'+os.urandom(8).hex()+'.tmp'
+   try:
+    with os.fdopen(os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=fd),'wb') as stream:
+     owned(stream.fileno(),0o100000,0o600);stream.write(proof['content'].encode());stream.flush();os.fsync(stream.fileno())
+    os.replace(temporary,filename,src_dir_fd=fd,dst_dir_fd=fd);os.fsync(fd)
+   finally:
+    try:os.unlink(temporary,dir_fd=fd)
+    except FileNotFoundError:pass
+  run('systemctl','--user','daemon-reload')
+  for name,proof in proofs.items():
+   proof.pop('directory_fd');window.setdefault('runtime_overrides',{})[name]=proof;window['unit_runtime_seconds'][name]=remaining
+  save_window(window)
+  return remaining
+ except OSError as error:raise AssertionError('runtime override path cannot be safely opened or written') from error
+ finally:
+  for fd in opened:os.close(fd)
+  if rootfd is not None:os.close(rootfd)
 def start():
  existing=(E/'runtime-window.json').exists();window=load_window() if existing else None
  if window is not None:verify_runtime_files(window)

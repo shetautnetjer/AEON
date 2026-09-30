@@ -2,6 +2,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import unittest
 import tempfile
@@ -195,6 +196,8 @@ class PilotControlTests(unittest.TestCase):
     def test_start_and_retry_preserve_the_first_deadline_and_reduce_runtime(self):
         with tempfile.TemporaryDirectory(prefix='aeon-control-test-') as directory:
             self.control.E = Path(directory)
+            self.control.RUNTIME_UNIT_ROOT = Path(directory)/'runtime-units'
+            self.control.RUNTIME_UNIT_ROOT.mkdir(mode=0o700)
             (self.control.E/'prestart-gates.json').write_text('{"passed":true}')
             with ExitStack() as stack:
                 preflight = stack.enter_context(patch.object(self.control, 'preflight'))
@@ -220,8 +223,9 @@ class PilotControlTests(unittest.TestCase):
                 self.assertEqual(retry['started_at'], first['started_at'])
                 self.assertEqual(set(retry['unit_runtime_seconds'].values()), {1500})
                 for name in self.control.NAMES:
-                    self.assertIn((('systemctl','--user','set-property','--runtime',name,'RuntimeMaxSec=1500s'), {}),
-                        [(call.args, call.kwargs) for call in run.call_args_list])
+                    override = self.control.RUNTIME_UNIT_ROOT/(name+'.d')/'90-aeon-runtime-window.conf'
+                    self.assertEqual(override.read_text(), '[Service]\nRuntimeMaxSec=1500s\n')
+                self.assertFalse(any('set-property' in call.args for call in run.call_args_list))
                 self.assertEqual(limits.call_count, 2)
                 self.assertIsNotNone(preflight.call_args.kwargs.get('window'))
                 clock.return_value = 2800
@@ -288,6 +292,8 @@ class PilotControlTests(unittest.TestCase):
             return inactive if name == alloy else {'ActiveState':'active', 'MainPID':'22', 'ControlGroup':'/synthetic/'+name}
         with tempfile.TemporaryDirectory(prefix='aeon-control-test-') as directory:
             self.control.E = Path(directory)
+            self.control.RUNTIME_UNIT_ROOT = Path(directory)/'runtime-units'
+            self.control.RUNTIME_UNIT_ROOT.mkdir(mode=0o700)
             window = self.control.new_window(1000, 50)
             window['runtime_hashes'] = {'fixture':'sha256'}
             self.control.save_window(window)
@@ -307,8 +313,9 @@ class PilotControlTests(unittest.TestCase):
                 run.assert_not_called()
                 self.control.recover_alloy()
                 self.assertEqual([(call.args, call.kwargs) for call in run.call_args_list], [
-                    (('systemctl','--user','set-property','--runtime',alloy,'RuntimeMaxSec=1500s'), {}),
+                    (('systemctl','--user','daemon-reload'), {}),
                     (('systemctl','--user','start',alloy), {})])
+                self.assertEqual(list(self.control.RUNTIME_UNIT_ROOT.iterdir()), [self.control.RUNTIME_UNIT_ROOT/(alloy+'.d')])
                 self.assertEqual(limits.call_count, 2)
                 restored = json.loads((self.control.E/'runtime-window.json').read_text())
                 self.assertEqual(restored['deadline_epoch'], 2800)
@@ -326,6 +333,133 @@ class PilotControlTests(unittest.TestCase):
                     self.control.recover_alloy()
                 self.assertEqual(stop.call_count, 1)
                 self.assertEqual(stop.call_args.args[0], [alloy])
+
+    def test_runtime_cap_dropin_is_private_owned_atomic_and_proven_before_rewrite(self):
+        name = 'aeon-pilot-alloy.service'
+        with tempfile.TemporaryDirectory(prefix='aeon-control-dropin-') as directory:
+            self.control.E = Path(directory)/'evidence'
+            self.control.E.mkdir()
+            self.control.RUNTIME_UNIT_ROOT = Path(directory)/'runtime-units'
+            self.control.RUNTIME_UNIT_ROOT.mkdir(mode=0o700)
+            window = self.control.new_window(1000, 50)
+            original_deadline = window['deadline_epoch']
+            with patch.object(self.control.time, 'time', return_value=1300) as clock, \
+                    patch.object(self.control.time, 'monotonic', return_value=350) as mono, \
+                    patch.object(self.control, 'run') as run:
+                self.assertEqual(self.control.apply_runtime_cap([name], window), 1500)
+                dropin_dir = self.control.RUNTIME_UNIT_ROOT/(name+'.d')
+                dropin = dropin_dir/'90-aeon-runtime-window.conf'
+                self.assertTrue(dropin.is_file(), 'runtime limit must use a scoped unit drop-in')
+                self.assertEqual(dropin.read_bytes(), b'[Service]\nRuntimeMaxSec=1500s\n')
+                self.assertEqual(dropin.stat().st_mode & 0o7777, 0o600)
+                self.assertEqual(dropin_dir.stat().st_mode & 0o7777, 0o700)
+                self.assertEqual(dropin.stat().st_uid, os.geteuid())
+                proof = window['runtime_overrides'][name]
+                self.assertEqual(proof['path'], str(dropin))
+                self.assertEqual(proof['content'].encode(), dropin.read_bytes())
+                self.assertEqual(proof['sha256'], hashlib.sha256(dropin.read_bytes()).hexdigest())
+                run.assert_called_once_with('systemctl','--user','daemon-reload')
+                clock.return_value = 1360
+                mono.return_value = 410
+                run.reset_mock()
+                self.assertEqual(self.control.apply_runtime_cap([name], window), 1440)
+                self.assertEqual(dropin.read_text(), '[Service]\nRuntimeMaxSec=1440s\n')
+                self.assertEqual(window['deadline_epoch'], original_deadline)
+                self.assertEqual(window['unit_runtime_seconds'][name], 1440)
+                self.assertEqual(set(path.name for path in dropin_dir.iterdir()), {'90-aeon-runtime-window.conf'})
+                run.assert_called_once_with('systemctl','--user','daemon-reload')
+                run.reset_mock()
+                for mode in (0o644, 0o600):
+                    dropin.chmod(mode)
+                    dropin.write_text('[Service]\nRuntimeMaxSec=1800s\n')
+                    with self.assertRaises(AssertionError):
+                        self.control.apply_runtime_cap([name], window)
+                    self.assertEqual(dropin.read_text(), '[Service]\nRuntimeMaxSec=1800s\n')
+                run.assert_not_called()
+
+    def test_runtime_cap_refuses_unrecorded_symlink_or_foreign_runtime_paths(self):
+        name = 'aeon-pilot-alloy.service'
+        for variant in ('empty-unrecorded', 'foreign-file', 'directory-symlink', 'file-symlink',
+                'directory-public', 'extra-file', 'parent-writable', 'wrong-owner'):
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory(prefix='aeon-control-unsafe-dropin-') as directory:
+                root = Path(directory)
+                self.control.E = root/'evidence'
+                self.control.E.mkdir()
+                self.control.RUNTIME_UNIT_ROOT = root/'runtime-units'
+                self.control.RUNTIME_UNIT_ROOT.mkdir(mode=0o700)
+                dropin_dir = self.control.RUNTIME_UNIT_ROOT/(name+'.d')
+                if variant == 'directory-symlink':
+                    other = root/'foreign-directory'
+                    other.mkdir(mode=0o700)
+                    dropin_dir.symlink_to(other)
+                elif variant not in ('parent-writable', 'wrong-owner'):
+                    dropin_dir.mkdir(mode=0o700)
+                    if variant in ('foreign-file', 'extra-file'):
+                        foreign = dropin_dir/('foreign.conf' if variant == 'extra-file' else '90-aeon-runtime-window.conf')
+                        foreign.write_text('foreign fixture')
+                        foreign.chmod(0o600)
+                    elif variant == 'file-symlink':
+                        foreign = root/'foreign.conf'
+                        foreign.write_text('foreign fixture')
+                        (dropin_dir/'90-aeon-runtime-window.conf').symlink_to(foreign)
+                    elif variant == 'directory-public':
+                        dropin_dir.chmod(0o755)
+                if variant == 'parent-writable':
+                    self.control.RUNTIME_UNIT_ROOT.chmod(0o777)
+                window = self.control.new_window(1000, 50)
+                with ExitStack() as stack:
+                    stack.enter_context(patch.object(self.control.time, 'time', return_value=1300))
+                    stack.enter_context(patch.object(self.control.time, 'monotonic', return_value=350))
+                    run = stack.enter_context(patch.object(self.control, 'run'))
+                    if variant == 'wrong-owner':
+                        stack.enter_context(patch.object(self.control.os, 'geteuid', return_value=os.geteuid()+1))
+                    with self.assertRaises(AssertionError):
+                        self.control.apply_runtime_cap([name], window)
+                    run.assert_not_called()
+                    self.assertEqual(window['unit_runtime_seconds'][name], 1800)
+
+    def test_runtime_cap_rejects_tampering_with_recorded_paths_and_updates_only_after_reload(self):
+        name = 'aeon-pilot-alloy.service'
+        for variant in ('directory-symlink', 'file-symlink', 'extra-file', 'reload-failure'):
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory(prefix='aeon-control-recorded-dropin-') as directory:
+                root = Path(directory)
+                self.control.E = root/'evidence'
+                self.control.E.mkdir()
+                self.control.RUNTIME_UNIT_ROOT = root/'runtime-units'
+                self.control.RUNTIME_UNIT_ROOT.mkdir(mode=0o700)
+                window = self.control.new_window(1000, 50)
+                with patch.object(self.control.time, 'time', return_value=1300) as clock, \
+                        patch.object(self.control.time, 'monotonic', return_value=350) as mono, \
+                        patch.object(self.control, 'run') as run:
+                    self.control.apply_runtime_cap([name], window)
+                    original = copy.deepcopy(window)
+                    saved_receipt = (self.control.E/'runtime-window.json').read_bytes()
+                    dropin_dir = self.control.RUNTIME_UNIT_ROOT/(name+'.d')
+                    dropin = dropin_dir/'90-aeon-runtime-window.conf'
+                    if variant == 'directory-symlink':
+                        moved = root/'moved-directory'
+                        dropin_dir.rename(moved)
+                        dropin_dir.symlink_to(moved)
+                    elif variant == 'file-symlink':
+                        moved = root/'moved-file.conf'
+                        dropin.rename(moved)
+                        dropin.symlink_to(moved)
+                    elif variant == 'extra-file':
+                        (dropin_dir/'foreign.conf').write_text('foreign fixture')
+                    else:
+                        run.side_effect = RuntimeError('daemon reload rejected')
+                    clock.return_value = 1360
+                    mono.return_value = 410
+                    run.reset_mock()
+                    with self.assertRaises(RuntimeError if variant == 'reload-failure' else AssertionError):
+                        self.control.apply_runtime_cap([name], window)
+                    self.assertEqual(window, original)
+                    self.assertEqual((self.control.E/'runtime-window.json').read_bytes(), saved_receipt)
+                    if variant == 'reload-failure':
+                        run.assert_called_once_with('systemctl','--user','daemon-reload')
+                        self.assertEqual(dropin.read_text(), '[Service]\nRuntimeMaxSec=1440s\n')
+                    else:
+                        run.assert_not_called()
 
 
 if __name__ == '__main__':
