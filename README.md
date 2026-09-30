@@ -33,6 +33,7 @@ These findings support one navigation home while existing projects own implement
 ## Plans
 
 - [AYA continuation and remaining experiment boundary](/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/docs/plans/2026-09-30-aya-local-continuation.md).
+- [Local observability integration proposal](docs/local-observability-plan-2026-09-30.md) — source/capture tests first; no deployment or reroute approved.
 - [AEON dependency map and exact relocation proposal](/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/docs/plans/2026-09-30-aeon-local-organization.md).
 - [Retained HLD Guide](/home/aya-hmw/aya/projects/developmental-lab/brainstem/docs/review-packets/2026-09-29-hld-convergence/Guide.md) — design/review input alongside the primary architecture.
 
