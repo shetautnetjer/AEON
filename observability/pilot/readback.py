@@ -3,6 +3,8 @@
 from __future__ import annotations
 import argparse
 import base64
+import configparser
+from datetime import datetime
 import hashlib
 import json
 import math
@@ -20,6 +22,9 @@ MAX_BYTES = 16 * 1024 * 1024
 DISK_LIMIT = 10 * 1024**3
 STATE = Path('/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot')
 ARTIFACTS = Path('/home/aya-hmw/Documents/ChatGPT/AEON/artifacts/observability')
+GRAFANA_BINARY = ARTIFACTS / 'grafana-13.2.3/bin/grafana'
+GRAFANA_CONFIG = Path('/home/aya-hmw/Documents/ChatGPT/AEON/observability/pilot/config/grafana.ini')
+BINARY_PREREQS = STATE / 'evidence/binary-prereqs.json'
 APPROVED_PYTHON = Path('/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/bin/python3.14')
 NAMES = {'agent', 'cron', 'llm', 'api', 'tool', 'approval', 'lookup', 'decision', 'subagent', 'skill', 'error', 'sdk', 'other'}
 ATTRS = {'session.id', 'gen_ai.conversation.id', 'gen_ai.tool.call.id', 'hermes.api_request.id', 'hermes.turn.number', 'gen_ai.usage.input_tokens', 'gen_ai.usage.output_tokens', 'hermes.api.retry_count', 'gen_ai.operation.name', 'gen_ai.provider.name', 'gen_ai.request.model', 'gen_ai.response.model', 'gen_ai.tool.name', 'hermes.tool.outcome', 'error.type', 'hermes.lookup.result', 'hermes.verification.result', 'operation', 'outcome'}
@@ -353,20 +358,66 @@ def disk_usage(root=STATE, artifacts=ARTIFACTS, *, limit=DISK_LIMIT):
     return {'roots': [str(p) for p in roots], 'bytes': max(logical, allocated), 'logical_file_bytes': logical, 'allocated_bytes': allocated, 'symlinks_not_followed': links, 'unique_inodes': len(seen), 'limit_bytes': limit, 'hard_quota': False, 'approved_external_python_target_bytes_counted': False}
 
 
-def run(emitted, phase):
+def verify_grafana_health(body, config_bytes, prereqs):
+    """HTTP database health plus separately attested binary version; no I/O."""
+    no_canary(body)
+    if not isinstance(body, dict) or body.get('database') != 'ok': reject('grafana_health_mismatch')
+    if not isinstance(prereqs, dict) or prereqs.get('passed') is not True: reject('grafana_binary_receipt_mismatch')
+    matching = [item for item in prereqs.get('results', []) if isinstance(item, dict) and item.get('command') == [str(GRAFANA_BINARY), 'server', '-v']]
+    if len(matching) != 1 or matching[0].get('exit_code') != 0 or not isinstance(matching[0].get('stdout'), str) or not re.match(r'^Version 13\.2\.3(?:\s|$)', matching[0]['stdout']):
+        reject('grafana_binary_receipt_mismatch')
+    config_sha = hashlib.sha256(config_bytes).hexdigest()
+    pins = [item for item in prereqs.get('config_pins', []) if isinstance(item, dict) and item.get('path') == 'observability/pilot/config/grafana.ini']
+    if len(pins) != 1 or pins[0].get('sha256') != config_sha: reject('grafana_config_pin_mismatch')
+    config = configparser.ConfigParser(interpolation=None)
+    try:
+        config.read_string(config_bytes.decode('utf-8'))
+        hidden = config.getboolean('auth.anonymous', 'hide_version', fallback=False)
+    except (configparser.Error, UnicodeError, ValueError): reject('grafana_config_mismatch')
+    version = body.get('version')
+    masked = version is None
+    if version != '13.2.3' and not (masked and hidden): reject('grafana_health_mismatch')
+    return {'database': 'ok', 'verified_version': '13.2.3', 'version_source': 'binary-prereqs.json: grafana server -v', 'anonymous_version_masked': masked, 'health_version': version, 'grafana_config_sha256': config_sha}
+
+
+def validate_metrics_time(value, phase):
+    if value is None: return None
+    if phase != 'normal': reject('historical_metrics_only_normal')
+    if not isinstance(value, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', value): reject('invalid_metrics_time')
+    try:
+        stamp = datetime.fromisoformat(value.replace('Z', '+00:00')).timestamp()
+    except (ValueError, OverflowError, OSError): reject('invalid_metrics_time')
+    if not math.isfinite(stamp): reject('invalid_metrics_time')
+    return value
+
+
+def metric_query_url(name, metrics_time=None):
+    if not isinstance(name, str) or not re.fullmatch('aeon_pilot_[a-zA-Z0-9_:]+', name): reject('invalid_metric_query_name')
+    query = {'query': '{__name__="' + name + '"}'}
+    if metrics_time is not None: query['time'] = validate_metrics_time(metrics_time, 'normal')
+    return 'http://127.0.0.1:19090/api/v1/query?' + urllib.parse.urlencode(query)
+
+
+def run(emitted, phase, metrics_time=None):
     expected = emitted.get('expected_spans') if isinstance(emitted, dict) else None
     wanted = validate_expected(expected)
+    metrics_time = validate_metrics_time(metrics_time, phase)
+    grafana_config = GRAFANA_CONFIG.read_bytes()
+    binary_receipt = BINARY_PREREQS.read_bytes()
+    prereqs = json_loads(binary_receipt)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
     deadline = time.monotonic() + 60
     evidence = {'phase': phase, 'capture': 'synthetic_metadata_only', 'metric_count_scope': 'Alloy connector reset before recovery' if phase == 'recovery' else 'first canonical synthetic batch', 'deadline_seconds': 60, 'endpoints': []}
+    evidence['metric_query_time'] = metrics_time
+    evidence['metric_sample_scope'] = 'persisted first-batch samples at explicit historical time' if metrics_time is not None else 'current instant query'
+    evidence['grafana_version_evidence'] = {'source': str(BINARY_PREREQS), 'sha256': hashlib.sha256(binary_receipt).hexdigest(), 'config_source': str(GRAFANA_CONFIG)}
     def keep(item): evidence['endpoints'].append(item); return item
     def ready(body):
         if not isinstance(body, str) or 'ready' not in body.lower(): reject('tempo_not_ready')
         return True
     keep(poll(opener, 'http://127.0.0.1:13200/ready', deadline, ready, text=True))
     def health(body):
-        if body.get('database') != 'ok' or body.get('version') != '13.2.3': reject('grafana_health_mismatch')
-        return {'database': 'ok', 'version': body['version']}
+        return verify_grafana_health(body, grafana_config, prereqs)
     keep(poll(opener, 'http://127.0.0.1:13000/api/health', deadline, health))
     for uid, kind, url in [('aeon-pilot-tempo', 'tempo', 'http://127.0.0.1:13200'), ('aeon-pilot-prometheus', 'prometheus', 'http://127.0.0.1:19090')]:
         def datasource(body, uid=uid, kind=kind, url=url):
@@ -391,7 +442,7 @@ def run(emitted, phase):
         if len(calls) != 1 or len(histograms) != 1: reject('canonical_metric_names_unavailable')
         return {'names': sorted(names), 'calls': calls[0], 'duration_count': histograms[0]}
     names = keep(poll(opener, 'http://127.0.0.1:19090/api/v1/label/__name__/values?' + selector, deadline, discovery))['verified']
-    def query_url(name): return 'http://127.0.0.1:19090/api/v1/query?' + urllib.parse.urlencode({'query': '{__name__="' + name + '"}'})
+    def query_url(name): return metric_query_url(name, metrics_time)
     while time.monotonic() < deadline:
         try:
             calls = get(opener, query_url(names['calls']), deadline)
@@ -428,11 +479,12 @@ def main():
     parser.add_argument('--emitted', required=True)
     parser.add_argument('--output', required=True)
     parser.add_argument('--phase', choices=['normal', 'recovery'], required=True)
+    parser.add_argument('--metrics-time', help='Normal phase only: canonical UTC YYYY-MM-DDTHH:MM:SSZ for persisted first-batch metrics')
     args = parser.parse_args()
     receipt = Path(args.emitted).read_bytes()
     if len(receipt) > 4 * 1024 * 1024: reject('emitted_receipt_too_large')
     try:
-        evidence = run(json_loads(receipt), args.phase)
+        evidence = run(json_loads(receipt), args.phase, args.metrics_time)
         exit_code = 0
     except (ValueError, urllib.error.URLError, OSError, TimeoutError, KeyError, TypeError) as error:
         reason = str(error) if type(error) is ValueError and re.fullmatch('[a-z0-9_]+', str(error)) else type(error).__name__

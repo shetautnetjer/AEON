@@ -1,9 +1,11 @@
 import base64
 import copy
+import hashlib
 import importlib.util
 import sys
 import tempfile
 import unittest
+import urllib.parse
 from pathlib import Path
 
 MODULE = Path(str(Path(__file__).resolve().parents[1]/'readback.py'))
@@ -162,5 +164,44 @@ class BoundaryTests(unittest.TestCase):
         with self.assertRaises(ValueError): rb.validate_expected(expected[:-1])
         expected[0]['attributes']['session.id'] = 'CANARY'
         with self.assertRaises(ValueError): rb.validate_expected(expected)
+
+class ReadbackRepairTests(unittest.TestCase):
+    def setUp(self):
+        self.config = b'[auth.anonymous]\nhide_version = true\n'
+        self.prereqs = {'passed': True, 'results': [{'command': [str(rb.GRAFANA_BINARY), 'server', '-v'], 'exit_code': 0, 'stdout': 'Version 13.2.3 (commit: synthetic)\n'}], 'config_pins': [{'path': 'observability/pilot/config/grafana.ini', 'sha256': hashlib.sha256(self.config).hexdigest()}]}
+    def test_masked_health_uses_pinned_binary_version_without_claiming_http_version(self):
+        for body in ({'database': 'ok'}, {'database': 'ok', 'version': None, 'commit': None}):
+            verified = rb.verify_grafana_health(body, self.config, self.prereqs)
+            self.assertEqual(verified['verified_version'], '13.2.3')
+            self.assertEqual(verified['version_source'], 'binary-prereqs.json: grafana server -v')
+            self.assertTrue(verified['anonymous_version_masked'])
+            self.assertIsNone(verified['health_version'])
+    def test_database_failure_or_wrong_reported_version_still_refuses(self):
+        for body in ({'database': 'failed'}, {'database': 'ok', 'version': '13.2.2'}, {'database': 'ok', 'version': ''}):
+            with self.subTest(body=body), self.assertRaises(ValueError):
+                rb.verify_grafana_health(body, self.config, self.prereqs)
+    def test_mask_requires_exact_config_pin_and_successful_exact_version_receipt(self):
+        altered = self.config.replace(b'true', b'false')
+        cases = [(altered, self.prereqs)]
+        unmasked = copy.deepcopy(self.prereqs); unmasked['config_pins'][0]['sha256'] = hashlib.sha256(altered).hexdigest()
+        cases.append((altered, unmasked))
+        for key, value in (('passed', False), ('results', [])):
+            receipt = copy.deepcopy(self.prereqs); receipt[key] = value; cases.append((self.config, receipt))
+        receipt = copy.deepcopy(self.prereqs); receipt['results'][0]['stdout'] = 'Version 13.2.30\n'; cases.append((self.config, receipt))
+        receipt = copy.deepcopy(self.prereqs); receipt['results'][0]['exit_code'] = 1; cases.append((self.config, receipt))
+        for config, prereqs in cases:
+            with self.subTest(config=config, prereqs=prereqs), self.assertRaises(ValueError):
+                rb.verify_grafana_health({'database': 'ok'}, config, prereqs)
+    def test_historical_query_uses_canonical_utc_time_and_current_has_no_time(self):
+        when = rb.validate_metrics_time('2026-09-30T18:44:16Z', 'normal')
+        parsed = urllib.parse.parse_qs(urllib.parse.urlsplit(rb.metric_query_url('aeon_pilot_calls_total', when)).query)
+        self.assertEqual(parsed, {'query': ['{__name__="aeon_pilot_calls_total"}'], 'time': ['2026-09-30T18:44:16Z']})
+        current = urllib.parse.parse_qs(urllib.parse.urlsplit(rb.metric_query_url('aeon_pilot_calls_total')).query)
+        self.assertNotIn('time', current)
+        self.assertIsNone(rb.validate_metrics_time(None, 'recovery'))
+    def test_noncanonical_nonfinite_invalid_or_recovery_time_refuses(self):
+        for value in ('NaN', '+Inf', '2026-09-30T18%3A44%3A16Z', '2026-09-30T18:44:16+00:00', '2026-02-30T18:44:16Z', '2026-09-30T18:44:16.0Z'):
+            with self.subTest(value=value), self.assertRaises(ValueError): rb.validate_metrics_time(value, 'normal')
+        with self.assertRaises(ValueError): rb.validate_metrics_time('2026-09-30T18:44:16Z', 'recovery')
 
 if __name__ == '__main__': unittest.main()
