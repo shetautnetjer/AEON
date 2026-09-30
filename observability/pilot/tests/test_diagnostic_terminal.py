@@ -28,26 +28,31 @@ class TerminalProofTests(unittest.TestCase):
         original = self.fixture.backend.run
 
         def run(args, **kwargs):
+            groups = {name: self.fixture.states[name]['ControlGroup'] for name in args[3:]} if args[:3] == ['systemctl', '--user', 'stop'] else {}
             result = original(args, **kwargs)
-            if args[:3] == ['systemctl', '--user', 'stop']:
-                for name in args[3:]:
-                    shutil.rmtree(self.fixture.adapter.group(self.fixture.states[name]['ControlGroup']))
+            for group in groups.values():
+                directory = self.fixture.adapter.group(group)
+                if directory.exists(): shutil.rmtree(directory)
             return result
 
         self.fixture.backend.run = run
 
-    def test_pre_stop_zero_is_not_final_oom_proof_after_cgroup_removal(self):
+    def test_live_isolated_ancestor_proves_zero_after_leaf_cgroup_removal(self):
         self.remove_stopped_groups()
         proof = self.fixture.backend.stop_tempo(timeout=95)
-        self.assertFalse(proof['passed'])
-        self.assertIsNone(proof['oom_events'])
-        self.assertEqual(proof['oom_verification'], 'unverified_final_counter_unavailable')
+        self.assertTrue(proof['passed'])
+        self.assertEqual(proof['oom_events'], 0)
+        self.assertEqual(proof['oom_verification'], 'verified_isolated_hierarchical_ancestor')
+        self.assertFalse(self.fixture.adapter.group(self.group).exists())
+        self.assertTrue(self.fixture.adapter.group(self.fixture.backend.accounting_group).exists())
 
-    def test_cleanup_marks_missing_terminal_counter_unverified(self):
+    def test_cleanup_samples_live_ancestor_before_removing_last_cgroup(self):
         self.remove_stopped_groups()
         proof = self.fixture.backend.cleanup(timeout=95)
-        self.assertFalse(proof['passed'])
-        self.assertIsNone(proof['oom_events'])
+        self.assertTrue(proof['passed'])
+        self.assertEqual(proof['oom_events'], 0)
+        self.assertTrue(proof['accounting_slice_stopped'])
+        self.assertFalse(self.fixture.adapter.group(self.fixture.backend.accounting_group).exists())
 
     def test_zero_budget_kills_new_same_uid_descendants_in_pinned_group(self):
         directory = self.fixture.adapter.group(self.group)
@@ -99,7 +104,7 @@ class TerminalProofTests(unittest.TestCase):
     def emitter_state(self):
         fixture = self.fixture
         name = fixture.spec.emitter_name
-        group = f'/user.slice/user-{fixture.adapter.uid}.slice/user@{fixture.adapter.uid}.service/app.slice/{name}'
+        group = fixture.backend.accounting_group + '/' + name
         directory = fixture.adapter.group(group)
         directory.mkdir()
         (directory / 'cgroup.procs').write_text('900')
@@ -172,7 +177,7 @@ class TerminalProofTests(unittest.TestCase):
             if args[:3] == ['systemctl', '--user', 'start']:
                 directory = self.fixture.adapter.group(self.group)
                 directory.rename(directory.with_name(directory.name + '.old'))
-                self.fixture.activate()
+                self.fixture.activate([self.tempo], capture=False)
                 self.fixture.states[self.tempo]['RuntimeMaxUSec'] = '600000000'
                 self.fixture.states.update(peer_states)
             return original(args, **kwargs)

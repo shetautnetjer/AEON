@@ -143,7 +143,7 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError): diag.validate_readback(emitted,changed)
 
 def stopped():
-    return dict(result='success', exit_code=0, signal=0, forced_kill=False, oom_events=0,
+    return dict(passed=True, invocation_verified=True, result='success', exit_code=0, signal=0, forced_kill=False, oom_events=0,
                 completion_milestone=True, cgroup_pids=[], pids_alive=[], listeners=[], peers_unchanged=True)
 
 

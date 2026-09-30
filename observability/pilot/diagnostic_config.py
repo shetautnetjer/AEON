@@ -87,6 +87,10 @@ class DiagnosticSpec:
     def emitter_name(self):
         return f'aeon-tempo-check-emitter-{self.run_id}.scope'
 
+    @property
+    def accounting_slice_name(self):
+        return f'app-aeonTempoCheck{self.run_id}.slice'
+
     def render(self, runtime_seconds):
         if type(runtime_seconds) is not int or not 0 < runtime_seconds <= 775:
             raise ValueError('diagnostic runtime must be an integer from 1 through 775 seconds')
@@ -97,8 +101,13 @@ class DiagnosticSpec:
         result = {'config/' + name: rebind((self.source_root / 'config' / name).read_text())
                   for name in CONFIGS}
         result['config/tempo.yaml'] = _replace_line(result['config/tempo.yaml'], '  log_level: warn\n', '  log_level: info\n')
+        result['units/' + self.accounting_slice_name] = (
+            '[Unit]\nDescription=Isolated synthetic diagnostic accounting\nStopWhenUnneeded=no\n'
+            '[Slice]\nMemoryAccounting=true\nMemoryMax=2176M\n'
+            'MemorySwapMax=0\nCPUQuota=225%\nTasksMax=576\n')
         for component, name in self.unit_names.items():
             text = (self.source_root / 'units' / f'aeon-pilot-{component}.service').read_text()
+            text = _replace_line(text, 'Type=simple\n', f'Type=simple\nSlice={self.accounting_slice_name}\n')
             text = _replace_line(text, 'RuntimeMaxSec=30min\n', f'RuntimeMaxSec={runtime_seconds}s\n')
             stop_seconds = 90 if component == 'tempo' else 25
             text = _replace_line(text, 'TimeoutStopSec=25s\n', f'TimeoutStopSec={stop_seconds}s\nKillMode=control-group\n')

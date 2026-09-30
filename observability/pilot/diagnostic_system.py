@@ -25,7 +25,9 @@ LIMITS = {'alloy': (384, 320, 50), 'tempo': (768, 640, 75),
           'prometheus': (384, 320, 50), 'grafana': (384, 320, 25)}
 SHOW_PROPERTIES = ('Id,LoadState,ActiveState,SubState,Result,MainPID,ControlGroup,FragmentPath,'
                    'MemoryMax,MemoryHigh,MemorySwapMax,CPUQuotaPerSecUSec,TasksMax,RuntimeMaxUSec,'
-                   'Restart,NoNewPrivileges,UMask,TimeoutStopUSec,KillMode,ExecMainCode,ExecMainStatus,Transient')
+                   'Restart,NoNewPrivileges,UMask,TimeoutStopUSec,KillMode,ExecMainCode,ExecMainStatus,Transient,'
+                   'Slice,InvocationID,ExecMainPID,ExecMainStartTimestampMonotonic,ExecMainExitTimestampMonotonic,'
+                   'MemoryAccounting,StopWhenUnneeded')
 LEGACY_READBACK_SHA256 = 'dc8b1a78efb644e25c06e8b13e75df3ccb8d430b017fe720a9855680126480c3'
 
 
@@ -144,7 +146,8 @@ class RealOS:
 
 class SystemBackend:
     def __init__(self, spec, *, os_adapter=None, run=None, sockets=None,
-                 clock=None, reader=None, http=None, spawn=None):
+                 clock=None, reader=None, http=None, spawn=None,
+                 unit_references_factory=None, oom_factory=None):
         self.spec = spec
         self.os = os_adapter or RealOS()
         if hasattr(spec,'aeon_root'):
@@ -166,6 +169,162 @@ class SystemBackend:
         self.collectors = None
         self.forced = set()
         self.stop_proofs = []
+        self.unit_references_factory = unit_references_factory
+        self.oom_factory = oom_factory
+        self.unit_references = None
+        self.oom_keeper = None
+        self.slice_identity = None
+        self.tempo_invocation = None
+        self.tempo_invocations = []
+        self.final_accounting = None
+
+    @property
+    def accounting_group(self):
+        name = self.spec.accounting_slice_name
+        if not re.fullmatch(r'app-aeonTempoCheck[A-Za-z0-9]+\.slice', name):
+            raise ValueError('invalid_accounting_slice_name')
+        return f'/user.slice/user-{self.os.uid}.slice/user@{self.os.uid}.service/app.slice/{name}'
+
+    def _descendant_groups(self):
+        return {self.accounting_group+'/'+name for name in
+                (*self.spec.unit_names.values(),self.spec.emitter_name)}
+
+    def _fragment(self, name, state):
+        fragment = Path(state.get('FragmentPath',''))
+        expected = self.spec.units_dir/name
+        try: matching = fragment.is_absolute() and fragment.resolve(strict=True)==expected.resolve(strict=True)
+        except (OSError,RuntimeError): matching = False
+        if not matching: raise ValueError('diagnostic_unit_fragment_mismatch')
+        info = expected.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_uid!=self.os.uid or stat.S_IMODE(info.st_mode)!=0o600:
+            raise ValueError('diagnostic_fragment_not_private_owned')
+        if hashlib.sha256(expected.read_bytes()).hexdigest()!=self.rendered['units/'+name]:
+            raise ValueError('diagnostic_fragment_changed')
+
+    def _own_slice(self, state, *, active=True, verify_resources=True):
+        name = self.spec.accounting_slice_name
+        if state.get('Id')!=name or state.get('LoadState')!='loaded':
+            raise ValueError('accounting_slice_identity_mismatch')
+        self._fragment(name,state)
+        if state.get('ControlGroup')!=self.accounting_group or active and state.get('ActiveState')!='active':
+            raise ValueError('accounting_slice_not_active_owned')
+        identity = self.os.group_identity(self.accounting_group)
+        if self.slice_identity is not None and self.slice_identity!=identity:
+            raise ValueError('accounting_slice_lifetime_changed')
+        if (self.os.group(self.accounting_group)/'cgroup.procs').read_text().strip():
+            raise ValueError('accounting_slice_has_direct_processes')
+        self.slice_identity = identity
+        self.registered.add(name)
+        if not verify_resources: return identity
+        checks = {'MemoryMax':2176*1024**2,'MemorySwapMax':0,'TasksMax':576}
+        if any(int(state.get(key,'-1'))!=value for key,value in checks.items()):
+            raise ValueError('accounting_slice_resources_changed')
+        if self._seconds(state.get('CPUQuotaPerSecUSec'))!=2.25:
+            raise ValueError('accounting_slice_cpu_changed')
+        if state.get('MemoryAccounting') not in {'yes','true','1'} or state.get('StopWhenUnneeded')!='no':
+            raise ValueError('accounting_slice_retention_policy_changed')
+        group = self.os.group(self.accounting_group)
+        if (group/'memory.max').read_text().strip()!=str(2176*1024**2) or (group/'memory.swap.max').read_text().strip()!='0' or (group/'pids.max').read_text().strip()!='576':
+            raise ValueError('accounting_cgroup_resources_changed')
+        quota,period = map(int,(group/'cpu.max').read_text().split())
+        if quota/period!=2.25: raise ValueError('accounting_cgroup_cpu_changed')
+        return identity
+
+    def _begin_retention(self, deadline):
+        if self.unit_references is not None or self.oom_keeper is not None:
+            raise ValueError('retention_already_started')
+        unit_factory,oom_factory = self.unit_references_factory,self.oom_factory
+        if unit_factory is None or oom_factory is None:
+            import diagnostic_retention
+            unit_factory = unit_factory or diagnostic_retention.UnitReferences
+            oom_factory = oom_factory or diagnostic_retention.HierarchicalOOM
+        library = self.retention_library
+        names = [self.spec.accounting_slice_name,*self.spec.unit_names.values()]
+        self.unit_references = unit_factory(names,library_path=library['path'],library_sha256=library['sha256'],clock=self.clock)
+        for name in names: self.unit_references.acquire(name,deadline=deadline)
+        if self.os.group_pids(self.accounting_group) or any(path.is_dir() or path.is_symlink() for path in self.os.group(self.accounting_group).iterdir()):
+            raise ValueError('accounting_baseline_membership_not_fresh_empty')
+        self.oom_keeper = oom_factory(cgroup_root=self.os.cgroup_root,group=self.accounting_group,
+                                     uid=self.os.uid,mountinfo=self.os.proc_root/'self/mountinfo',
+                                     expected_descendant_roots=self._descendant_groups(),clock=self.clock)
+        baseline = self.oom_keeper.baseline_snapshot(deadline=deadline)
+        if not baseline.get('verified') or baseline.get('oom_events')!=0:
+            raise ValueError('isolated_accounting_baseline_unverified')
+        self.oom_baseline = baseline
+        self.oom_baseline_monotonic = self.clock.monotonic()
+
+    def _capture_tempo_invocation(self, state, deadline, *, restarting=False):
+        if self.unit_references is None or not self.unit_references.check(deadline=deadline):
+            raise ValueError('retained_unit_metadata_unavailable')
+        invocation,start,main = state.get('InvocationID',''),state.get('ExecMainStartTimestampMonotonic',''),state.get('MainPID','')
+        if not re.fullmatch(r'[0-9a-f]{32}',invocation) or int(invocation,16)==0 or not start.isdigit() or int(start)<=0 or not main.isdigit() or int(main)<=0:
+            raise ValueError('tempo_invocation_identity_unavailable')
+        if not int(self.oom_baseline_monotonic*1000000)<=int(start)<=int(self.clock.monotonic()*1000000) or state.get('ExecMainPID')!=main:
+            raise ValueError('tempo_invocation_timestamp_or_pid_invalid')
+        entry = self.ownership[self.spec.unit_names['tempo']]
+        if main not in self.os.group_pids(state['ControlGroup']): raise ValueError('tempo_invocation_pid_unowned')
+        current = {'invocation_id':invocation,'start_monotonic_usec':int(start),'main_pid':main,
+                   'pids':sorted(self.os.group_pids(state['ControlGroup']))}
+        previous = self.tempo_invocation
+        if previous is not None:
+            if restarting:
+                if invocation==previous['invocation_id'] or int(start)<=previous['start_monotonic_usec']:
+                    raise ValueError('tempo_restart_invocation_not_fresh')
+            elif current!=previous: raise ValueError('tempo_invocation_changed_without_restart')
+            else: return
+        self.tempo_invocation = current
+        self.tempo_invocations.append(dict(current))
+
+    def _hierarchical_oom(self, deadline):
+        unknown = {'verified':False,'oom_events':None,'coverage':'isolated_hierarchical_ancestor',
+                   'reason':'retained_accounting_unavailable'}
+        try:
+            if self.unit_references is None or self.oom_keeper is None:
+                return unknown
+            self.unit_references.check(deadline=deadline)
+            self._own_slice(self._show(self.spec.accounting_slice_name,deadline))
+            return self.oom_keeper.finish(descendant_groups=self._descendant_groups(),deadline=deadline)
+        except (OSError,ValueError,TimeoutError,subprocess.TimeoutExpired,KeyError): return unknown
+
+    def _close_retention(self, deadline):
+        closed = True
+        try:
+            if self.unit_references is not None:
+                already_closed = self.unit_references.closed
+                closed = bool(self.unit_references.close(deadline=deadline)) and not already_closed
+        except (OSError,ValueError,TimeoutError): closed = False
+        finally:
+            if self.oom_keeper is not None:
+                try: self.oom_keeper.close()
+                except OSError: closed = False
+        return closed
+
+    def _stop_accounting_slice(self, deadline, rejected=()):
+        """Stopping a slice cascades, so every surviving child must be pinned and empty."""
+        if self.slice_identity is None or rejected: return False
+        try:
+            state = self._show(self.spec.accounting_slice_name,deadline)
+            self._own_slice(state,verify_resources=False)
+            parent = self.os.group(self.accounting_group)
+            for path in parent.iterdir():
+                self._remaining(deadline)
+                if path.is_symlink(): return False
+                if not path.is_dir(): continue
+                group = self.accounting_group+'/'+path.name
+                entry = self.ownership.get(path.name)
+                if not entry or entry.get('group_identities',{}).get(group)!=self.os.group_identity(group):
+                    return False
+            if self.os.group_pids(self.accounting_group): return False
+            if any(self.os.pid_alive(pid) for entry in self.ownership.values() for pid in entry['pids']):
+                return False
+            if any(row['port'] in set(EXPECTED_PORTS)|{13101,17946} for row in self._sockets(deadline)):
+                return False
+            self._own_slice(self._show(self.spec.accounting_slice_name,deadline),verify_resources=False)
+            if self.os.group_pids(self.accounting_group): return False
+            self._command(['systemctl','--user','stop',self.spec.accounting_slice_name],deadline)
+            after = self._show(self.spec.accounting_slice_name,deadline)
+            return after.get('ActiveState')=='inactive' and not self.os.group_pids(self.accounting_group)
+        except (OSError,ValueError,TimeoutError,subprocess.TimeoutExpired,RuntimeError): return False
 
     def _deadline(self, timeout):
         if not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
@@ -233,7 +392,7 @@ class SystemBackend:
         rows = self._sockets(deadline)
         if any(row['port'] in set(EXPECTED_PORTS) | {13101, 17946} for row in rows):
             raise ValueError('diagnostic_port_conflict')
-        names = list(self.spec.unit_names.values()) + [self.spec.emitter_name]
+        names = list(self.spec.unit_names.values()) + [self.spec.accounting_slice_name,self.spec.emitter_name]
         for name in names:
             if self._show(name, deadline).get('LoadState') != 'not-found':
                 raise ValueError('diagnostic_unit_name_already_owned')
@@ -258,7 +417,7 @@ class SystemBackend:
                      self.spec.state/'grafana/plugins', self.spec.home/'runtime'):
             self.os.directory(path, create=True, private=True)
         contents = self.spec.render(700)
-        if len(contents) != 11: raise ValueError('diagnostic_render_set_changed')
+        if len(contents) != 12: raise ValueError('diagnostic_render_set_changed')
         self.rendered = {}
         for relative, content in contents.items():
             selected = Path(relative)
@@ -273,7 +432,8 @@ class SystemBackend:
             [self.binaries['promtool'], 'check', 'config', self.spec.config/'prometheus.yaml'],
             [self.binaries['tempo'], '-target=all', '-config.file='+str(self.spec.config/'tempo.yaml'), '-config.verify=true'],
             [self.binaries['tempo'], '-version'], [self.binaries['grafana'], 'server', '-v'],
-            ['systemd-analyze', '--user', 'verify', *[self.spec.units_dir/name for name in self.spec.unit_names.values()]],
+            ['systemd-analyze', '--user', 'verify', *[self.spec.units_dir/name for name in
+                                                    (*self.spec.unit_names.values(),self.spec.accounting_slice_name)]],
         ]
         results = []
         env = {'PATH': '/usr/bin:/bin', 'HOME': str(self.spec.home), 'LANG': 'C.UTF-8', 'TZ': 'UTC'}
@@ -395,7 +555,11 @@ class SystemBackend:
         counts['config'] = self._verify_file_pins(prereqs['config_pins'], deadline, root=self.spec.aeon_root)
         gates = self._json(evidence/'prestart-gates.json')
         manifest = self._json(self.spec.source_root/'diagnostic-source-pins.json')
-        expected_new = {'observability/pilot/'+name for name in ('diagnostic.py','diagnostic_config.py','diagnostic_system.py','readback.py')}
+        library = manifest['retention_library']
+        self._verify_file_pins([library],deadline)
+        self.retention_library = dict(library)
+        counts['retention_library'] = 1
+        expected_new = {'observability/pilot/'+name for name in ('diagnostic.py','diagnostic_config.py','diagnostic_system.py','diagnostic_retention.py','readback.py')}
         expected_new |= {'observability/pilot/tests/'+name for name in ('test_diagnostic_flow.py','test_diagnostic_config.py','test_diagnostic_system.py','test_pilot_readback.py','test_diagnostic_readback.py','test_diagnostic_disk_deadline.py','test_diagnostic_terminal.py','test_diagnostic_record.py')}
         expected_new |= expected
         manifest_paths = {pin['path'] for pin in manifest['source_pins']}
@@ -463,18 +627,9 @@ class SystemBackend:
         if state.get('Id') != name or state.get('LoadState') != 'loaded':
             raise ValueError('diagnostic_unit_identity_mismatch')
         if name != self.spec.emitter_name:
-            fragment = Path(state.get('FragmentPath', ''))
-            expected = self.spec.units_dir / name
-            try: matching = fragment.is_absolute() and fragment.resolve(strict=True) == expected.resolve(strict=True)
-            except (OSError, RuntimeError): matching = False
-            if not matching:
-                raise ValueError('diagnostic_unit_fragment_mismatch')
-            info = expected.lstat()
-            if not stat.S_ISREG(info.st_mode) or info.st_uid != self.os.uid or stat.S_IMODE(info.st_mode) != 0o600:
-                raise ValueError('diagnostic_fragment_not_private_owned')
-            relative = 'units/' + name
-            if hashlib.sha256(expected.read_bytes()).hexdigest() != self.rendered[relative]:
-                raise ValueError('diagnostic_fragment_changed')
+            self._fragment(name,state)
+            if state.get('Slice')!=self.spec.accounting_slice_name:
+                raise ValueError('diagnostic_service_slice_mismatch')
         else:
             if state.get('Transient') != 'yes': raise ValueError('emitter_scope_not_owned_transient')
             if state.get('FragmentPath'):
@@ -485,7 +640,7 @@ class SystemBackend:
                 if not stat.S_ISREG(info.st_mode) or info.st_uid != self.os.uid:
                     raise ValueError('emitter_scope_not_owned_transient')
         group = state.get('ControlGroup', '')
-        approved = f'/user.slice/user-{self.os.uid}.slice/user@{self.os.uid}.service/app.slice/{name}'
+        approved = self.accounting_group+'/'+name
         if group and group != approved: raise ValueError('diagnostic_cgroup_identity_mismatch')
         if active and (state.get('ActiveState') != 'active' or group != approved):
             raise ValueError('diagnostic_unit_not_active_owned')
@@ -565,6 +720,8 @@ class SystemBackend:
         return sum(item['oom'] + item['oom_kill'] for item in events)
 
     def _verify_active(self, deadline):
+        self.unit_references.check(deadline=deadline)
+        self._own_slice(self._show(self.spec.accounting_slice_name,deadline))
         components = {}
         units = []
         for component, name in self.spec.unit_names.items():
@@ -630,6 +787,10 @@ class SystemBackend:
             if all(state.get('ActiveState')=='active' for state in states.values()):
                 rows = self._sockets(deadline)
                 if {row['port'] for row in rows if row['port'] in EXPECTED_PORTS} == set(EXPECTED_PORTS):
+                    self._own(self.spec.unit_names['tempo'],states[self.spec.unit_names['tempo']])
+                    self._capture_tempo_invocation(states[self.spec.unit_names['tempo']],deadline,
+                                                   restarting=getattr(self,'capture_restart',False))
+                    self.capture_restart = False
                     return self._verify_active(deadline)
             self.clock.sleep(min(.25,self._remaining(deadline)))
 
@@ -640,15 +801,19 @@ class SystemBackend:
         if any(row['port'] in set(EXPECTED_PORTS)|{13101,17946} for row in self._sockets(deadline)):
             raise ValueError('diagnostic_port_conflict_at_start')
         names = list(self.spec.unit_names.values())
-        if any(self._show(name,deadline).get('LoadState')!='not-found' for name in names):
+        registration = [*names,self.spec.accounting_slice_name]
+        if any(self._show(name,deadline).get('LoadState')!='not-found' for name in [*registration,self.spec.emitter_name]):
             raise ValueError('diagnostic_unit_claimed_since_preflight')
         self._render_runtime(names,runtime_seconds)
         self.started = True
         self.first_start_epoch = self.clock.time()
         try:
-            self._command(['systemctl','--user','link','--runtime',*[self.spec.units_dir/name for name in names]],deadline)
+            self._command(['systemctl','--user','link','--runtime',*[self.spec.units_dir/name for name in registration]],deadline)
             self._command(['systemctl','--user','daemon-reload'],deadline)
             for name in names: self._own(name,self._show(name,deadline),active=False)
+            self._command(['systemctl','--user','start',self.spec.accounting_slice_name],deadline)
+            self._own_slice(self._show(self.spec.accounting_slice_name,deadline))
+            self._begin_retention(deadline)
             self._command(['systemctl','--user','start',*names],deadline)
             proof = self._ready(deadline)
             self._save('start.json',proof)
@@ -666,7 +831,7 @@ class SystemBackend:
             result[name] = {'MainPID':state['MainPID'], 'ControlGroup':state['ControlGroup'], 'pids':sorted(pids)}
         return result
 
-    def _logs(self, name, pid, since, deadline):
+    def _logs(self, name, pid, since, deadline, *, invocation_id=None):
         output = self._command(['journalctl','--user','--unit='+name,'--since=@'+str(since),
                                 '--until=@'+str(self.clock.time()),'--output=json','--no-pager'],deadline).stdout
         if len(output)>4*1024*1024: raise ValueError('lifecycle_journal_too_large')
@@ -674,6 +839,7 @@ class SystemBackend:
         for line in output.splitlines():
             row = json.loads(line)
             if row.get('_PID') != str(pid) or row.get('PRIORITY') != '6': continue
+            if invocation_id is not None and row.get('_SYSTEMD_INVOCATION_ID')!=invocation_id: continue
             stamp = int(row.get('__REALTIME_TIMESTAMP','0')) / 1000000
             if not since <= stamp <= self.clock.time(): continue
             message = row.get('MESSAGE','')
@@ -690,7 +856,7 @@ class SystemBackend:
             entry = self.ownership.get(name)
             if not entry: continue
             for group in entry['groups']:
-                approved = f'/user.slice/user-{self.os.uid}.slice/user@{self.os.uid}.service/app.slice/{name}'
+                approved = self.accounting_group+'/'+name
                 if group != approved: continue
                 try:
                     identity = entry.get('group_identities', {}).get(group)
@@ -701,7 +867,8 @@ class SystemBackend:
                         self.os.kill_group(group, identity)
                         self.forced.add(name)
                 except (OSError, ValueError):
-                    self.forced.add(name)
+                    # A vanished or rejected group is not a kernel kill receipt.
+                    pass
 
     def _select_owned(self, deadline):
         selected = []
@@ -710,7 +877,10 @@ class SystemBackend:
         if getattr(self,'emitter_attempted',False) or self.spec.emitter_name in self.ownership:
             candidates.append(self.spec.emitter_name)
         for name in candidates:
-            state = self._show(name,deadline)
+            try: state = self._show(name,deadline)
+            except (ValueError,OSError,TimeoutError,subprocess.TimeoutExpired):
+                rejected.append(name)
+                continue
             if state.get('LoadState')=='not-found': continue
             try: self._own(name,state,active=False)
             except (ValueError,OSError):
@@ -721,8 +891,8 @@ class SystemBackend:
 
     def _stop_batch(self, names, deadline):
         if not names: return True
-        reserve = min(5, max(0,self._remaining(deadline)-.001))
         try:
+            reserve = min(5, max(0,self._remaining(deadline)-.001))
             self._command(['systemctl','--user','stop',*names],deadline-reserve)
             return True
         except (TimeoutError,subprocess.TimeoutExpired,RuntimeError,OSError):
@@ -731,13 +901,7 @@ class SystemBackend:
 
     def _cleanup_partial(self, deadline):
         """An exception must not widen either the unit set or the phase budget."""
-        try:
-            names,_ = self._select_owned(deadline)
-            self._stop_batch(names,deadline)
-        except (TimeoutError,subprocess.TimeoutExpired,OSError,ValueError):
-            self._force_owned(list(self.ownership))
-        finally:
-            self._stop_emitter_launcher(deadline)
+        return self.cleanup(timeout=max(0,deadline-self.clock.monotonic()))
 
     def _stop_emitter_launcher(self, deadline):
         """Stop only the retained Popen child, within the existing phase deadline."""
@@ -751,27 +915,43 @@ class SystemBackend:
             pass
         return process.poll() is not None
 
-    def _tempo_proof(self, state, requested_at, deadline, *, peers_unchanged=True, command_ok=True):
+    def _tempo_proof(self, state, requested_at, deadline, *, peers_unchanged=True, command_ok=True,
+                     requested_monotonic=None):
         name = self.spec.unit_names['tempo']
         entry = self.ownership.get(name, {'pids':set(),'groups':set(),'main_pid':'0'})
         groups = {group:sorted(self.os.group_pids(group)) for group in entry['groups']}
         pids = sorted(pid for pid in entry['pids'] if self.os.pid_alive(pid))
         rows = [row for row in self._sockets(deadline) if row['port'] in {port for port,owner in EXPECTED_PORTS.items() if owner=='tempo'}
                 or set(map(str,row.get('owners',[]))).intersection(entry['pids'])]
-        oom = self._final_oom(entry['groups'])
-        milestones = self._logs(name,entry['main_pid'],requested_at,deadline)
+        accounting = self._hierarchical_oom(deadline)
+        oom = accounting.get('oom_events') if accounting.get('verified') else None
+        invocation = self.tempo_invocation
+        invocation_verified = False
+        try:
+            self.unit_references.check(deadline=deadline)
+            invocation_verified = bool(invocation and state.get('InvocationID')==invocation['invocation_id']
+                                       and int(state.get('ExecMainStartTimestampMonotonic','0'))==invocation['start_monotonic_usec']
+                                       and state.get('ExecMainPID')==invocation['main_pid']
+                                       and int(state.get('ExecMainExitTimestampMonotonic','0'))>=invocation['start_monotonic_usec']
+                                       and int(state.get('ExecMainExitTimestampMonotonic','0'))<=int(self.clock.monotonic()*1000000)
+                                       and (requested_monotonic is None or int(state.get('ExecMainExitTimestampMonotonic','0'))>=int(requested_monotonic*1000000)))
+        except (OSError,ValueError,TimeoutError,AttributeError,subprocess.TimeoutExpired): pass
+        milestones = self._logs(name,invocation['main_pid'] if invocation else entry['main_pid'],requested_at,deadline,
+                                invocation_id=invocation['invocation_id'] if invocation else None)
         code = int(state.get('ExecMainCode','-1'))
         status = int(state.get('ExecMainStatus','-1'))
         proof = {'result':state.get('Result'), 'exit_code':status if code==1 else None,
                  'signal':status if code in {2,3} else None,
                  'forced_kill':name in self.forced or code in {2,3} and status==9,
-                 'oom_events':oom, 'oom_verification':'verified_final_counter' if oom is not None else 'unverified_final_counter_unavailable',
+                 'oom_events':oom, 'oom_verification':'verified_isolated_hierarchical_ancestor' if oom is not None else 'unverified_final_counter_unavailable',
+                 'oom_evidence':accounting,'invocation_verified':invocation_verified,
+                 'invocation':dict(invocation) if invocation else None,
                  'completion_milestone':any(item['milestone']=='Tempo stopped' for item in milestones),
                  'cgroup_pids':sorted({pid for value in groups.values() for pid in value}),
                  'pids_alive':pids, 'listeners':rows, 'peers_unchanged':peers_unchanged,
                  'request_epoch':requested_at, 'exit_observed_epoch':self.clock.time(),
                  'lifecycle':milestones, 'command_succeeded':command_ok}
-        proof['passed'] = bool(command_ok and proof['result']=='success' and code==1 and status==0
+        proof['passed'] = bool(command_ok and invocation_verified and proof['result']=='success' and code==1 and status==0
                                and not proof['forced_kill'] and oom==0 and proof['completion_milestone']
                                and not proof['cgroup_pids'] and not pids and not rows and peers_unchanged
                                and state.get('MainPID')=='0' and state.get('ActiveState')=='inactive')
@@ -782,14 +962,18 @@ class SystemBackend:
         name = self.spec.unit_names['tempo']
         state = self._show(name,deadline)
         self._own(name,state)
+        self._capture_tempo_invocation(state,deadline)
         before = self._peer_snapshot(deadline)
-        self._events(state['ControlGroup'])
+        if self._hierarchical_oom(deadline).get('oom_events')!=0:
+            raise ValueError('isolated_oom_evidence_unavailable_or_positive')
         requested_at = self.clock.time()
+        requested_monotonic = self.clock.monotonic()
         command_ok = self._stop_batch([name],deadline)
         after = self._show(name,deadline)
         try: peers = self._peer_snapshot(deadline)==before
         except (ValueError,OSError): peers = False
-        proof = self._tempo_proof(after,requested_at,deadline,peers_unchanged=peers,command_ok=command_ok)
+        proof = self._tempo_proof(after,requested_at,deadline,peers_unchanged=peers,command_ok=command_ok,
+                                  requested_monotonic=requested_monotonic)
         self.first_stop = proof
         self.stop_proofs.append(proof)
         self.peer_baseline = before
@@ -803,27 +987,38 @@ class SystemBackend:
                   'remaining_pids':[], 'remaining_groups':[], 'remaining_listeners':[],
                   'collectors_unchanged':False, 'original_preserved':False,
                   'oom_events':None, 'oom_verification':'unverified_final_counter_unavailable'}
-        if timeout==0:
-            self._stop_emitter_launcher(self.clock.monotonic())
-            self._force_owned(list(self.ownership))
-            failed['reason']='cleanup_deadline_expired_verification_unavailable'
-            failed['remaining_pids']=sorted({pid for entry in self.ownership.values() for pid in entry['pids'] if self.os.pid_alive(pid)})
-            failed['remaining_groups']=sorted({group for entry in self.ownership.values() for group in entry['groups'] if self.os.group_pids(group)})
-            return failed
-        deadline = self._deadline(timeout)
-        self._stop_emitter_launcher(deadline)
+        deadline = self.clock.monotonic()+timeout
+        proof = failed
+        rejected,states,graceful = [],{},None
         try:
+            self._stop_emitter_launcher(deadline)
+            if timeout==0:
+                self._force_owned(list(self.ownership))
+                failed['reason']='cleanup_deadline_expired_verification_unavailable'
+                failed['remaining_pids']=sorted({pid for entry in self.ownership.values() for pid in entry['pids'] if self.os.pid_alive(pid)})
+                failed['remaining_groups']=sorted({group for entry in self.ownership.values() for group in entry['groups'] if self.os.group_pids(group)})
+                return self._finish_cleanup(proof,deadline)
             selected,rejected = self._select_owned(deadline)
             tempo = self.spec.unit_names['tempo']
-            before = self._show(tempo,deadline) if tempo in selected else None
+            tempo_state_verified = True
+            try: before = self._show(tempo,deadline) if tempo in selected else None
+            except (OSError,ValueError,TimeoutError,subprocess.TimeoutExpired):
+                before,tempo_state_verified = None,False
             active_tempo = bool(before and before.get('ActiveState')=='active')
             for name in selected:
-                for group in self.ownership[name]['groups']: self._events(group)
+                for group in self.ownership[name]['groups']:
+                    try: self._events(group)
+                    except (OSError,ValueError):
+                        # Evidence loss cannot prevent other owned units stopping.
+                        # Only a fresh final counter can establish zero OOMs.
+                        pass
             requested_at = self.clock.time()
+            requested_monotonic = self.clock.monotonic()
             command_ok = self._stop_batch(selected,deadline)
             states = {name:self._show(name,deadline) for name in selected}
             if active_tempo:
-                graceful = self._tempo_proof(states[tempo],requested_at,deadline,command_ok=command_ok)
+                graceful = self._tempo_proof(states[tempo],requested_at,deadline,command_ok=command_ok,
+                                              requested_monotonic=requested_monotonic)
                 self.stop_proofs.append(graceful)
             else:
                 graceful = self.stop_proofs[-1] if self.stop_proofs and not getattr(self,'restart_attempted',False) else None
@@ -835,28 +1030,68 @@ class SystemBackend:
                                    or set(map(str,row.get('owners',[]))).intersection(owned_pids)]
             collectors = self._check_collectors(deadline)
             preserved = self._preserved(deadline)
-            oom = self._final_oom(groups)
+            self.final_accounting = self._hierarchical_oom(deadline)
+            oom = self.final_accounting.get('oom_events') if self.final_accounting.get('verified') else None
             stopped = all(state.get('MainPID','0')=='0' and state.get('ActiveState') in {'inactive','failed'} for state in states.values())
             emitter = self.ownership.get(self.spec.emitter_name,{'pids':set(),'groups':set()})
             launcher = getattr(self,'emitter_process',None)
             emitter_stopped = (launcher is None or launcher.poll() is not None) and not any(self.os.pid_alive(pid) for pid in emitter['pids']) and not any(self.os.group_pids(group) for group in emitter['groups'])
-            passed = bool(command_ok and not rejected and stopped and not remaining_groups and not remaining_pids
+            if self.prepared:
+                self._save('cleanup-terminal-evidence.json',{'graceful_tempo':graceful,'units':states,
+                                                            'oom_evidence':self.final_accounting})
+            slice_stopped = False
+            if not remaining_groups and not remaining_pids and not remaining_listeners and emitter_stopped:
+                slice_stopped = self._stop_accounting_slice(deadline,rejected)
+            passed = bool(command_ok and tempo_state_verified and not rejected and stopped and not remaining_groups and not remaining_pids
                           and not remaining_listeners and collectors and preserved and oom==0 and emitter_stopped
-                          and (not self.started or graceful and graceful['passed']))
+                          and slice_stopped and (not self.started or graceful and graceful['passed']))
             proof = {'passed':passed, 'graceful_tempo':graceful, 'owned_emitter_stopped':emitter_stopped,
                      'remaining_pids':remaining_pids, 'remaining_groups':remaining_groups,
                      'remaining_listeners':remaining_listeners, 'collectors_unchanged':collectors,
                      'original_preserved':preserved, 'oom_events':oom, 'rejected_foreign_units':rejected,
-                     'oom_verification':'verified_final_counter' if oom is not None else 'unverified_final_counter_unavailable',
+                     'oom_verification':'verified_isolated_hierarchical_ancestor' if oom is not None else 'unverified_final_counter_unavailable',
+                     'oom_evidence':self.final_accounting,'accounting_slice_stopped':slice_stopped,
                      'forced_units':sorted(self.forced), 'state_retained':True, 'units':states}
             if getattr(self,'restart_attempted',False) and not active_tempo:
                 proof['reason'] = 'tempo_not_active_for_fresh_final_stop'
-            if self.prepared: self._save('cleanup.json',proof)
-            return proof
+            if not tempo_state_verified:
+                proof['reason'] = 'tempo_pre_stop_metadata_unverified'
         except (ValueError,OSError,TimeoutError,subprocess.TimeoutExpired,KeyError) as error:
-            self._force_owned(list(self.ownership))
+            # _stop_batch forces only its positively selected failed-stop targets.
+            # A verification error must not widen that set to historical owners.
             failed['reason']=type(error).__name__
-            return failed
+            proof = failed
+            self.final_accounting = self._hierarchical_oom(deadline)
+            proof['oom_evidence'] = self.final_accounting
+            if self.prepared:
+                try:
+                    self._save('cleanup-terminal-evidence.json',{'graceful_tempo':graceful,'units':states,
+                                                                'oom_evidence':self.final_accounting,'failure_reason':proof['reason']})
+                except (OSError,ValueError): pass
+            proof['accounting_slice_stopped'] = self._stop_accounting_slice(deadline,rejected)
+        finally:
+            # Both keepers release locally even when the existing budget expires.
+            if timeout!=0:
+                released = self._close_retention(deadline)
+                proof['unit_references_released'] = released
+                proof['passed'] = bool(proof['passed'] and released)
+        return self._finish_cleanup(proof,deadline,closed=True)
+
+    def _finish_cleanup(self, proof, deadline, *, closed=False):
+        if not closed:
+            released = self._close_retention(deadline)
+            proof['unit_references_released'] = released
+            proof['passed'] = bool(proof['passed'] and released)
+        proof.setdefault('forced_units',sorted(self.forced))
+        proof.setdefault('accounting_slice_stopped',False)
+        proof.setdefault('state_retained',True)
+        if self.prepared:
+            try: self._save('cleanup.json',proof)
+            except (OSError,ValueError) as error:
+                proof['passed'] = False
+                proof['reason'] = 'cleanup_receipt_persistence_failed'
+                proof['receipt_error'] = type(error).__name__
+        return proof
 
     def readback(self, emitted, timeout, stage):
         deadline = self._deadline(timeout)
@@ -948,10 +1183,14 @@ class SystemBackend:
         before = self._peer_snapshot(deadline)
         if before!=self.peer_baseline: raise ValueError('diagnostic_peers_changed_before_restart')
         self.restart_attempted = True
+        self.unit_references.check(deadline=deadline)
+        if self._hierarchical_oom(deadline).get('oom_events')!=0:
+            raise ValueError('isolated_oom_evidence_unavailable_or_positive')
         self._render_runtime([name],runtime_seconds)
         try:
             self._command(['systemctl','--user','daemon-reload'],deadline)
             self.restarting_group = name
+            self.capture_restart = True
             self._command(['systemctl','--user','start',name],deadline)
             proof = self._ready(deadline)
             proof['peers_unchanged'] = self._peer_snapshot(deadline)==before
@@ -961,11 +1200,13 @@ class SystemBackend:
             return proof
         except BaseException:
             self.restarting_group = None
+            self.capture_restart = False
             self._cleanup_partial(deadline)
             raise
 
     def _emitter_command(self):
         return ['systemd-run','--user','--scope','--unit='+self.spec.emitter_name,
+                '--slice='+self.spec.accounting_slice_name,
                 '--property=MemoryAccounting=true','--property=MemoryMax=256M',
                 '--property=MemorySwapMax=0','--property=CPUQuota=25%', '--property=TasksMax=64',
                 '--property=RuntimeMaxSec=65s','/usr/bin/env','-i','PATH=/usr/bin:/bin',

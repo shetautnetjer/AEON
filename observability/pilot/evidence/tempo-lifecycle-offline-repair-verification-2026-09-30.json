@@ -1,0 +1,354 @@
+{
+  "verified_at": "2026-09-30T22:16:11.557601+00:00",
+  "evidence_class": "exposed-development offline lifecycle repair; synthetic fixtures and inert host validation",
+  "offline_preparation_passed": true,
+  "runtime_qualified": false,
+  "utility_qualified": false,
+  "release_evaluated": false,
+  "baseline_commit": "7a23faab2549a02ae365c2c9a46023e8176a672c",
+  "host": {
+    "systemd": "259.5-0ubuntu3.4",
+    "kernel": "7.0.0-31-generic",
+    "libsystemd_path": "/usr/lib/x86_64-linux-gnu/libsystemd.so.0.42.0",
+    "libsystemd_sha256": "9405c27411b652140806ab7576f7d76610f67bde662ba730efc7aa7171785011"
+  },
+  "source_manifest": {
+    "path": "observability/pilot/diagnostic-source-pins.json",
+    "sha256": "b532df7b042a07c25c805a7e9b03b0c140411ecbbdcab988a779b4f9695be545",
+    "source_count": 42,
+    "retention_library_count": 1
+  },
+  "checks": {
+    "full_locked_fixture_suite": "passed",
+    "fresh_guarded_diagnostic_suite": "passed",
+    "independent_adversarial_checks": "passed",
+    "inert_binary_unit_validation": "passed",
+    "original_preservation": "passed",
+    "whitespace": "passed",
+    "live_retention_accounting": "not_run",
+    "fresh_restart_durability": "not_run"
+  },
+  "full_suite": {
+    "passed": true,
+    "tests_run": 233,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "undeclared_imports": []
+  },
+  "independent_review": {
+    "passed": true,
+    "security_concerns": [],
+    "logic_errors": [],
+    "tests": {
+      "passed": true,
+      "tests_run": 167,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "source_unchanged_during_run": true,
+      "guard": "all socket events and real subprocess creation denied; exact pinned library symbol metadata allowed with every real native function call denied"
+    },
+    "source_hashes": {
+      "observability/pilot/diagnostic.py": "e1e028cc6d7c599cad587f1ac3b4171cac29c0925bd1a5e961793c09bd33b33a",
+      "observability/pilot/diagnostic_config.py": "7ee238b501565422baad11115a36e4a628904fdc4ea92ecb1226f7be3fd8a22e",
+      "observability/pilot/diagnostic_system.py": "3ad3ed37e3a4d1b75a6050fc38630352d427344fca3928142ec2dc7577d933a6",
+      "observability/pilot/diagnostic_retention.py": "9ecfcc0ccba055c0a1977076408f0b330847e77cfdd0eea1d1150170b20a3c51"
+    },
+    "adversarial_checks": [
+      {
+        "scenario": "second_tempo_show_failure",
+        "passed": true,
+        "normal_owned_child_stop": true,
+        "qualification": false
+      },
+      {
+        "scenario": "foreign_invocation_exit_zero",
+        "passed": true,
+        "unrelated_zero_exit_rejected": true
+      },
+      {
+        "scenario": "empty_foreign_child",
+        "passed": true,
+        "parent_stop_refused": true,
+        "foreign_group_preserved": true
+      }
+    ],
+    "static": {
+      "preserved_original_files_checked": 13,
+      "preservation_mismatches": [],
+      "local_source_pins_checked": 42,
+      "pin_mismatches": [],
+      "whitespace_check_passed": true,
+      "static_scan_matches": {
+        "shell_execution": false,
+        "unsafe_deserialization": false,
+        "dynamic_input_execution": false,
+        "possible_secret_assignment": false
+      }
+    },
+    "limits": "No live native function, socket or service invocation; cannot qualify actual kernel/systemd behavior"
+  },
+  "inert_host_checks": {
+    "passed": true,
+    "source_pins": 42,
+    "pins": {
+      "artifacts": 28,
+      "source": 28,
+      "plugin": 40,
+      "native": 1001,
+      "fixture": 1339,
+      "protected": 5,
+      "config": 11,
+      "retention_library": 1,
+      "original_runtime_source": 15,
+      "retained_evidence": 63
+    },
+    "original_preserved": true,
+    "inert_binary_validations": [
+      {
+        "component": "alloy",
+        "arguments": [
+          "validate",
+          "TEMP/var/tempo-shutdown-check/offlineVerify/config/config.alloy"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_excerpt": ""
+      },
+      {
+        "component": "promtool",
+        "arguments": [
+          "check",
+          "config",
+          "TEMP/var/tempo-shutdown-check/offlineVerify/config/prometheus.yaml"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "0158f86a8ea0ca73586b90a9da4662b41f25473c0eec691004d802ea2d7306f1",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_excerpt": ""
+      },
+      {
+        "component": "tempo",
+        "arguments": [
+          "-target=all",
+          "-config.file=TEMP/var/tempo-shutdown-check/offlineVerify/config/tempo.yaml",
+          "-config.verify=true"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_excerpt": ""
+      },
+      {
+        "component": "tempo",
+        "arguments": [
+          "-version"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "713463446e7f8eec5b1cf31b1ad9a0015e4d302c0f4dbcb4538383dcd1229928",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_excerpt": ""
+      },
+      {
+        "component": "grafana",
+        "arguments": [
+          "server",
+          "-v"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "d5f23795375d0f8e4f9ca9e32147ddadd1b77910d17ae99bbd37c0197931d873",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_excerpt": ""
+      },
+      {
+        "component": "systemd-analyze",
+        "arguments": [
+          "--user",
+          "verify",
+          "TEMP/var/tempo-shutdown-check/offlineVerify/units/aeon-tempo-check-tempo-offlineVerify.service",
+          "TEMP/var/tempo-shutdown-check/offlineVerify/units/aeon-tempo-check-alloy-offlineVerify.service",
+          "TEMP/var/tempo-shutdown-check/offlineVerify/units/aeon-tempo-check-prometheus-offlineVerify.service",
+          "TEMP/var/tempo-shutdown-check/offlineVerify/units/aeon-tempo-check-grafana-offlineVerify.service",
+          "TEMP/var/tempo-shutdown-check/offlineVerify/units/app-aeonTempoCheckofflineVerify.slice"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "2b92b393d3a1026b139cbf2005d8c38aa53e2b35f296aa4f6fb39870d8cea591",
+        "stderr_excerpt": "/usr/lib/systemd/user/spice-vdagent.service:23: Unknown key 'StandardError' in section [Install], ignoring.\n"
+      }
+    ],
+    "runtime_started": false
+  },
+  "preservation": {
+    "verified_at": "2026-09-30T22:15:05.116069+00:00",
+    "passed": true,
+    "original_snapshot_files_checked": 74,
+    "original_snapshot_mismatches": [],
+    "failed_run_receipt_pins_checked": {
+      "tempo-shutdown-diagnostic-result-2026-09-30.json": 10,
+      "synthetic-runtime-verification-2026-09-30.json": 29
+    },
+    "old_pilot_tempo_result": "timeout",
+    "prior_pilot_units": [
+      {
+        "Id": "aeon-pilot-tempo.service",
+        "LoadState": "loaded",
+        "ActiveState": "failed",
+        "MainPID": "0",
+        "Result": "timeout",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-pilot-alloy.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-pilot-prometheus.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-pilot-grafana.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-tempo-tempoDiag20260930A.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-alloy-tempoDiag20260930A.service",
+        "LoadState": "loaded",
+        "ActiveState": "failed",
+        "MainPID": "0",
+        "Result": "signal",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-prometheus-tempoDiag20260930A.service",
+        "LoadState": "loaded",
+        "ActiveState": "failed",
+        "MainPID": "0",
+        "Result": "signal",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-grafana-tempoDiag20260930A.service",
+        "LoadState": "loaded",
+        "ActiveState": "failed",
+        "MainPID": "0",
+        "Result": "signal",
+        "ControlGroup": ""
+      }
+    ],
+    "remaining_pilot_listeners": [],
+    "method": "read-only hashes and selected host unit/socket properties; no bus keeper opened or services started",
+    "runtime_started": false
+  },
+  "prior_result_refs": [
+    {
+      "path": "observability/pilot/evidence/tempo-shutdown-diagnostic-result-2026-09-30.json",
+      "sha256": "23cb507371d7623e825c571b19d25ed9ffef8b6ac3bd1d80283d2a65afce25d0"
+    },
+    {
+      "path": "observability/pilot/evidence/synthetic-runtime-verification-2026-09-30.json",
+      "sha256": "cb7e2a33f066f201e5eb778e568d2dfb1b67b84e89be08da1d2f09f8267fc6af"
+    }
+  ],
+  "test_and_review_artifact_refs": [
+    {
+      "path": "/tmp/tempo-lifecycle-repair-full.json",
+      "sha256": "b08c9897bb0fefd4baef5ffa055f3fd1d049b8a1df68eef37dc6a43d70a25955"
+    },
+    {
+      "path": "/tmp/tempo-lifecycle-repair-full.log",
+      "sha256": "798f7b246ecd4f1bad1ef8eeb0e6214c41ef321a1920e62f0e3c3c66f0de36cf"
+    },
+    {
+      "path": "/tmp/tempo-lifecycle-fresh-review-tests.json",
+      "sha256": "edf6ceb85ca0c2f60a888bc49d7b7428934dfab8c939fdc01283a5df128fe8e2"
+    },
+    {
+      "path": "/tmp/tempo-lifecycle-fresh-review-tests.log",
+      "sha256": "229f821cd3515c6990797af96e88cd407c31f55d996653aa44e739c8f44cdab2"
+    },
+    {
+      "path": "/tmp/tempo-lifecycle-fresh-review-static.json",
+      "sha256": "c34da8f0a1738df004edba10d2bba2bbb5312c1ddb39fd6895ab82bcb5fae274"
+    },
+    {
+      "path": "/tmp/tempo-lifecycle-fresh-review-adversarial.json",
+      "sha256": "3cb66288d57d282a73a982ca4e6686d105fca2afab680ad9602ca96c2c46b745"
+    },
+    {
+      "path": "/tmp/tempo-lifecycle-inert-verification.json",
+      "sha256": "9349f0167c92a7bc589a66a755727e939ad18a8bf5fe7911c834458f291acaa7"
+    },
+    {
+      "path": "/tmp/tempo-lifecycle-preservation.json",
+      "sha256": "dc19f855f2cfbe4f118cf2c81b01337cf6bda661f582d633811fda0caeb95bc4"
+    },
+    {
+      "path": "/tmp/tempo-systemd259-cpu-red.log",
+      "sha256": "80bca65e87a562f103fb59d70c1f180ae9de02d67f2358de6571331aa1e792f9"
+    },
+    {
+      "path": "/tmp/tempo-systemd259-cpu-green.log",
+      "sha256": "695530708b9c3a6d2e93ca28d5e3c5f8b7f88b0f4595778aa4e2024d4d141920"
+    }
+  ],
+  "next_proposal": {
+    "run_id": "tempoLife20260930B",
+    "authorization": "pending creator approval at reviewed commit",
+    "maximum_total_seconds": 900,
+    "minimum_soak_seconds": 0,
+    "cleanup_reserve_seconds": 95,
+    "tempo_stop_allowance_seconds": 90,
+    "peer_stop_allowance_seconds": 25,
+    "spans": 25,
+    "traces": 6,
+    "emissions": 1,
+    "conditional_restart_maximum": 1,
+    "services": 4,
+    "no_process_accounting_slices": 1,
+    "memory_max_mib": 2176,
+    "cpu_max_cores": 2.25,
+    "swap_max_bytes": 0,
+    "tasks_max": 576,
+    "monitored_disk_budget_bytes": 10737418240,
+    "hard_disk_quota": false,
+    "retention_while_running": "24h",
+    "ports_tcp_loopback": [
+      12346,
+      13000,
+      13200,
+      14317,
+      14318,
+      19090,
+      19095,
+      24317,
+      24318
+    ],
+    "external_telemetry_destinations": [],
+    "downloads_installs": false,
+    "real_sessions_model_requests_memory_admission": false
+  },
+  "runtime_changes_in_this_repair": false,
+  "remote_pushes": false
+}

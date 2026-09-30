@@ -42,15 +42,19 @@
     },
     {
       "path": "observability/pilot/diagnostic.py",
-      "sha256": "a7143b8d264366dfffae6c6472021a35866f48c6573225c81cab30ad3974eba3"
+      "sha256": "e1e028cc6d7c599cad587f1ac3b4171cac29c0925bd1a5e961793c09bd33b33a"
     },
     {
       "path": "observability/pilot/diagnostic_config.py",
-      "sha256": "1b38493670c0af6043deda1f296431953f6f0847b7d3014e625ea4ce2b8c8b53"
+      "sha256": "7ee238b501565422baad11115a36e4a628904fdc4ea92ecb1226f7be3fd8a22e"
+    },
+    {
+      "path": "observability/pilot/diagnostic_retention.py",
+      "sha256": "9ecfcc0ccba055c0a1977076408f0b330847e77cfdd0eea1d1150170b20a3c51"
     },
     {
       "path": "observability/pilot/diagnostic_system.py",
-      "sha256": "a2acc2415761f1400622c36c5aacf3cf8e049ebce0fd465f06593cbbca29d55a"
+      "sha256": "3ad3ed37e3a4d1b75a6050fc38630352d427344fca3928142ec2dc7577d933a6"
     },
     {
       "path": "observability/pilot/emit_synthetic.py",
@@ -89,8 +93,16 @@
       "sha256": "7dd0c8ccd4cf98d88b977fb2494a43d9bb68164a0b5eda8c976f5d5a5847888a"
     },
     {
+      "path": "observability/pilot/tests/test_diagnostic_accounting_slice.py",
+      "sha256": "821d01c4bbd42852c337ff9f77e17ab613e72dfc5038a303a2c33a58525c5897"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_cleanup_lifecycle.py",
+      "sha256": "5752c89a73961cac3028fd6aea67967d5229166f8059cf32dbfc130cffb02f23"
+    },
+    {
       "path": "observability/pilot/tests/test_diagnostic_config.py",
-      "sha256": "16972a4c29f0a56240a8b4a65a41cf12dc68a76862f9d7700c68affc4d4003d8"
+      "sha256": "dd6187d16a39b263a2ec483da32c4ebc4a095763bcf6faf3694af7e4984fa44c"
     },
     {
       "path": "observability/pilot/tests/test_diagnostic_disk_deadline.py",
@@ -102,7 +114,7 @@
     },
     {
       "path": "observability/pilot/tests/test_diagnostic_flow.py",
-      "sha256": "844e148d3bcefce7eab61704b8e63aee605715a2e25bb2ef4321bf2e0173515a"
+      "sha256": "24dbd2caa54d64efa9af7673e17c1b28a80c9f3a44c6e35402cf45deb2d8146d"
     },
     {
       "path": "observability/pilot/tests/test_diagnostic_prepare_env.py",
@@ -121,12 +133,24 @@
       "sha256": "1716a6ea1f3f51808bf062bdf6f97ac9afaf20dc095b16179e4a218b0dfeaa5f"
     },
     {
+      "path": "observability/pilot/tests/test_diagnostic_retained_flow.py",
+      "sha256": "0543d7489c9a75d3024e6b32d09680967cb1ea94d7802cbed48bd61aed4f4b6a"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_retained_gate.py",
+      "sha256": "3e99a0e11c3fc995964e89fbf3158379225649dffcd23d112823e38054054999"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_retention.py",
+      "sha256": "6d4540623a4ae8198fb83b4a122b3c33112b57501cfed739a18912b940c2b6ec"
+    },
+    {
       "path": "observability/pilot/tests/test_diagnostic_system.py",
-      "sha256": "3202919aa4894f8b06b12e9f82e57aa6af0c41c06db0efe78bffdfcf2e8ab583"
+      "sha256": "918e1adda2d8d59a9965fc52108355057868ac83523132aa39405d40a01d831a"
     },
     {
       "path": "observability/pilot/tests/test_diagnostic_terminal.py",
-      "sha256": "9d92e3ff764b24d79fb59f2e7cad869608c751278861dbd811b80ec5089c5796"
+      "sha256": "ea72ebabb5c6f47b8086a9f1b1105e42518367fd9d8c9d7b7c6ac6d9e2576ecd"
     },
     {
       "path": "observability/pilot/tests/test_diagnostic_window.py",
@@ -155,5 +179,11 @@
   ],
   "evidence_class": "exposed-development offline diagnostic binding",
   "utility_qualified": false,
-  "release_evaluated": false
+  "release_evaluated": false,
+  "retention_library": {
+    "path": "/usr/lib/x86_64-linux-gnu/libsystemd.so.0.42.0",
+    "sha256": "9405c27411b652140806ab7576f7d76610f67bde662ba730efc7aa7171785011",
+    "package": "libsystemd0",
+    "package_version": "259.5-0ubuntu3.4"
+  }
 }

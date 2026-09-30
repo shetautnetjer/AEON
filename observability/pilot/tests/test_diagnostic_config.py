@@ -93,7 +93,8 @@ class DiagnosticConfigTests(unittest.TestCase):
             spec = DiagnosticSpec('Check', aeon_root=Path(directory))
             rendered = spec.render(775)
             self.assertEqual(set(rendered), {'config/' + name for name in configs} |
-                             {'units/' + name for name in spec.unit_names.values()})
+                             {'units/' + name for name in spec.unit_names.values()} |
+                             {'units/' + spec.accounting_slice_name})
             self.assertTrue(all(type(text) is str for text in rendered.values()))
             joined = '\n'.join(rendered.values())
             old = '/home/aya-hmw/Documents/ChatGPT/AEON'

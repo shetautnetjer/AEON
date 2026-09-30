@@ -206,7 +206,7 @@ def safe_error(error):
 
 def validate_graceful(proof, *, peers_required=False):
     if not isinstance(proof,dict): raise ValueError('stop_proof_missing')
-    expected=dict(result='success',exit_code=0,forced_kill=False,oom_events=0,completion_milestone=True,
+    expected=dict(passed=True,invocation_verified=True,result='success',exit_code=0,forced_kill=False,oom_events=0,completion_milestone=True,
                   cgroup_pids=[],pids_alive=[],listeners=[])
     if any(type(proof.get(k)) is not type(v) or proof[k]!=v for k,v in expected.items()):
         raise ValueError('graceful_stop_unproven')

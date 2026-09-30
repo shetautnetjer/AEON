@@ -21,6 +21,30 @@ def load():
     return module
 
 
+def load_retention():
+    spec = importlib.util.spec_from_file_location('diagnostic_retention', MODULE.with_name('diagnostic_retention.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class UnitBus:
+    """IPC seam only; the real UnitReferences keeper implements the lifecycle."""
+    def __init__(self, events):
+        self.events = events
+        self.session = ':synthetic.1'
+        self.owner = ':synthetic.manager.1'
+        self.closed = False
+    def open_user(self, *, deadline): self.events.append(('bus-open',)); return self
+    def session_identity(self, bus): return self.session
+    def healthy(self, bus): return not self.closed
+    def manager_owner(self, bus): return self.owner
+    def set_method_timeout(self, bus, microseconds):
+        if microseconds <= 0: raise AssertionError('unbounded IPC call')
+    def call_method(self, bus, method, name): self.events.append((method, name))
+    def close(self, bus): self.closed = True; self.events.append(('bus-close',))
+
+
 class Clock:
     def __init__(self): self.now = 0.0
     def monotonic(self): return self.now
@@ -35,6 +59,9 @@ class Fixture:
         self.calls = []
         self.rows = []
         self.states = {}
+        self.events = []
+        self.invocations = {}
+        self.bus = UnitBus(self.events)
         source = root / 'observability/pilot'
         old = root / 'var/observability-pilot'
         evidence = old / 'evidence'
@@ -44,15 +71,27 @@ class Fixture:
             if directory.is_dir(): directory.chmod(0o700)
         state = root / 'var/tempo-shutdown-check/Test1'
         names = {component: f'aeon-tempo-check-{component}-Test1.service' for component in ('tempo', 'alloy', 'prometheus', 'grafana')}
+        slice_name = 'app-aeonTempoCheckTest1.slice'
         config_names = ('README.md', 'tempo.yaml', 'config.alloy', 'prometheus.yaml', 'grafana.ini', 'hermes_otel.synthetic.yaml', 'provisioning/datasources/local.yaml')
         self.contents = {f'config/{name}': 'inert\n' for name in config_names}
         self.contents.update({f'units/{name}': '[Service]\nRuntimeMaxSec=700s\n' for name in names.values()})
+        self.contents['units/' + slice_name] = '[Unit]\nStopWhenUnneeded=no\n[Slice]\nMemoryAccounting=true\n'
         self.spec = SimpleNamespace(run_id='Test1', aeon_root=root, source_root=source, state=state,
                                     evidence=state/'evidence', home=state/'home', config=state/'config',
                                     units_dir=state/'units', unit_names=names, emitter_name='aeon-tempo-check-emitter-Test1.scope',
+                                    accounting_slice_name=slice_name,
                                     render=lambda seconds: dict(self.contents))
         self.adapter = module.RealOS(cgroup_root=root/'cg', proc_root=root/'proc', runtime_root=root/'runtime', persistent_root=root/'persistent')
-        self.backend = module.SystemBackend(self.spec, os_adapter=self.adapter, run=self.run, sockets=lambda deadline: list(self.rows), clock=self.clock)
+        def unit_factory(owned_units, **kwargs):
+            return load_retention().UnitReferences(owned_units, adapter=self.bus, **kwargs)
+        def oom_factory(**kwargs):
+            self.events.append(('oom-keeper',))
+            device = (os.major((root/'cg').stat().st_dev), os.minor((root/'cg').stat().st_dev))
+            kwargs['mountinfo'] = f'1 0 {device[0]}:{device[1]} / {root}/cg rw - cgroup2 none rw\n'
+            return load_retention().HierarchicalOOM(**kwargs)
+        self.backend = module.SystemBackend(self.spec, os_adapter=self.adapter, run=self.run, sockets=lambda deadline: list(self.rows), clock=self.clock,
+                                            unit_references_factory=unit_factory, oom_factory=oom_factory)
+        self.backend.retention_library = {'path':str(root/'inert-libsystemd.so'),'sha256':'0'*64}
         self.backend._verify_pins = lambda deadline: {'pins': 1}
         self.backend._inventory = lambda deadline: {'bytes': 0}
         self.backend.binaries = {name: str(root/'artifacts/observability'/name) for name in ('tempo', 'alloy', 'promtool', 'grafana')}
@@ -70,10 +109,32 @@ class Fixture:
             return SimpleNamespace(returncode=0, stdout='\n'.join(f'{k}={v}' for k,v in state.items()), stderr='')
         return SimpleNamespace(returncode=0, stdout='', stderr='')
 
-    def activate(self):
+    def activate_slice(self):
+        name = self.spec.accounting_slice_name
+        group = f'/user.slice/user-{os.geteuid()}.slice/user@{os.geteuid()}.service/app.slice/{name}'
+        directory = self.adapter.group(group)
+        directory.mkdir(parents=True, exist_ok=True)
+        for key, value in {'cgroup.procs':'', 'memory.events':'oom 0\noom_kill 0\n',
+                           'memory.events.local':'oom 0\noom_kill 0\n',
+                           'memory.max':str(2176*1024**2),'memory.swap.max':'0',
+                           'pids.max':'576','cpu.max':'225000 100000'}.items():
+            if not (directory/key).exists(): (directory/key).write_text(value)
+        self.states[name] = {'Id':name, 'LoadState':'loaded','ActiveState':'active','SubState':'active',
+                             'ControlGroup':group,'FragmentPath':str(self.spec.units_dir/name),
+                             'MemoryMax':str(2176*1024**2),'MemorySwapMax':'0','TasksMax':'576',
+                             'CPUQuotaPerSecUSec':'2250000','MemoryAccounting':'yes',
+                             'StopWhenUnneeded':'no'}
+
+    def activate(self, names=None, *, capture=True):
+        self.activate_slice()
+        if self.backend.oom_keeper is None:
+            self.backend._own_slice(self.states[self.spec.accounting_slice_name])
+            self.backend._begin_retention(self.clock.monotonic()+30)
+        self.clock.now += .01
         for index, (component, name) in enumerate(self.spec.unit_names.items()):
+            if names is not None and name not in names: continue
             pid = str(100 + index)
-            group = f'/user.slice/user-{os.geteuid()}.slice/user@{os.geteuid()}.service/app.slice/{name}'
+            group = self.backend.accounting_group + '/' + name
             directory = self.adapter.group(group); directory.mkdir(parents=True, exist_ok=True)
             mx, hi, quota = load().LIMITS[component]
             values = {'cgroup.procs': pid, 'memory.max': str(mx*1024**2), 'memory.high': str(hi*1024**2),
@@ -84,22 +145,37 @@ class Fixture:
             (proc/'environ').write_bytes(b'PATH=/usr/bin:/bin\0GOMAXPROCS=2\0GOMEMLIMIT=100MiB\0')
             self.states[name] = {'Id': name, 'LoadState':'loaded', 'ActiveState':'active', 'MainPID':pid,
                                  'ControlGroup':group, 'FragmentPath':str(self.spec.units_dir/name),
-                                 'RuntimeMaxUSec':'700000000', 'TimeoutStopUSec': '90000000' if component=='tempo' else '25000000',
+                                 'RuntimeMaxUSec':str(self.backend.runtime_seconds.get(name,700)*1000000), 'TimeoutStopUSec': '90000000' if component=='tempo' else '25000000',
                                  'Restart':'no', 'NoNewPrivileges':'yes', 'UMask':'0077', 'KillMode':'control-group',
                                  'MemoryMax':str(mx*1024**2), 'MemoryHigh':str(hi*1024**2), 'MemorySwapMax':'0',
-                                 'TasksMax':'128', 'CPUQuotaPerSecUSec':str(quota*10000)}
+                                 'TasksMax':'128', 'CPUQuotaPerSecUSec':str(quota*10000),
+                                 'Slice':self.spec.accounting_slice_name,
+                                 'ExecMainPID':pid,
+                                 'InvocationID':f'{index+1:016x}{self.invocations.get(name,0)+1:016x}',
+                                 'ExecMainStartTimestampMonotonic':str(int(self.clock.monotonic()*1000000))}
+            self.invocations[name] = self.invocations.get(name,0)+1
         self.rows = [{'port': port, 'address':f'127.0.0.1:{port}', 'protocol':'tcp',
                       'owners':[self.states[self.spec.unit_names[component]]['MainPID']]}
                      for port,component in load().EXPECTED_PORTS.items()]
+        if capture and (names is None or self.spec.unit_names['tempo'] in names):
+            self.backend._own(self.spec.unit_names['tempo'],self.states[self.spec.unit_names['tempo']])
+            self.backend._capture_tempo_invocation(self.states[self.spec.unit_names['tempo']],self.clock.monotonic()+30,
+                                                   restarting=self.backend.tempo_invocation is not None)
 
     def stopped_runner(self, *, graceful=True, log=True, fail=False):
         original = self.run
         def run(args,**kw):
             if args[:3] == ['systemctl','--user','stop']:
                 if fail: raise TimeoutError('injected_stop_timeout')
+                self.clock.now += .01
                 for name in args[3:]:
                     state=self.states[name]
+                    if name==self.spec.accounting_slice_name:
+                        shutil.rmtree(self.adapter.group(self.backend.accounting_group))
+                        state.update(ActiveState='inactive',ControlGroup='')
+                        continue
                     state.update(ActiveState='inactive',MainPID='0',Result='success' if graceful else 'timeout',ExecMainCode='1' if graceful else '2',ExecMainStatus='0' if graceful else '9')
+                    state['ExecMainExitTimestampMonotonic'] = str(int(self.clock.monotonic()*1000000))
                     (self.adapter.group(state['ControlGroup'])/'cgroup.procs').write_text('')
                     for proc in (self.root/'proc').iterdir():
                         if proc.name in self.backend.ownership.get(name,{}).get('pids',set()): shutil.rmtree(proc)
@@ -108,7 +184,8 @@ class Fixture:
             if args[0]=='journalctl':
                 entries=[]
                 if log:
-                    entries=[{'_PID':'100','__REALTIME_TIMESTAMP':str(int(self.clock.time()*1000000)), 'PRIORITY':'6', 'MESSAGE':'level=info msg="Tempo stopped"'}]
+                    entries=[{'_PID':'100','_SYSTEMD_INVOCATION_ID':self.backend.tempo_invocation['invocation_id'],
+                              '__REALTIME_TIMESTAMP':str(int(self.clock.time()*1000000)), 'PRIORITY':'6', 'MESSAGE':'level=info msg="Tempo stopped"'}]
                 self.calls.append((args,kw))
                 return SimpleNamespace(returncode=0,stdout='\n'.join(json.dumps(e) for e in entries),stderr='')
             return original(args,**kw)
@@ -150,8 +227,9 @@ class StopTests(unittest.TestCase):
             proof=fixture.backend.cleanup(timeout=95)
             self.assertTrue(proof['passed'])
             stopped=[args for args,_ in fixture.calls if args[:3]==['systemctl','--user','stop']]
-            self.assertEqual(len(stopped),1)
+            self.assertEqual(len(stopped),2)
             self.assertEqual(set(stopped[0][3:]),set(fixture.spec.unit_names.values()))
+            self.assertEqual(stopped[1][3:],[fixture.spec.accounting_slice_name])
             self.assertTrue(proof['graceful_tempo']['passed'])
         with tempfile.TemporaryDirectory() as temporary:
             fixture=self.active(Path(temporary),module); fixture.stopped_runner()
@@ -170,7 +248,7 @@ class StopTests(unittest.TestCase):
             fixture.calls.clear()
             proof=fixture.backend.cleanup(timeout=0)
             self.assertFalse(proof['passed'])
-            self.assertEqual(set(killed),{state['ControlGroup'] for state in fixture.states.values()})
+            self.assertEqual(set(killed),{fixture.states[name]['ControlGroup'] for name in fixture.spec.unit_names.values()})
             self.assertEqual(fixture.calls,[])
 
 
@@ -202,8 +280,9 @@ class RuntimePhaseTests(unittest.TestCase):
                 return 'shutdown_delay: 0s\nserver:\n  log_level: info\n  http_server_graceful_shutdown_timeout: 30s\nbackend_worker:\n  finish_on_shutdown_timeout: 30s\nsecret: NEVER_RETAIN\n'
             fixture.backend.http=http
             fixture.stopped_runner(log=False)
+            started_at=fixture.clock.monotonic()
             proof=fixture.backend.effective_config(timeout=10)
-            self.assertEqual(requests,[('http://127.0.0.1:13200/status/config',10)])
+            self.assertEqual(requests,[('http://127.0.0.1:13200/status/config',started_at+10)])
             self.assertEqual(proof['selected_fields']['shutdown_delay'],'0s')
             self.assertNotIn('NEVER_RETAIN',json.dumps(proof))
 
@@ -228,7 +307,7 @@ class RuntimePhaseTests(unittest.TestCase):
             old_peer={name:dict(state) for name,state in fixture.states.items() if name!=fixture.spec.unit_names['tempo']}
             def run(args,**kw):
                 if args[:3]==['systemctl','--user','start']:
-                    fixture.activate()
+                    fixture.activate(args[3:],capture=False)
                     fixture.states[fixture.spec.unit_names['tempo']]['RuntimeMaxUSec']='600000000'
                     for name,state in old_peer.items(): fixture.states[name]=state
                 return original(args,**kw)
@@ -254,7 +333,7 @@ class RuntimePhaseTests(unittest.TestCase):
 class EmitterTests(unittest.TestCase):
     def fake_spawn(self, fixture, *, exit_code=0):
         name=fixture.spec.emitter_name
-        group=f'/user.slice/user-{os.geteuid()}.slice/user@{os.geteuid()}.service/app.slice/{name}'
+        group=fixture.backend.accounting_group+'/'+name
         origins={}
         origin_dir=fixture.root/'approved-emitter-imports'; origin_dir.mkdir()
         for module_name in ('openai','opentelemetry.trace','opentelemetry.sdk.trace','opentelemetry.instrumentation.openai','opentelemetry.exporter.otlp.proto.http.trace_exporter','requests','yaml'):
@@ -267,7 +346,7 @@ class EmitterTests(unittest.TestCase):
                 (directory/key).write_text(value)
             proc=fixture.root/'proc/800'; proc.mkdir()
             (proc/'cmdline').write_bytes(b'\0'.join(part.encode() for part in command))
-            fixture.states[name]={'Id':name,'LoadState':'loaded','ActiveState':'active','ControlGroup':group,'FragmentPath':'','Transient':'yes'}
+            fixture.states[name]={'Id':name,'LoadState':'loaded','ActiveState':'active','ControlGroup':group,'FragmentPath':'','Transient':'yes','Slice':fixture.spec.accounting_slice_name}
             class Process:
                 count=0
                 def poll(self):
@@ -320,7 +399,7 @@ class EmitterTests(unittest.TestCase):
             def run(args,**kw):
                 if args[:3]==['systemctl','--user','link']:
                     for name in fixture.spec.unit_names.values():
-                        fixture.states[name]={'Id':name,'LoadState':'loaded','ActiveState':'inactive','MainPID':'0','FragmentPath':str(fixture.spec.units_dir/name),'ControlGroup':''}
+                        fixture.states[name]={'Id':name,'LoadState':'loaded','ActiveState':'inactive','MainPID':'0','FragmentPath':str(fixture.spec.units_dir/name),'ControlGroup':'','Slice':fixture.spec.accounting_slice_name}
                     fixture.states[fixture.spec.unit_names['alloy']]['FragmentPath']='/foreign/alloy.service'
                     fixture.calls.append((args,kw))
                     return SimpleNamespace(returncode=1,stdout='',stderr='injected_partial_registration')
@@ -360,7 +439,7 @@ class StartOwnershipTests(unittest.TestCase):
             (fixture.root/'proc/100/environ').write_bytes(b'API_KEY=secret\0')
             with self.assertRaises(ValueError): fixture.backend.verify_active(timeout=10)
 
-    def test_start_registers_exact_four_fresh_units_and_runtime_cap(self):
+    def test_start_registers_exact_five_fresh_units_and_runtime_cap(self):
         module = load()
         with tempfile.TemporaryDirectory() as temporary:
             fixture = Fixture(Path(temporary), module)
@@ -368,15 +447,18 @@ class StartOwnershipTests(unittest.TestCase):
             original_run = fixture.run
             def run(args,**kw):
                 if args[:3] == ['systemctl','--user','link']:
-                    for name in fixture.spec.unit_names.values():
-                        fixture.states[name]={'Id':name,'LoadState':'loaded','ActiveState':'inactive','MainPID':'0','FragmentPath':str(fixture.spec.units_dir/name),'ControlGroup':''}
-                if args[:3] == ['systemctl','--user','start']: fixture.activate()
+                    for name in (*fixture.spec.unit_names.values(),fixture.spec.accounting_slice_name):
+                        fixture.states[name]={'Id':name,'LoadState':'loaded','ActiveState':'inactive','MainPID':'0','FragmentPath':str(fixture.spec.units_dir/name),'ControlGroup':'','Slice':fixture.spec.accounting_slice_name}
+                if args[:3] == ['systemctl','--user','start']:
+                    if args[3:]==[fixture.spec.accounting_slice_name]: fixture.activate_slice()
+                    else: fixture.activate(args[3:],capture=False)
                 return original_run(args,**kw)
             fixture.backend.run=run
             proof=fixture.backend.start(700,timeout=30)
             link=[args for args,_ in fixture.calls if args[:3]==['systemctl','--user','link']]
             self.assertEqual(len(link),1)
-            self.assertEqual(set(link[0][4:]),{str(fixture.spec.units_dir/name) for name in fixture.spec.unit_names.values()})
+            self.assertEqual(set(link[0][4:]),{str(fixture.spec.units_dir/name) for name in
+                                             (*fixture.spec.unit_names.values(),fixture.spec.accounting_slice_name)})
             self.assertTrue(proof['passed'])
             with self.assertRaises(ValueError): fixture.backend.start(700,timeout=30)
 
