@@ -1,0 +1,413 @@
+{
+  "verified_at": "2026-09-30T21:37:03.826591+00:00",
+  "run_id": "tempoDiag20260930A",
+  "approved_packet_commit": "9a1165df6d2fbb0fc1793f2d14a23505b98d5b82",
+  "executed_source_commit": "d701340f840a59eece5cee532bf240b671de85de",
+  "approval_reference": "Sentinel_f23a24e183788191a0eeb9be9c42144c",
+  "evidence_class": "exposed-development synthetic diagnostic",
+  "utility_qualified": false,
+  "release_evaluated": false,
+  "qualified": false,
+  "checks": {
+    "preflight": "passed",
+    "prepare": "passed",
+    "start": "passed",
+    "limits": "passed",
+    "configuration": "passed",
+    "emit": "passed",
+    "initial": "passed",
+    "first_graceful_stop": "failed",
+    "restart": "not_run",
+    "restart_limits": "not_run",
+    "durability": "not_run",
+    "final_graceful_stop": "not_run",
+    "cleanup": "failed",
+    "lifetime": "passed"
+  },
+  "window_open_utc": "2026-09-30T21:30:50.056435+00:00",
+  "deadline_utc": "2026-09-30T21:45:50.056435+00:00",
+  "runner_end_utc": "2026-09-30T21:32:46.123758+00:00",
+  "elapsed_seconds": 116.06732296943665,
+  "approved_maximum_seconds": 900,
+  "cleanup_reserve_seconds": 95,
+  "single_emission": {
+    "span_count": 25,
+    "trace_count": 6,
+    "api_calls": 5,
+    "synthetic_only": true,
+    "provider_instance_count": 1,
+    "sensitive_sentinel_absent": true,
+    "transport_policy": "httpx.MockTransport only for OpenAI; approved127.0.0.1:14318 only for OTLP",
+    "emission_sha256": "8db0e5b3eedeb5a8471b7baa6c9ac744a0be13bd2c5bd14c39f7d1b2de2d48d2",
+    "scope_empty_and_retained_pids_dead": true
+  },
+  "initial_readback": {
+    "passed": true,
+    "exact_spans": 25,
+    "exact_traces": 6,
+    "direct_and_viewer_trace_responses": 12,
+    "canonical_metrics": {
+      "calls": 5,
+      "errors": 2,
+      "duration_count": 5,
+      "series": 2
+    }
+  },
+  "limits": {
+    "services_memory_mib": 1920,
+    "services_cpu_percent": 200,
+    "emitter_memory_mib": 256,
+    "emitter_cpu_percent": 25,
+    "combined_memory_mib": 2176,
+    "combined_cpu_cores": 2.25,
+    "listener_count": 9,
+    "listeners_loopback": true,
+    "retention_while_running": "24h",
+    "monitored_disk_limit_bytes": 10737418240,
+    "disk_peak_observed_bytes": 2207055872,
+    "hard_disk_quota": false
+  },
+  "effective_tempo_config": {
+    "server.log_level": "info",
+    "backend_worker.finish_on_shutdown_timeout": "30s",
+    "live_store.flush_check_period": "5s",
+    "live_store.max_block_duration": "30s"
+  },
+  "first_stop": {
+    "passed": false,
+    "result": "success",
+    "exit_code": null,
+    "signal": null,
+    "forced_kill": false,
+    "oom_events": null,
+    "oom_verification": "unverified_final_counter_unavailable",
+    "completion_milestone": true,
+    "cgroup_pids": [],
+    "pids_alive": [],
+    "listeners": [],
+    "peers_unchanged": true,
+    "command_succeeded": true
+  },
+  "first_stop_requested_utc": "2026-09-30T21:32:16.006523+00:00",
+  "first_stop_observed_utc": "2026-09-30T21:32:46.085702+00:00",
+  "first_stop_observed_seconds": 30.07917881011963,
+  "lifecycle_milestones": [
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803936.0097,
+      "milestone": "module stopped",
+      "module": "query-frontend"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803936.00973,
+      "milestone": "module stopped",
+      "module": "overrides-api"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803936.010003,
+      "milestone": "module stopped",
+      "module": "distributor"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803936.010003,
+      "milestone": "module stopped",
+      "module": "querier"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803936.01004,
+      "milestone": "module stopped",
+      "module": "metrics-generator"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803936.014935,
+      "milestone": "module stopped",
+      "module": "live-store"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803936.188489,
+      "milestone": "module stopped",
+      "module": "partition-ring"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803936.288734,
+      "milestone": "module stopped",
+      "module": "live-store-ring"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803936.609523,
+      "milestone": "module stopped",
+      "module": "backend-scheduler"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803966.010353,
+      "milestone": "module stopped",
+      "module": "backend-worker"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803966.010353,
+      "milestone": "module stopped",
+      "module": "memberlist-kv"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803966.010353,
+      "milestone": "module stopped",
+      "module": "overrides"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803966.010353,
+      "milestone": "module stopped",
+      "module": "store"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803966.010353,
+      "milestone": "module stopped",
+      "module": "cache-provider"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803966.010576,
+      "milestone": "module stopped",
+      "module": "server"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803966.010589,
+      "milestone": "module stopped",
+      "module": "internal-server"
+    },
+    {
+      "pid": "3306578",
+      "time_epoch": 1790803966.0106,
+      "milestone": "Tempo stopped"
+    }
+  ],
+  "restart_count": 0,
+  "durability": "not_run",
+  "cleanup_reported": {
+    "passed": false,
+    "graceful_tempo": null,
+    "owned_emitter_stopped": false,
+    "remaining_pids": [],
+    "remaining_groups": [],
+    "remaining_listeners": [],
+    "collectors_unchanged": false,
+    "original_preserved": false,
+    "oom_events": null,
+    "oom_verification": "unverified_final_counter_unavailable",
+    "reason": "FileNotFoundError"
+  },
+  "physical_shutdown": {
+    "verified_at": "2026-09-30T21:35:47.970139+00:00",
+    "units": [
+      {
+        "Id": "aeon-tempo-check-tempo-tempoDiag20260930A.service",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "MainPID": "0",
+        "Result": "success",
+        "ExecMainCode": "0",
+        "ExecMainStatus": "0",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-alloy-tempoDiag20260930A.service",
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "MainPID": "0",
+        "Result": "signal",
+        "ExecMainCode": "2",
+        "ExecMainStatus": "9",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-prometheus-tempoDiag20260930A.service",
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "MainPID": "0",
+        "Result": "signal",
+        "ExecMainCode": "2",
+        "ExecMainStatus": "9",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-grafana-tempoDiag20260930A.service",
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "MainPID": "0",
+        "Result": "signal",
+        "ExecMainCode": "2",
+        "ExecMainStatus": "9",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-emitter-tempoDiag20260930A.scope",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "Result": "success",
+        "ControlGroup": ""
+      }
+    ],
+    "retained_start_pids_checked": 17,
+    "remaining_retained_start_pids": [],
+    "remaining_pilot_listeners": [],
+    "source_pins_checked": 36,
+    "source_pin_mismatches": [],
+    "physical_shutdown_passed": true,
+    "qualification_passed": false,
+    "method": "read-only host namespace, exact scoped unit names and retained PIDs; no restart or HTTP",
+    "retained_emitter_pids_checked": 2,
+    "remaining_retained_emitter_pids": []
+  },
+  "preservation": {
+    "verified_at": "2026-09-30T21:35:06.192075+00:00",
+    "passed": true,
+    "pin_counts": {
+      "artifacts": 28,
+      "source": 28,
+      "plugin": 40,
+      "native": 1001,
+      "fixture": 1339,
+      "protected": 5,
+      "config": 11,
+      "original_runtime_source": 15,
+      "retained_evidence": 63
+    },
+    "all_current_verified_files": 2277,
+    "original_evidence_and_config_and_protected_files": 79,
+    "original_snapshot_files": 74,
+    "original_snapshot_mismatches": [],
+    "approved_prior_transitions": [],
+    "collectors_unchanged": true,
+    "original_units": [
+      {
+        "Id": "aeon-pilot-tempo.service",
+        "ActiveState": "failed",
+        "SubState": "failed",
+        "MainPID": "0",
+        "Result": "timeout",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-pilot-alloy.service",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-pilot-prometheus.service",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-pilot-grafana.service",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      }
+    ],
+    "duration_seconds": 7.053723355988041,
+    "new_live_run_started": false,
+    "method": "read-only hashes and selected unit/socket metadata; no database content reads or external calls"
+  },
+  "raw_evidence_refs": [
+    {
+      "path": "var/tempo-shutdown-check/tempoDiag20260930A/evidence/binary-prereqs.json",
+      "sha256": "1811ba0745d14be0e5862087cfc9bdbe4663051df18786fca6b52e341450dae9"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoDiag20260930A/evidence/effective-tempo-config.json",
+      "sha256": "7ffa43526fbc963ee47917e56a01caaace582ed7a091fa66425865ef4c4cdb92"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoDiag20260930A/evidence/emitted.json",
+      "sha256": "9ec1c09a9c6be303b841ca21788822c9ddbea50e03ffcea7fe0849fe7987bdc0"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoDiag20260930A/evidence/emitter-scope.json",
+      "sha256": "e7960b81a5b849d35465f4d9a4ad0324414e470d5a1a91b07326902fcf0e38fe"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoDiag20260930A/evidence/preflight.json",
+      "sha256": "d244a46dd730bde31599177acef77784a4d8a84f22488de21dc88ab5cbde7780"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoDiag20260930A/evidence/readback-initial.json",
+      "sha256": "0b861508e1f5618731163ec7388799512b8b6df9face80c29678606ee4cdd2d8"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoDiag20260930A/evidence/result.json",
+      "sha256": "b35937b0fe5c1b9e0839f70f084e076107899d79ca86652d1018399bd730e719"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoDiag20260930A/evidence/start.json",
+      "sha256": "809e9e8c860acaac51b853e0716e699863f6f256b6f433d126dcd40d06ac40e7"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoDiag20260930A/evidence/tempo-first-stop.json",
+      "sha256": "a2ee417176e8e017ad2d1326213c9f2dc5cb47c87cd59bb66e62cdfd2aea16c7"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoDiag20260930A/evidence/window.json",
+      "sha256": "657dafe5a7daae615960a899db93048a3979bf247b8132007d92e38c4a104345"
+    }
+  ],
+  "unqualified_checks": [
+    "first graceful stop: missing verified exit classification and terminal OOM counter",
+    "cleanup: FileNotFoundError followed by forced peer termination; no graceful qualification"
+  ],
+  "not_run": [
+    "conditional restart",
+    "restart limits",
+    "durability readback",
+    "second graceful stop"
+  ],
+  "remaining_issue": "repair stopped-cgroup handling offline and establish supported retained final exit/OOM proof before proposing another finite live test; no acceptance relaxation applied",
+  "downloads_installs_model_requests_real_sessions_memory_admission": false,
+  "independent_review": {
+    "passed": true,
+    "security_concerns": [],
+    "logic_errors": [],
+    "scope": "read-only live result and claim verification; no endpoint probes, service mutations or new traffic",
+    "initial_exact_readback": "six traces / 25 spans / 12 direct-viewer trace responses / 5 calls / 2 errors / 5 duration observations independently revalidated",
+    "canonical_manifest_files": 36,
+    "original_snapshot_files": 74,
+    "protected_files": 5,
+    "original_configs": 11,
+    "original_runtime_sources": 15,
+    "retained_original_receipts": 63,
+    "pinned_artifacts": 28,
+    "source_custody_files": 28,
+    "plugin_files": 40,
+    "native_files": 1001,
+    "fixture_files": 1339,
+    "raw_evidence_hashes_checked": 10,
+    "unit_state": "independent host read-only exact-name systemctl agrees with reported state",
+    "host_pid_and_listener_proof": "root host attestation; reviewer sandbox PID namespace was insufficient and was not treated as proof",
+    "cleanup_cause_status": "vanished-cgroup handling reproduced offline; exact live throw location remains source-supported inference",
+    "accuracy_correction": "replaced asserted missing-cgroup cause in unqualified_checks with the captured exception class",
+    "suggestions": [
+      "Repair cleanup of unavailable stopped-cgroup counters while preserving unverified OOM status and requesting bounded normal shutdown for owned peers; persist failure evidence.",
+      "Establish supported terminal exit/OOM evidence without relaxing the strict gate."
+    ]
+  }
+}
