@@ -1,0 +1,122 @@
+{
+  "prepared_on": "2026-09-30",
+  "scope": "inert configuration only; no startup or export",
+  "binary_checks": {
+    "alloy": "1.20.1 validate and fmt PASS",
+    "promtool": "3.15.0 check config PASS"
+  },
+  "draft_checks": "YAML/INI/source-reviewed ports, privacy, resource and retention assertions PASS",
+  "unit_limits": [
+    {
+      "name": "aeon-pilot-alloy.service",
+      "memory_max_mib": 384,
+      "memory_high_mib": 320,
+      "cpu_quota_percent": 50
+    },
+    {
+      "name": "aeon-pilot-tempo.service",
+      "memory_max_mib": 768,
+      "memory_high_mib": 640,
+      "cpu_quota_percent": 75
+    },
+    {
+      "name": "aeon-pilot-prometheus.service",
+      "memory_max_mib": 384,
+      "memory_high_mib": 320,
+      "cpu_quota_percent": 50
+    },
+    {
+      "name": "aeon-pilot-grafana.service",
+      "memory_max_mib": 384,
+      "memory_high_mib": 320,
+      "cpu_quota_percent": 25
+    }
+  ],
+  "systemd_verify": {
+    "exit_code": 0,
+    "method": "read-only systemd-analyze --user verify under scoped escalation",
+    "baseline_warning": "unrelated /usr/lib/systemd/user/spice-vdagent.service:23 StandardError in [Install] ignored"
+  },
+  "not_qualified": [
+    "Tempo/Grafana binary config parsing",
+    "runtime actual bindings",
+    "SDK to OTTL equivalence",
+    "cgroup enforcement",
+    "trace readback",
+    "disk hardcap"
+  ],
+  "files": [
+    {
+      "path": "config/README.md",
+      "sha256": "1492d01df3ede7d8e6dbcd1368a101de24350c9aed77d42dcd3dea2044e333ae"
+    },
+    {
+      "path": "config/config.alloy",
+      "sha256": "7f1a974e0f1f1563dd4d4f1136dc84cb229eca568ca7fac0bcc2f21e94478db9"
+    },
+    {
+      "path": "config/grafana.ini",
+      "sha256": "a7157c9fd0fa9091174bce90957903e4434084328761b69a1777451a04a721ec"
+    },
+    {
+      "path": "config/hermes_otel.synthetic.yaml",
+      "sha256": "af491143e1d34e4f67654407b874bf3351e912bf962a70e2b88e293607922c53"
+    },
+    {
+      "path": "config/prometheus.yaml",
+      "sha256": "53a58bc706cfb5e6ffdb5cb7fbe3496f27990d9a82774f3007fed3dfbd4c6b12"
+    },
+    {
+      "path": "config/provisioning/datasources/local.yaml",
+      "sha256": "fd761e0275d98cc8344999aafb2e5d85f47abced1926b4b9a0e5b5ce36040271"
+    },
+    {
+      "path": "config/tempo.yaml",
+      "sha256": "c69cfb0d5016b1cfeb0aca2fdb118869cd3fb9befd0c2dd96c6ce671a271f052"
+    },
+    {
+      "path": "units/aeon-pilot-alloy.service",
+      "sha256": "e8f066ea88175956290d26f851bddb267b2d2ba0d654ba7e7f72c8ef51cadd1f"
+    },
+    {
+      "path": "units/aeon-pilot-grafana.service",
+      "sha256": "1f82b094aa16775d533a5b8a0d1fd033a11be70c7ee1281ae4aa60f897b2edde"
+    },
+    {
+      "path": "units/aeon-pilot-prometheus.service",
+      "sha256": "96654e4e75f43af30d96c02afda98e6e376e3add99328da80f0a2dc88260fa8f"
+    },
+    {
+      "path": "units/aeon-pilot-tempo.service",
+      "sha256": "ca052b4cfadc66d24f11914fbcaf251268bada3b1a9f7cd83ac051cffdf117d2"
+    }
+  ],
+  "source_contract_alignment": "Prepared Hermes strict-normalizer field keys/categories aligned; no unmapped memory metadata invented; only api counted",
+  "metric_cardinality_limit": 256,
+  "validated_binary_sha256": {
+    "alloy": "4d73d544c8c2baa779bf7efbe8c3906b655416684ff503adfbb5e18c94dbb58d",
+    "prometheus": "dac83d1d1007961de3b9ba624942c9af0c192ee3df262ac47ef390bcade71c65",
+    "promtool": "c736d55d3ccd959fe48329965fb5cb671d45585a9483954766448035100ff75c"
+  },
+  "verified_at": "2026-09-30T17:39:48.916044+00:00",
+  "service_memory_total_mib": 1920,
+  "service_cpu_total_percent": 200,
+  "emitter_proposal": {
+    "memory_max_mib": 256,
+    "cpu_quota_percent": 25,
+    "tasks_max": 64,
+    "timeout_seconds": 60,
+    "kill_grace_seconds": 5
+  },
+  "synthetic_limits": {
+    "spans_max": 1000,
+    "service_lifetime_minutes": 30,
+    "disk_budget_gib": 10,
+    "disk_hardcap": false
+  },
+  "local_markdown_links_checked": 47,
+  "source_pins_checked": {
+    "plugin": 40,
+    "core_custody": 28
+  }
+}

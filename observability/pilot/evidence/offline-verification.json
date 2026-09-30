@@ -1,0 +1,169 @@
+{
+  "verified_at": "2026-09-30T17:40:12.431549+00:00",
+  "scope": "offline exposed-development synthetic metadata/export/context preparation only",
+  "tests": {
+    "native_sdk_unittest": {
+      "passed": 16,
+      "command": "python3 -B observability/pilot/run_offline.py",
+      "sdk_version": "1.39.1",
+      "socket_operations_denied": true,
+      "actual_core_registration_and_middleware": true
+    },
+    "existing_navigation_unittest": {
+      "passed": 15,
+      "command": "python3 -B -m unittest discover -s tests -v"
+    },
+    "total_disjoint_test_cases": 31,
+    "bible_generation_check": "pass",
+    "independent_review": "independent-review.json"
+  },
+  "source_pins": {
+    "installed_plugin_files": 40,
+    "core_custody_files": 28,
+    "upstream_plugin_byte_equivalence_verified": false
+  },
+  "inert_validation": {
+    "alloy": "1.20.1 validate exit0",
+    "promtool": "3.15.0 check config exit0",
+    "systemd_user_verify": "exit0; unrelated existing spice-vdagent warning only",
+    "config_and_unit_shape": "pass",
+    "local_markdown_links": 47
+  },
+  "preservation": {
+    "original_brainstem_status_entries": 63,
+    "original_brainstem_pins": 19,
+    "brainstem_continuation_head": "db40961e5b0ab9fd184f996fffa91be9ecb3225f",
+    "brainstem_continuation_clean": true,
+    "existing_observability_plan_unchanged": true,
+    "active_plugin_fixture_and_core_custody_pins": 68,
+    "runtime_changes": false,
+    "installs_or_artifact_downloads": false,
+    "outbound_telemetry": false,
+    "model_calls_or_real_sessions": false,
+    "remote_pushes": false
+  },
+  "utility_qualified": false,
+  "release_evaluated": false,
+  "remaining_acceptance_gates": [
+    "approved acquisition and hash/platform/layout verification",
+    "actual OpenAI instrumentor with mock transport privacy/context/stream/retry/cancel tests",
+    "Tempo/Grafana acquired-binary validation",
+    "effective cgroup limits and actual loopback listener set",
+    "finite synthetic delivery/readback, canonical metric denominators and bounded labels",
+    "collector outage and bounded shutdown; disk budget monitoring"
+  ],
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "b7e67dea2b09213d95318a80803a25c8a72523c0594bb2d86de337a93397483d"
+    },
+    {
+      "path": "README.md",
+      "sha256": "c4bd7076827d026854e75d84ac8d3bd349068500ffab625a6a29cbec7d8380a3"
+    },
+    {
+      "path": "docs/observability-startup-approval-2026-09-30.md",
+      "sha256": "3b9e27c8018bfaeba4b9ba932ac06fb66fe6b37f5d38eb3e0412ae48741ebad7"
+    },
+    {
+      "path": "observability/pilot/README.md",
+      "sha256": "aad511e3f8aa5197c143104d96ae306e89579d86d79239eef05a1d099f2f8816"
+    },
+    {
+      "path": "observability/pilot/artifact-pins.json",
+      "sha256": "3da72366e3bef8db1e4a3b6899b63238b7013d1c9878f676fd828e0055878039"
+    },
+    {
+      "path": "observability/pilot/config/README.md",
+      "sha256": "1492d01df3ede7d8e6dbcd1368a101de24350c9aed77d42dcd3dea2044e333ae"
+    },
+    {
+      "path": "observability/pilot/config/config.alloy",
+      "sha256": "7f1a974e0f1f1563dd4d4f1136dc84cb229eca568ca7fac0bcc2f21e94478db9"
+    },
+    {
+      "path": "observability/pilot/config/grafana.ini",
+      "sha256": "a7157c9fd0fa9091174bce90957903e4434084328761b69a1777451a04a721ec"
+    },
+    {
+      "path": "observability/pilot/config/hermes_otel.synthetic.yaml",
+      "sha256": "af491143e1d34e4f67654407b874bf3351e912bf962a70e2b88e293607922c53"
+    },
+    {
+      "path": "observability/pilot/config/prometheus.yaml",
+      "sha256": "53a58bc706cfb5e6ffdb5cb7fbe3496f27990d9a82774f3007fed3dfbd4c6b12"
+    },
+    {
+      "path": "observability/pilot/config/provisioning/datasources/local.yaml",
+      "sha256": "fd761e0275d98cc8344999aafb2e5d85f47abced1926b4b9a0e5b5ce36040271"
+    },
+    {
+      "path": "observability/pilot/config/tempo.yaml",
+      "sha256": "c69cfb0d5016b1cfeb0aca2fdb118869cd3fb9befd0c2dd96c6ce671a271f052"
+    },
+    {
+      "path": "observability/pilot/evidence/independent-review.json",
+      "sha256": "357986a7aa53acea0bb073ac96157e813b4d196015ecc8683a0166420b15da2d"
+    },
+    {
+      "path": "observability/pilot/evidence/inert-config-verification.json",
+      "sha256": "63d47c545de3426cda51bc7410b339a97c847d0c64de81fef92807694067bda2"
+    },
+    {
+      "path": "observability/pilot/instrumentor-constraints.txt",
+      "sha256": "60b0d8b362a1478cae5d24a911e4631f6d79058c955400435d59698ed49a7af2"
+    },
+    {
+      "path": "observability/pilot/instrumentor-full-wheel-lock.txt",
+      "sha256": "b2cd8dd4761fa5d7bb760ab145d6e26bb5cf4002a7d70ee7311234a86185f62c"
+    },
+    {
+      "path": "observability/pilot/instrumentor-new-wheels.txt",
+      "sha256": "498cf992c9b3bdda8bbfe535e26afc558b355eb6fddb9ecd6b8da193fa4007e5"
+    },
+    {
+      "path": "observability/pilot/patches/0001-isolated-metadata-and-execution-context.patch",
+      "sha256": "65543bbaa11d4831da62708d74c93d0ac466f1f7ca1bcc72fc00887033240ec9"
+    },
+    {
+      "path": "observability/pilot/patches/payload/metadata_pilot.py",
+      "sha256": "50ddb6db0c3eb90899c53c391aa3e3ad513c1767dfc21629e6fffc12bf88a883"
+    },
+    {
+      "path": "observability/pilot/run_offline.py",
+      "sha256": "ab937400b290d2cdb39b800081056dcd2858652a74d22150c21eaf6f5edebb11"
+    },
+    {
+      "path": "observability/pilot/source-baseline.json",
+      "sha256": "db318defcd12297cefb8aad5847a4a374f734b34cd36eb3e352ff83fe26548d7"
+    },
+    {
+      "path": "observability/pilot/source-custody.json",
+      "sha256": "7dd0c8ccd4cf98d88b977fb2494a43d9bb68164a0b5eda8c976f5d5a5847888a"
+    },
+    {
+      "path": "observability/pilot/tests/test_metadata_pilot.py",
+      "sha256": "ad174b7dc0a2a93e523484d416c80e4092ef69ee4d3c498597cf4bfc6b0b9117"
+    },
+    {
+      "path": "observability/pilot/tests/test_native_patch.py",
+      "sha256": "351e52610353a4aed631adc59f22ad3af503b6ab62885c1f4c1074d1e78289c9"
+    },
+    {
+      "path": "observability/pilot/units/aeon-pilot-alloy.service",
+      "sha256": "e8f066ea88175956290d26f851bddb267b2d2ba0d654ba7e7f72c8ef51cadd1f"
+    },
+    {
+      "path": "observability/pilot/units/aeon-pilot-grafana.service",
+      "sha256": "1f82b094aa16775d533a5b8a0d1fd033a11be70c7ee1281ae4aa60f897b2edde"
+    },
+    {
+      "path": "observability/pilot/units/aeon-pilot-prometheus.service",
+      "sha256": "96654e4e75f43af30d96c02afda98e6e376e3add99328da80f0a2dc88260fa8f"
+    },
+    {
+      "path": "observability/pilot/units/aeon-pilot-tempo.service",
+      "sha256": "ca052b4cfadc66d24f11914fbcaf251268bada3b1a9f7cd83ac051cffdf117d2"
+    }
+  ]
+}

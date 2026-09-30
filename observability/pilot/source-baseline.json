@@ -1,0 +1,209 @@
+{
+  "verified_on": "2026-09-30",
+  "upstream_recorded_revision": "57e919cf5a70ca6c4c0b766bbf144f734c941dc2",
+  "upstream_bytes_verified": false,
+  "plugin_version": "1.17.0",
+  "patch_owner": "AEON",
+  "sources": [
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/__init__.py",
+      "relative_path": "__init__.py",
+      "sha256": "95304f1c6ef7d05fe0e8920a85be5cba26817569c0940b3e8f3fb59de510111f"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/backends.py",
+      "relative_path": "backends.py",
+      "sha256": "f7bf4f7870882c6c732600ceacab27baea266f2b00f93fb432e3ca025a7f19f7"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/__init__.py",
+      "relative_path": "dashboard/backends/__init__.py",
+      "sha256": "b2517e366e15e81cb8ef0d6765f7887ae27959fcb9439f323c0e6b200d451f42"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/_loki.py",
+      "relative_path": "dashboard/backends/_loki.py",
+      "sha256": "09646ea52defe6d334a76c742e5d22a4829b29f0a7183e35922c30834631299b"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/_prometheus.py",
+      "relative_path": "dashboard/backends/_prometheus.py",
+      "sha256": "61584ace4841defafaee36f04001ad968572ae8d12992affe2a8e384dfa704c6"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/base.py",
+      "relative_path": "dashboard/backends/base.py",
+      "sha256": "de5045b34dfd2111aff6774c4294dd0067fc0b0566e08c13524ddcefcf81d875"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/jaeger.py",
+      "relative_path": "dashboard/backends/jaeger.py",
+      "sha256": "635a316f4526c8777f65a90b22000b0af722ccae9d06b293c626450a99171041"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/langfuse.py",
+      "relative_path": "dashboard/backends/langfuse.py",
+      "sha256": "49619db788382a5bef991b5dffab5a2c38bcf98e9ba0bd41bd36f3cc90a88074"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/openobserve.py",
+      "relative_path": "dashboard/backends/openobserve.py",
+      "sha256": "cb801026d54a10c406259a8cd9f2d3f883e1710fc0db737fb173006d10718a74"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/phoenix.py",
+      "relative_path": "dashboard/backends/phoenix.py",
+      "sha256": "c5a4595e34b284fd3b37d665c8d6f4cc68251c9a5b31c70bcbdb9a3bdb7f8247"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/signoz.py",
+      "relative_path": "dashboard/backends/signoz.py",
+      "sha256": "2ed489c3932d0a8d65705456e0a14f98741840127ad0d65c5f07b08dea17355c"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/tempo.py",
+      "relative_path": "dashboard/backends/tempo.py",
+      "sha256": "48f0983db4f0e15a21b6902f6ff500020f1e1744c52084ab08e30b9b6cf23eff"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/backends/uptrace.py",
+      "relative_path": "dashboard/backends/uptrace.py",
+      "sha256": "94ac41c9cc35e246b0c44b7b774d0eda0dfcb706a2d993cfac63eeeb6b183a56"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/dashboard/plugin_api.py",
+      "relative_path": "dashboard/plugin_api.py",
+      "sha256": "5f50142e6100f967041ab9b39b86bfffa6eacea6db42bfbfb695f61fbf7c538e"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/debug_utils.py",
+      "relative_path": "debug_utils.py",
+      "sha256": "ae0b5e4cdccaebfa4dea1754762d998617bc8b295831a1e55682a959047dca7d"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/gpu_probe.py",
+      "relative_path": "gpu_probe.py",
+      "sha256": "098b8b1420c6fe689ca2cfdb1c35ed68680fd687ba19abc65f0a531e48b00958"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/helpers.py",
+      "relative_path": "helpers.py",
+      "sha256": "32e837c0727ff9cbe0a91ef524bf430cadd8633dad489566cebc7c4c755f5b77"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hermes_home.py",
+      "relative_path": "hermes_home.py",
+      "sha256": "83b7076186996e3ae8e14cf36f5679f844424a91f7a5a68de00d41f28003c3eb"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/__init__.py",
+      "relative_path": "hooks/__init__.py",
+      "sha256": "c398f57f6c084f436161b8f8603fd099c02a31fb923105507be5a01ab6ab02c3"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/_common.py",
+      "relative_path": "hooks/_common.py",
+      "sha256": "2aed388aaabc2b9b86286e361ba9178d0192b05876fabcf10cae6c581f7f33c7"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/approval.py",
+      "relative_path": "hooks/approval.py",
+      "sha256": "4c650df76f91a5535883b407ac73d9144caaf6b8109384a1aac3f3f3803398bc"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/attributes.py",
+      "relative_path": "hooks/attributes.py",
+      "sha256": "5da49b0669ac4fa295a570c92c396dfd06dc1e82447126f1ea1eede308066944"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/llm.py",
+      "relative_path": "hooks/llm.py",
+      "sha256": "cf9433b9cbca5f3b0f31310ef515aee90d172b3bc70595d9c1e0f7724465caa1"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/propagation.py",
+      "relative_path": "hooks/propagation.py",
+      "sha256": "4d890187a7093da94b65d4c97d78c9779185379318db2fc91bdac8f9143fe63d"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/session.py",
+      "relative_path": "hooks/session.py",
+      "sha256": "74052c81a70e7836368b981c19d7a51cd11f89c70faf80f7ee66a84bfd92d70a"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/subagent.py",
+      "relative_path": "hooks/subagent.py",
+      "sha256": "4d630434ad5882b1374dca6fc264647d92d0511a329cd6e876006e3a685722ef"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/tools.py",
+      "relative_path": "hooks/tools.py",
+      "sha256": "b2c9c4bb62c2a443bae017faf5625c7cd114e8b576ec5551555add79e03e438f"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/usage.py",
+      "relative_path": "hooks/usage.py",
+      "sha256": "b8dbbdfc93c066bb589a88a70979ab8c54ffb939683f2487ca38b3d83ab4b088"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/host_metrics.py",
+      "relative_path": "host_metrics.py",
+      "sha256": "58cb39d2c83ed8af1c3cc6306bc89f90923466d144d190b32afb97f57c39d15f"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/langsmith_backend.py",
+      "relative_path": "langsmith_backend.py",
+      "sha256": "98dbb8ebefb400f6bf82c7e73a66c72a7811d0ee8a5f2d6fca49ca11d02146ad"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/live_store.py",
+      "relative_path": "live_store.py",
+      "sha256": "bd36113d8167290d0f989f8ef7801abad3a62cb2d378fb8bb76b46ce846b3e0e"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/log_handler.py",
+      "relative_path": "log_handler.py",
+      "sha256": "5ee61211131d41615d1b7c32cadf1fdf0690becbdc1673838176a20b8f6a0a77"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/plugin_config.py",
+      "relative_path": "plugin_config.py",
+      "sha256": "391a1352c7671745460d87088c406a200461834d4c2b9d5c4674a95baa2b099c"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/query_cli.py",
+      "relative_path": "query_cli.py",
+      "sha256": "76dfca79168bc1b4739e0551537b2792ffd0e2d314ee2a9ba08afc738d8c9da9"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/session_state.py",
+      "relative_path": "session_state.py",
+      "sha256": "25d7849e0121e7f941f33046cbe1e7f019acb6a4bb4dcf7b0772a0278535e58a"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/settings_report.py",
+      "relative_path": "settings_report.py",
+      "sha256": "1e4ff605e6606b7ba16e31f386aac67f0285aa82727358fab9ae9d77a62e0c82"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/skills/observability/scripts/otel.py",
+      "relative_path": "skills/observability/scripts/otel.py",
+      "sha256": "1bd81facaa44ec7d1f16d8155ea8b2c28d680d1fc0184d2d13dc84a63646beab"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/span_tracker.py",
+      "relative_path": "span_tracker.py",
+      "sha256": "58ea5f24bcf323237d82f90d3cd7a19ae200edcabbc96fb2db7b636ad9caa058"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/tracer.py",
+      "relative_path": "tracer.py",
+      "sha256": "8a60e22fa07cbe92b627cee22f35afebfc550057002ef9dd4c9b6996d3538cbb"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/plugin.yaml",
+      "relative_path": "plugin.yaml",
+      "sha256": "626c311e6c6ebb52540ce33dd968c483e10dd6cb4ca8950cfca4b00e7ef2ae8c"
+    }
+  ]
+}

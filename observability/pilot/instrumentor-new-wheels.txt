@@ -1,0 +1,4 @@
+opentelemetry-instrumentation==0.60b1 --hash=sha256:04480db952b48fb1ed0073f822f0ee26012b7be7c3eac1a3793122737c78632d
+opentelemetry-instrumentation-openai==0.61.0 --hash=sha256:3b1c37f53527dfca14bdff3da438aeae7a7f3477fc43c5a94e50f99137c277b9
+opentelemetry-semantic-conventions-ai==0.5.1 --hash=sha256:25aeb22bd261543b4898a73824026d96770e5351209c7d07a0b1314762b1f6e4
+wrapt==1.17.3 --hash=sha256:281262213373b6d5e4bb4353bc36d1ba4084e6d6b5d242863721ef2bf2c2930b

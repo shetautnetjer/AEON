@@ -1,0 +1,353 @@
+{
+  "verified_at": "2026-09-30T17:08:57.711970+00:00",
+  "scope": "Read-only local maintained source custody and plugin execution/context seam discovery. No network requests, installs, source/profile/config edits, service actions, collectors, model calls or raw sessions.",
+  "core_owner": {
+    "path": "/home/aya-hmw/.hermes/hermes-agent",
+    "head": "ec5f44138afcdc3f367136b94e49fb09c061ddaf",
+    "branch": "main",
+    "status": "",
+    "remote_names": [
+      "origin"
+    ],
+    "remote_contacted": false,
+    "recent_commits": [
+      "ec5f44138afcdc3f367136b94e49fb09c061ddaf 2026-09-29T16:06:18-04:00 Merge pull request #128348 from NousResearch/fix/release-claim-copy",
+      "7968c72a3cb80beaae51948378944dd6e3423b96 2026-09-29T12:07:49-07:00 chore: map andreausderhood contributor email",
+      "29956762939973753aa04a5da592b35f2570bdba 2026-09-29T12:07:37-07:00 fix(model-picker): stop the 50-model cap cutting the Nous and OpenRouter free tier",
+      "652ce40e5bbe8c427e27d0d931ffcd40c92f58e7 2026-09-25T03:06:41+02:00 feat(models): add stealth/space-bunny-alpha to the OpenRouter curated list",
+      "018d982bd98dceae8e9e2f65daaa5b711be2bfd2 2026-09-29T13:38:52-05:00 fix(agent): a home working dir is a fallback, not a project"
+    ]
+  },
+  "plugin_owner": {
+    "installed_path": "/home/aya-hmw/.hermes/plugins/hermes_otel",
+    "manifest_version": "1.17.0",
+    "git_marker_exists": false,
+    "sidecar_path": "/home/aya-hmw/.hermes/plugins/.install-metadata.json",
+    "sidecar_sha256": "39dc44cfda2bda16aa82d3fc2951f92e7a6fe7c8d7998536b21d49ccde341d37",
+    "source": "https://github.com/briancaffey/hermes-otel.git#hermes_otel",
+    "recorded_revision": "57e919cf5a70ca6c4c0b766bbf144f734c941dc2",
+    "pinned": true,
+    "provenance_class": "drift: install metadata row exists, installed .git is absent (Hermes plugins_provenance.py 2x2 rule)",
+    "maintained_local_git_checkout_found": false,
+    "coverage": [
+      "installed plugin",
+      "four managed workspace plugin-sources directories",
+      "uv git-v0 cache: one Git checkout inspected; no plugin match"
+    ],
+    "coverage_limit": "Not an exhaustive whole-disk search; installed-byte hashes prove the patch baseline, not upstream byte identity."
+  },
+  "managed_environments": [
+    {
+      "environment_id": "017948c64e90475e9b80ced75deea85f",
+      "workspace": "/home/aya-hmw/.hermes/installs/97d05de94d92cbdc/environments/017948c64e90475e9b80ced75deea85f/workspace",
+      "git_marker_exists": false,
+      "venv": "/home/aya-hmw/.hermes/installs/97d05de94d92cbdc/environments/017948c64e90475e9b80ced75deea85f/venv",
+      "dispatch_pins": {
+        "agent/chat_completion_helpers.py": "54967f4e8e86ca574b2a04e76c9860e6b34d012d0cffaf7f7d0b778c875e8fc8",
+        "agent/chat_completion_nonstream.py": "34d4afad0a0c7228a0518eed4a2521ba1a340f509c83784c74abceb56f1becb7",
+        "agent/turn_api_request.py": "e31386cb83cf551026e4df9b589173b54bc913b36fc1a09942a520e68033b59e",
+        "agent/turn_api_call.py": "8a30fbfd7e91f06b9b688be5a5b20be9c62c4114aae5e3bd14c0adf5ff23f16b",
+        "agent/turn_response_intake.py": "ff175a56283e807849da31e14416237b143c94f55a092e798c18a11479198e7b",
+        "hermes_cli/middleware.py": "31a0c6c5a3135cbfad4667b242e63a87ffbd6ce24b7b7a4a917811c4d4db8938",
+        "hermes_cli/plugins_dispatch.py": "fd1185e23edb80234e3f816a2fbbf990cdab37a3bf5c3d98b38337c7dd50e330"
+      },
+      "core_match": false
+    },
+    {
+      "environment_id": "0da83f1922664b0e9b7b2b82926b4cfd",
+      "workspace": "/home/aya-hmw/.hermes/installs/97d05de94d92cbdc/environments/0da83f1922664b0e9b7b2b82926b4cfd/workspace",
+      "git_marker_exists": false,
+      "venv": "/home/aya-hmw/.hermes/installs/97d05de94d92cbdc/environments/0da83f1922664b0e9b7b2b82926b4cfd/venv",
+      "dispatch_pins": {
+        "agent/chat_completion_helpers.py": "a30544a450129bdf3d22b31687e2325e5c765ff70fb605e3a997810a3f532b55",
+        "agent/chat_completion_nonstream.py": "34d4afad0a0c7228a0518eed4a2521ba1a340f509c83784c74abceb56f1becb7",
+        "agent/turn_api_request.py": "fae43abf285e6f2b82d1820b7bd62ee10214676a48d6af552b8d62530e59dd15",
+        "agent/turn_api_call.py": "8a30fbfd7e91f06b9b688be5a5b20be9c62c4114aae5e3bd14c0adf5ff23f16b",
+        "agent/turn_response_intake.py": "ab98da48e437f23ac81c3e9c83309d50d5d0b1200712990fce85c419d315efe9",
+        "hermes_cli/middleware.py": "66d018ab4de63eb3b5ce7c4712dcfcf1eb3ca32802cdaf19b2cab3523640e21f",
+        "hermes_cli/plugins_dispatch.py": "fd1185e23edb80234e3f816a2fbbf990cdab37a3bf5c3d98b38337c7dd50e330"
+      },
+      "core_match": true
+    },
+    {
+      "environment_id": "c273db7e49574481bb2b0f1c02d36545",
+      "workspace": "/home/aya-hmw/.hermes/installs/97d05de94d92cbdc/environments/c273db7e49574481bb2b0f1c02d36545/workspace",
+      "git_marker_exists": false,
+      "venv": "/home/aya-hmw/.hermes/installs/97d05de94d92cbdc/environments/c273db7e49574481bb2b0f1c02d36545/venv",
+      "dispatch_pins": {
+        "agent/chat_completion_helpers.py": "54967f4e8e86ca574b2a04e76c9860e6b34d012d0cffaf7f7d0b778c875e8fc8",
+        "agent/chat_completion_nonstream.py": "34d4afad0a0c7228a0518eed4a2521ba1a340f509c83784c74abceb56f1becb7",
+        "agent/turn_api_request.py": "e31386cb83cf551026e4df9b589173b54bc913b36fc1a09942a520e68033b59e",
+        "agent/turn_api_call.py": "8a30fbfd7e91f06b9b688be5a5b20be9c62c4114aae5e3bd14c0adf5ff23f16b",
+        "agent/turn_response_intake.py": "ff175a56283e807849da31e14416237b143c94f55a092e798c18a11479198e7b",
+        "hermes_cli/middleware.py": "31a0c6c5a3135cbfad4667b242e63a87ffbd6ce24b7b7a4a917811c4d4db8938",
+        "hermes_cli/plugins_dispatch.py": "fd1185e23edb80234e3f816a2fbbf990cdab37a3bf5c3d98b38337c7dd50e330"
+      },
+      "core_match": false
+    },
+    {
+      "environment_id": "d9127d68574f41fa9fb30b97c7faab93",
+      "workspace": "/home/aya-hmw/.hermes/installs/97d05de94d92cbdc/environments/d9127d68574f41fa9fb30b97c7faab93/workspace",
+      "git_marker_exists": false,
+      "venv": "/home/aya-hmw/.hermes/installs/97d05de94d92cbdc/environments/d9127d68574f41fa9fb30b97c7faab93/venv",
+      "dispatch_pins": {
+        "agent/chat_completion_helpers.py": "54967f4e8e86ca574b2a04e76c9860e6b34d012d0cffaf7f7d0b778c875e8fc8",
+        "agent/chat_completion_nonstream.py": "34d4afad0a0c7228a0518eed4a2521ba1a340f509c83784c74abceb56f1becb7",
+        "agent/turn_api_request.py": "e31386cb83cf551026e4df9b589173b54bc913b36fc1a09942a520e68033b59e",
+        "agent/turn_api_call.py": "8a30fbfd7e91f06b9b688be5a5b20be9c62c4114aae5e3bd14c0adf5ff23f16b",
+        "agent/turn_response_intake.py": "ff175a56283e807849da31e14416237b143c94f55a092e798c18a11479198e7b",
+        "hermes_cli/middleware.py": "31a0c6c5a3135cbfad4667b242e63a87ffbd6ce24b7b7a4a917811c4d4db8938",
+        "hermes_cli/plugins_dispatch.py": "fd1185e23edb80234e3f816a2fbbf990cdab37a3bf5c3d98b38337c7dd50e330"
+      },
+      "core_match": false
+    }
+  ],
+  "active_environment": "Not independently inferred from process command line or arbitrary profile overrides. Latest 0da83f1922664b0e9b7b2b82926b4cfd source matches maintained core dispatch files; earlier three differ. Preserve all four.",
+  "context_findings": [
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/plugins_dispatch.py",
+      "line": 42,
+      "finding": "pre_api_request/post_api_request/api_request_error are bounded observer hooks; normal configured timeout dispatches callbacks on copied-context worker threads. Attaching OTel in pre hook does not set caller context."
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/plugins_dispatch.py",
+      "line": 269,
+      "finding": "Each bounded hook worker contextvars.copy_context().run(callback) is one-way; detach in later hook worker would be in a different Context."
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/plugins.py",
+      "line": 978,
+      "finding": "Existing public ctx.register_middleware supports llm_execution; no new core extension point is needed."
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/middleware.py",
+      "line": 135,
+      "finding": "run_llm_execution_middleware invokes callback chain inline and provides next_call single-use wrapper; downstream exceptions propagate rather than being retried by middleware."
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/agent/turn_api_call.py",
+      "line": 127,
+      "finding": "Actual provider execution passes task_id, turn_id, api_request_id and session_id into execution middleware, after pre_api_request hook finishes."
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/agent/chat_completion_helpers.py",
+      "line": 77,
+      "finding": "_context_thread_target copies caller ContextVars; attached parent in execution middleware crosses to SDK workers."
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/agent/chat_completion_nonstream.py",
+      "line": 283,
+      "finding": "Nonstream SDK worker uses _context_thread_target(self._call)."
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/agent/chat_completion_helpers.py",
+      "line": 4050,
+      "finding": "Streaming worker uses _context_thread_target(self._run_call); selected cron/delegated inline path preserves caller ContextVars. Bridge spans bracket streaming call lifetime, not just generator creation."
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/tracer.py",
+      "line": 1271,
+      "finding": "Plugin stores its own provider as _tracer_provider; use explicit provider for selected instrumentor, preserve singleton/provider reuse. Global provider may be an earlier provider after reinit."
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/llm.py",
+      "line": 266,
+      "finding": "Pre API hook records active span under api:<task_id> and assigns supplied session.id; api_request_id is NOT recorded. Generic correlation.id extraction accepts only separately supplied correlation-id aliases, never api_request_id."
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/span_tracker.py",
+      "line": 115,
+      "finding": "Use exact get_span(api:<task_id>) and validate supplied session.id plus a narrow pre-hook addition recording actual api_request_id as hermes.api_request.id. Do not infer attempt identity from task/session alone or session-stack fallback."
+    }
+  ],
+  "recommended_patch_custody": {
+    "git_owner": "/home/aya-hmw/Documents/ChatGPT/AEON",
+    "relative_scope": "observability/pilot/patches/ + source-pins.json + own synthetic tests/config/docs",
+    "form": "Small unified patch series pinned to existing installed source SHA256 and recorded upstream revision; preserve Brian Caffey Apache-2.0 attribution. Load/apply against a disposable temporary copy for in-memory synthetic SDK tests. Do not track a copied full plugin implementation or initialize another repository.",
+    "runtime_changes_now": false,
+    "core_patch_required": false,
+    "narrow_targets": [
+      "hermes_otel/__init__.py registration of existing llm_execution middleware only when pilot gate selected",
+      "hermes_otel own helper/module implementing exact parent attach/detach and metadata export sanitization",
+      "hermes_otel/tracer.py provider processor attachment or export boundary; no second SDK/provider",
+      "hermes_otel/hooks/llm.py pre API hook: record actually supplied api_request_id as a trace-local attribute for exact middleware-parent matching; no global taxonomy or new identity"
+    ],
+    "failure_boundary": "Telemetry bridge may fail open before invocation; call next_call exactly once. Never catch provider exception then retry next_call. Detach in same Context finally, including errors/cancellation; require actual task-key, supplied session.id and supplied api_request_id match on active recording API span. Missing/stale/mismatched parent skips bridge rather than guessing.",
+    "privacy_boundary": "Allowed values and fixed names, status descriptions, events, links and resources need filtering before exporter; content-off alone does not guard command/target/rollup/skill/error/span-name leak paths. Keep configured native logs/metrics/history/live-store off in inert profile and fixture exporter in-memory."
+  },
+  "applicable_methodology": {
+    "read": [
+      "/home/aya-hmw/HERMES.md",
+      "/home/aya-hmw/.hermes/hermes-agent/AGENTS.md",
+      "/home/aya-hmw/.hermes/hermes-agent/agent/AGENTS.md",
+      "/home/aya-hmw/.hermes/hermes-agent/plugins/AGENTS.md",
+      "/home/aya-hmw/.hermes/skills/software-development/search-first/SKILL.md",
+      "/home/aya-hmw/.hermes/skills/software-development/test-driven-development/SKILL.md",
+      "/home/aya-hmw/.hermes/skills/software-development/verification-before-completion/SKILL.md",
+      "/home/aya-hmw/.hermes/skills/software-development/requesting-code-review/SKILL.md"
+    ],
+    "source_rules": [
+      "Core narrow waist; plugin must not modify core files",
+      "Outbound telemetry requires opt-in",
+      "Hermes Python dependency changes are owned by PM; no raw pip/uv mutation",
+      "Core tests always scripts/run_tests.sh with isolated HERMES_HOME",
+      "Behavior invariants and real imports/temp profile tests; no active home writes"
+    ],
+    "creator_approval_gate_for_reversible_offline_preparation": null,
+    "overrides": "User explicit local-only/no cloud/no agent-memory writes overrides home context cloud navigation and post-turn memory sync instructions. Live deployment, installing acquisition and real capture remain separate approval."
+  },
+  "source_pins": [
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/AGENTS.md",
+      "sha256": "1c63f46726032e4c41e05673b25a88ff495105a3df3f47046c1e9f6093e4175c",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/agent/AGENTS.md",
+      "sha256": "b156ed5d67ef379badb88c380340af1b02d6b0e9d81a15ac883b9bb7d313c628",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/plugins/AGENTS.md",
+      "sha256": "2c2f67dfdb4f9c25ee2cce412e616f63a4784366836b14b8b4ce218df0f48a8a",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/agent/chat_completion_helpers.py",
+      "sha256": "a30544a450129bdf3d22b31687e2325e5c765ff70fb605e3a997810a3f532b55",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/agent/chat_completion_nonstream.py",
+      "sha256": "34d4afad0a0c7228a0518eed4a2521ba1a340f509c83784c74abceb56f1becb7",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/agent/turn_api_request.py",
+      "sha256": "fae43abf285e6f2b82d1820b7bd62ee10214676a48d6af552b8d62530e59dd15",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/agent/turn_api_call.py",
+      "sha256": "8a30fbfd7e91f06b9b688be5a5b20be9c62c4114aae5e3bd14c0adf5ff23f16b",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/agent/turn_response_intake.py",
+      "sha256": "ab98da48e437f23ac81c3e9c83309d50d5d0b1200712990fce85c419d315efe9",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/plugins.py",
+      "sha256": "a771f156f1f957fba28bbd715adf68165cf934917a6d460af91de00467a48544",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/plugins_dispatch.py",
+      "sha256": "fd1185e23edb80234e3f816a2fbbf990cdab37a3bf5c3d98b38337c7dd50e330",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/middleware.py",
+      "sha256": "66d018ab4de63eb3b5ce7c4712dcfcf1eb3ca32802cdaf19b2cab3523640e21f",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/plugins_provenance.py",
+      "sha256": "351df6e11f7635d1bbe0ee0502ac3850fc68dd2445614827dd2c04854faa1143",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/pyproject.toml",
+      "sha256": "856ddfe32a7ccbfc5ba4e2b73c43864aa673dcab794b717cc08f1354292fe9df",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/uv.lock",
+      "sha256": "1031e29694734bb543173ec74769bee7f04ee24fdc07cb2577a9d328176a70cf",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/hermes-agent/scripts/run_tests.sh",
+      "sha256": "16cd6223a3b517326e023c3b716a182e2818fcc04ebf8a1855f83dc72e52743d",
+      "role": "maintained Hermes source or instructions"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/plugin.yaml",
+      "sha256": "626c311e6c6ebb52540ce33dd968c483e10dd6cb4ca8950cfca4b00e7ef2ae8c",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/requirements.txt",
+      "sha256": "11be84d29737ad2e238cbb04ba10c838754b92ab807a47a2f3c15ca98e9d6bf8",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/LICENSE",
+      "sha256": "43e9d7fc433a06ad130162fa77c108088fb04369a651a386eb2ff2b0cf85817f",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/__init__.py",
+      "sha256": "95304f1c6ef7d05fe0e8920a85be5cba26817569c0940b3e8f3fb59de510111f",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/tracer.py",
+      "sha256": "8a60e22fa07cbe92b627cee22f35afebfc550057002ef9dd4c9b6996d3538cbb",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/span_tracker.py",
+      "sha256": "58ea5f24bcf323237d82f90d3cd7a19ae200edcabbc96fb2db7b636ad9caa058",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/plugin_config.py",
+      "sha256": "391a1352c7671745460d87088c406a200461834d4c2b9d5c4674a95baa2b099c",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/attributes.py",
+      "sha256": "5da49b0669ac4fa295a570c92c396dfd06dc1e82447126f1ea1eede308066944",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/llm.py",
+      "sha256": "cf9433b9cbca5f3b0f31310ef515aee90d172b3bc70595d9c1e0f7724465caa1",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/approval.py",
+      "sha256": "4c650df76f91a5535883b407ac73d9144caaf6b8109384a1aac3f3f3803398bc",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/tools.py",
+      "sha256": "b2c9c4bb62c2a443bae017faf5625c7cd114e8b576ec5551555add79e03e438f",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/subagent.py",
+      "sha256": "4d630434ad5882b1374dca6fc264647d92d0511a329cd6e876006e3a685722ef",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    },
+    {
+      "path": "/home/aya-hmw/.hermes/plugins/hermes_otel/hooks/session.py",
+      "sha256": "74052c81a70e7836368b981c19d7a51cd11f89c70faf80f7ee66a84bfd92d70a",
+      "role": "installed plugin baseline; not a maintained Git checkout"
+    }
+  ],
+  "remaining_limits": [
+    "Recorded plugin revision is provenance, not independently verified upstream/local byte equivalence; baseline source SHA256 is authoritative for offline patch application.",
+    "Installed selected OpenAI instrumentor is absent; actual instrumentor integration waits approved artifact install, while SDK/API parent bridge can be tested now.",
+    "No claim that native Codex/AYA sessions share Hermes parent context; separate process correlation requires future verified invocation contract.",
+    "No active default-profile settings or credentials were read here; no collector delivery proven."
+  ],
+  "verification": {
+    "source_pins_match": true,
+    "source_pins_count": 28,
+    "core_still_clean": true,
+    "no_runtime_actions": true
+  }
+}

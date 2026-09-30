@@ -1,2 +1,5 @@
 # Linked worktrees keep their original Git ownership.
 /worktrees/
+# Proposed pilot artifacts/state stay outside source custody.
+/artifacts/observability/
+/var/observability-pilot/

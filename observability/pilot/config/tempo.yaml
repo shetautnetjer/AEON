@@ -1,0 +1,75 @@
+# INERT. Tempo 3.1.0 monolithic only (-target=all), no Kafka or external object store.
+target: all
+stream_over_http_enabled: true
+multitenancy_enabled: false
+
+server:
+  http_listen_address: 127.0.0.1
+  http_listen_port: 13200
+  grpc_listen_address: 127.0.0.1
+  grpc_listen_port: 19095
+  log_level: warn
+
+internal_server:
+  enable: false
+  http_listen_address: 127.0.0.1
+  http_listen_port: 13101
+
+# Single-node rings; explicit defensive loopback bind even if memberlist is idle.
+memberlist:
+  bind_addr: [127.0.0.1]
+  bind_port: 17946
+  join_members: []
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 127.0.0.1:24317
+        http:
+          endpoint: 127.0.0.1:24318
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/tempo/wal
+    local:
+      path: /home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/tempo/blocks
+    pool:
+      max_workers: 4
+      queue_depth: 32
+
+live_store:
+  wal:
+    path: /home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/tempo/live-store/traces
+  shutdown_marker_dir: /home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/tempo/live-store/shutdown-marker
+  max_live_traces_bytes: 8388608
+  max_block_bytes: 1048576
+  query_block_concurrency: 1
+  complete_block_concurrency: 1
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+
+backend_scheduler:
+  local_work_path: /home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/tempo/work
+
+backend_worker:
+  # 3.1 uses backend-worker compaction, not the removed 2.x compactor block.
+  compaction:
+    block_retention: 24h
+    compacted_block_retention: 1h
+    max_block_bytes: 8388608
+
+querier:
+  max_concurrent_queries: 2
+
+query_frontend:
+  mcp_server:
+    enabled: false
+
+usage_report:
+  reporting_enabled: false

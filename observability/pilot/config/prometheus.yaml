@@ -1,0 +1,27 @@
+# INERT. This new instance does not replace an existing collector or database.
+global:
+  scrape_interval: 15s
+  scrape_timeout: 5s
+  evaluation_interval: 30s
+
+storage:
+  tsdb:
+    retention:
+      time: 24h
+      size: 512MB
+
+scrape_configs:
+  - job_name: alloy-pilot-health
+    static_configs:
+      - targets: [127.0.0.1:12346]
+    sample_limit: 1000
+    label_limit: 10
+    label_name_length_limit: 64
+    label_value_length_limit: 128
+    metric_relabel_configs:
+      # Fixed names only: pipeline health/process costs, no arbitrary dimensions.
+      - source_labels: [__name__]
+        regex: '(up|scrape_.+|process_cpu_seconds_total|process_resident_memory_bytes|go_goroutines|otelcol_receiver_(accepted|refused)_spans(_total)?|otelcol_exporter_(sent|send_failed)_spans(_total)?)'
+        action: keep
+      - regex: '__name__|job|instance|receiver|exporter|transport'
+        action: labelkeep

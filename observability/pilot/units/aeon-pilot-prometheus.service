@@ -1,0 +1,21 @@
+# INERT draft: copying does not authorize enable/start. No [Install] section.
+[Unit]
+Description=AEON synthetic-only prometheus pilot
+
+[Service]
+Type=simple
+WorkingDirectory=/home/aya-hmw/Documents/ChatGPT/AEON
+ExecStart=/usr/bin/env -i PATH=/usr/bin:/bin GOMAXPROCS=2 GOMEMLIMIT=300MiB /home/aya-hmw/.local/bin/prometheus --config.file=/home/aya-hmw/Documents/ChatGPT/AEON/observability/pilot/config/prometheus.yaml --web.listen-address=127.0.0.1:19090 --web.enable-remote-write-receiver --web.max-connections=32 --storage.tsdb.path=/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/prometheus --query.max-concurrency=2 --query.timeout=10s --storage.remote.flush-deadline=10s
+UMask=0077
+NoNewPrivileges=true
+MemoryAccounting=true
+MemoryHigh=320M
+MemoryMax=384M
+MemorySwapMax=0
+CPUQuota=50%
+TasksMax=128
+Restart=no
+RuntimeMaxSec=30min
+TimeoutStopSec=25s
+StandardOutput=journal
+StandardError=journal

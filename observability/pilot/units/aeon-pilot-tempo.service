@@ -1,0 +1,21 @@
+# INERT draft: copying does not authorize enable/start. No [Install] section.
+[Unit]
+Description=AEON synthetic-only tempo pilot
+
+[Service]
+Type=simple
+WorkingDirectory=/home/aya-hmw/Documents/ChatGPT/AEON
+ExecStart=/usr/bin/env -i PATH=/usr/bin:/bin GOMAXPROCS=2 GOMEMLIMIT=600MiB /home/aya-hmw/Documents/ChatGPT/AEON/artifacts/observability/tempo-3.1.0/tempo -target=all -config.file=/home/aya-hmw/Documents/ChatGPT/AEON/observability/pilot/config/tempo.yaml
+UMask=0077
+NoNewPrivileges=true
+MemoryAccounting=true
+MemoryHigh=640M
+MemoryMax=768M
+MemorySwapMax=0
+CPUQuota=75%
+TasksMax=128
+Restart=no
+RuntimeMaxSec=30min
+TimeoutStopSec=25s
+StandardOutput=journal
+StandardError=journal

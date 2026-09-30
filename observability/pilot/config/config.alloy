@@ -1,0 +1,181 @@
+// INERT SYNTHETIC PILOT. No existing collector/export profile is changed.
+// Run only after approved artifact acquisition, resource/capture review and smoke.
+logging {
+	level  = "warn"
+	format = "logfmt"
+}
+
+otelcol.receiver.otlp "pilot" {
+	grpc {
+		endpoint = "127.0.0.1:14317"
+	}
+
+	http {
+		endpoint = "127.0.0.1:14318"
+	}
+
+	output {
+		traces = [otelcol.processor.memory_limiter.pilot.input]
+	}
+}
+
+otelcol.processor.memory_limiter "pilot" {
+	check_interval = "1s"
+	limit          = "256MiB"
+	spike_limit    = "64MiB"
+
+	output {
+		traces = [otelcol.processor.filter.metadata_only.input]
+	}
+}
+
+// Source-side strict normalization is required too: keys alone cannot protect values.
+// Drop unknown span categories and every event; real sessions are outside this pilot.
+otelcol.processor.filter "metadata_only" {
+	error_mode = "propagate"
+
+	traces {
+		span = [
+			`not IsMatch(name, "^(agent|cron|llm|api|tool|approval|lookup|decision|subagent|skill|error|sdk|other)$")`,
+		]
+		spanevent = ["true"]
+	}
+
+	output {
+		traces = [otelcol.processor.transform.metadata_only.input]
+	}
+}
+
+otelcol.processor.transform "metadata_only" {
+	error_mode = "propagate"
+
+	trace_statements {
+		context    = "resource"
+		statements = [
+			`keep_keys(attributes, [])`,
+			`set(attributes["service.name"], "hermes-offline-pilot")`,
+			`set(attributes["deployment.environment.name"], "synthetic")`,
+		]
+	}
+
+	trace_statements {
+		context    = "scope"
+		statements = [
+			`keep_keys(attributes, [])`,
+			`set(name, "aeon.offline.synthetic")`,
+			`set(version, "1")`,
+		]
+	}
+
+	trace_statements {
+		context    = "span"
+		statements = [
+			`set(status.message, "")`,
+			`keep_keys(attributes, ["session.id", "gen_ai.conversation.id", "gen_ai.tool.call.id", "hermes.api_request.id", "hermes.turn.number", "gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens", "hermes.api.retry_count", "gen_ai.operation.name", "gen_ai.provider.name", "gen_ai.request.model", "gen_ai.response.model", "gen_ai.tool.name", "hermes.tool.outcome", "error.type", "hermes.lookup.result", "hermes.verification.result"])`,
+			`set(attributes["operation"], attributes["gen_ai.operation.name"]) where attributes["gen_ai.operation.name"] != nil`,
+			`set(attributes["outcome"], attributes["hermes.tool.outcome"]) where attributes["hermes.tool.outcome"] != nil`,
+			`delete_key(attributes, "operation") where attributes["operation"] != nil and not IsMatch(attributes["operation"], "^(chat|execute_tool|lookup|verify|approval)$")`,
+			`delete_key(attributes, "outcome") where attributes["outcome"] != nil and not IsMatch(attributes["outcome"], "^(completed|error|blocked|timeout|cancelled|abstained|verified|rejected)$")`,
+		]
+	}
+
+	output {
+		traces = [otelcol.exporter.otlp.tempo.input, otelcol.processor.filter.canonical_attempt.input]
+	}
+}
+
+// Native API attempts are canonical: envelopes/SDK siblings do not count twice.
+otelcol.processor.filter "canonical_attempt" {
+	error_mode = "propagate"
+
+	traces {
+		span = [`name != "api"`]
+	}
+
+	output {
+		traces = [otelcol.connector.spanmetrics.pilot.input]
+	}
+}
+
+otelcol.exporter.otlp "tempo" {
+	client {
+		endpoint = "127.0.0.1:24317"
+
+		tls {
+			insecure = true
+		}
+	}
+
+	sending_queue {
+		enabled       = true
+		num_consumers = 1
+		queue_size    = 32
+	}
+
+	retry_on_failure {
+		enabled          = true
+		initial_interval = "1s"
+		max_interval     = "5s"
+		max_elapsed_time = "15s"
+	}
+}
+
+otelcol.connector.spanmetrics "pilot" {
+	namespace                     = "aeon.pilot"
+	aggregation_temporality       = "CUMULATIVE"
+	aggregation_cardinality_limit = 256
+	metrics_flush_interval        = "15s"
+	metrics_expiration            = "5m"
+	exclude_dimensions            = ["service.name", "span.name", "span.kind"]
+	include_collector_instance_id = false
+
+	dimension {
+		name = "operation"
+	}
+
+	dimension {
+		name = "outcome"
+	}
+
+	histogram {
+		explicit {
+			buckets = ["5ms", "10ms", "50ms", "100ms", "500ms", "1s", "5s", "15s"]
+		}
+	}
+
+	exemplars {
+		enabled = false
+	}
+
+	output {
+		metrics = [otelcol.exporter.prometheus.pilot.input]
+	}
+}
+
+otelcol.exporter.prometheus "pilot" {
+	forward_to                       = [prometheus.remote_write.local.receiver]
+	resource_to_telemetry_conversion = false
+	include_scope_info               = false
+	include_scope_labels             = false
+	include_target_info              = false
+}
+
+prometheus.remote_write "local" {
+	endpoint {
+		url = "http://127.0.0.1:19090/api/v1/write"
+
+		queue_config {
+			capacity             = 1000
+			min_shards           = 1
+			max_shards           = 1
+			max_samples_per_send = 500
+			batch_send_deadline  = "5s"
+		}
+	}
+
+	wal {
+		truncate_frequency = "15m"
+		min_keepalive_time = "5m"
+		max_keepalive_time = "30m"
+	}
+}

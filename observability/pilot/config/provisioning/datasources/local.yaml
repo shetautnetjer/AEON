@@ -1,0 +1,21 @@
+# INERT. Provision only built-in local Tempo and Prometheus data sources.
+apiVersion: 1
+datasources:
+  - name: AEON synthetic Tempo
+    uid: aeon-pilot-tempo
+    type: tempo
+    access: proxy
+    url: http://127.0.0.1:13200
+    editable: false
+    jsonData:
+      httpMethod: GET
+  - name: AEON synthetic Prometheus
+    uid: aeon-pilot-prometheus
+    type: prometheus
+    access: proxy
+    url: http://127.0.0.1:19090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s

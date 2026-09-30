@@ -1,0 +1,120 @@
+--- a/plugin_config.py
++++ b/plugin_config.py
+@@ -206,6 +206,8 @@
+     # ``content_capture`` (see _reconcile_content_capture) and hook code reads
+     # the booleans. ``capture_previews: false`` still means "off".
+     content_capture: str = "full"
++    # Opt-in, isolated synthetic pilot; no change to existing profiles.
++    metadata_only_export: bool = False
+     capture_full_prompts: bool = True
+     capture_full_responses: bool = True
+     # Opt-in: platform user identifier from Hermes gateway sessions. Hermes
+--- a/__init__.py
++++ b/__init__.py
+@@ -26,6 +26,14 @@
+ 
+     if not tracer.is_enabled:
+         return
++
++    if tracer.config.metadata_only_export:
++        from .metadata_pilot import execution_bridge
++
++        def _pilot_execution(**kwargs):
++            return execution_bridge(tracer, **kwargs)
++
++        ctx.register_middleware("llm_execution", _pilot_execution)
+ 
+     # Core hooks (always available)
+     ctx.register_hook("pre_tool_call", hooks.on_pre_tool_call)
+--- a/hooks/llm.py
++++ b/hooks/llm.py
+@@ -276,6 +276,8 @@
+         "llm.request.approx_input_tokens": approx_input_tokens,
+     }
+     attributes.update(_session_identity_attributes(session_id))
++    if tracer.config.metadata_only_export and kwargs.get("api_request_id"):
++        attributes["hermes.api_request.id"] = str(kwargs["api_request_id"])
+     attributes.update(_model_attributes(model, provider))
+     attributes.update(_gen_ai_attributes(session_id, "chat"))
+     attributes.update(_gen_ai_request_param_attributes(kwargs))
+--- a/tracer.py
++++ b/tracer.py
+@@ -818,6 +818,10 @@
+         if self._initialized:
+             self.shutdown()
+         self._reset_pipeline_state()
++        if self.config.metadata_only_export:
++            from .metadata_pilot import pilot_config_valid
++            if not pilot_config_valid(self.config):
++                return False
+         self._label_values = {}
+         self._label_cap_logged = set()
+         self.hermes_home = resolve_hermes_home()
+@@ -948,6 +952,14 @@
+             logger.info("[hermes-otel] Disabled via config (enabled=false)")
+             return False
+ 
++        if self.config.metadata_only_export:
++            # Exact local pilot destination; never inherit external backend routes.
++            return self._init_otlp_pipeline([_ResolvedBackend(
++                type="otlp", endpoint="http://127.0.0.1:14318/v1/traces",
++                display_name="AEON synthetic pilot",
++                supports_metrics=False, supports_logs=False,
++            )])
++
+         # 1. LangSmith short-circuit (legacy compat).
+         if self._wants_langsmith():
+             return self._init_langsmith()
+@@ -1137,7 +1149,10 @@
+         metrics, attached to a single shared ``MeterProvider``.
+         """
+         try:
+-            resource = self._build_resource(backends)
++            if self.config.metadata_only_export:
++                resource = Resource({"service.name": "hermes-offline-pilot"})
++            else:
++                resource = self._build_resource(backends)
+ 
+             provider_kwargs: Dict[str, Any] = {"resource": resource}
+             if self.config.sample_rate is not None:
+@@ -1150,6 +1165,9 @@
+             provider = TracerProvider(**provider_kwargs)
+ 
+             def _attach(processor: Any) -> None:
++                if self.config.metadata_only_export:
++                    from .metadata_pilot import MetadataOnlyProcessor
++                    processor = MetadataOnlyProcessor(processor)
+                 # Every processor sits behind the same MCP keepalive filter so
+                 # the OTLP backends and the live dashboard agree on what a
+                 # trace list looks like. See _MCPPingFilterProcessor.
+@@ -1205,9 +1223,18 @@
+                 hdrs = self._merge_headers(b.headers)
+                 if b.supports_traces:
+                     try:
++                        if self.config.metadata_only_export:
++                            from requests import Session
++
++                            session = Session()
++                            session.trust_env = False
++                            otlp_exporter = OTLPSpanExporter(
++                                endpoint=b.endpoint, headers=hdrs, session=session, timeout=1.0)
++                        else:
++                            otlp_exporter = OTLPSpanExporter(endpoint=b.endpoint, headers=hdrs)
+                         exporter = _LoggingSpanExporter(
+-                            OTLPSpanExporter(endpoint=b.endpoint, headers=hdrs), b.display_name
++                            otlp_exporter, b.display_name
+                         )
+                         processor = BatchSpanProcessor(
+                             exporter,
+                             max_queue_size=self.config.span_batch_max_queue_size,
+--- a/plugin.yaml
++++ b/plugin.yaml
+@@ -25,6 +25,8 @@
+   - opentelemetry-sdk<2
+   - opentelemetry-exporter-otlp-proto-http<2
+   - PyYAML>=6,<7
++provides_middleware:
++  - llm_execution
+ provides_hooks:
+   - on_session_start
+   - on_session_end

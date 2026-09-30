@@ -1,0 +1,21 @@
+# INERT draft: copying does not authorize enable/start. No [Install] section.
+[Unit]
+Description=AEON synthetic-only grafana pilot
+
+[Service]
+Type=simple
+WorkingDirectory=/home/aya-hmw/Documents/ChatGPT/AEON
+ExecStart=/usr/bin/env -i PATH=/usr/bin:/bin GOMAXPROCS=2 /home/aya-hmw/Documents/ChatGPT/AEON/artifacts/observability/grafana-13.2.3/bin/grafana server --homepath=/home/aya-hmw/Documents/ChatGPT/AEON/artifacts/observability/grafana-13.2.3 --config=/home/aya-hmw/Documents/ChatGPT/AEON/observability/pilot/config/grafana.ini
+UMask=0077
+NoNewPrivileges=true
+MemoryAccounting=true
+MemoryHigh=320M
+MemoryMax=384M
+MemorySwapMax=0
+CPUQuota=25%
+TasksMax=128
+Restart=no
+RuntimeMaxSec=30min
+TimeoutStopSec=25s
+StandardOutput=journal
+StandardError=journal

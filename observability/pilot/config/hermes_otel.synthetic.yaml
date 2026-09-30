@@ -1,0 +1,27 @@
+# INERT, for the disposable patched-source fixture only; never the active profile.
+enabled: true
+metadata_only_export: true
+content_capture: off
+capture_previews: false
+capture_full_prompts: false
+capture_full_responses: false
+capture_sender_id: false
+capture_conversation_history: false
+capture_logs: false
+dashboard_live: false
+emit_genai_metrics: false
+host_metrics: false
+discovery_prompt: false
+sample_rate: 1.0
+span_batch_max_queue_size: 64
+span_batch_max_export_batch_size: 32
+span_batch_schedule_delay_ms: 100
+span_batch_export_timeout_ms: 1000
+force_flush_on_session_end: true
+force_flush_wait_ms: 100
+backends:
+  - type: otlp
+    name: AEON synthetic pilot
+    endpoint: http://127.0.0.1:14318/v1/traces
+    metrics: false
+    logs: false
