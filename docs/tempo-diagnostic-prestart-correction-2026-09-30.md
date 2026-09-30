@@ -1,0 +1,11 @@
+# Tempo diagnostic pre-start correction
+
+The creator approved one synthetic diagnostic against packet commit `9a1165df6d2fbb0fc1793f2d14a23505b98d5b82` at 2026-09-30 21:13:15 UTC, reference `Sentinel_f23a24e183788191a0eeb9be9c42144c`. Fresh preflight exposed two prerequisite defects before any service or runtime window started. This reviewed correction retains the approved scope and records the exact code subsequently executed rather than claiming the packet was unchanged.
+
+The two 40-second quiet periods now receive 41 seconds of phase allowance to account for clock-read overhead. Each quiet-loop iteration reads its clock once and exits before a negative sleep can occur. The inert `systemd-analyze --user verify` command receives the existing `/run/user/<uid>` path explicitly; the five other binary-validator environments and all service/emitter environments remain unchanged. An exclusive `window.json` receipt is saved before the first start request; a write failure blocks startup, and its deadline cannot be reset by restart.
+
+All 170 sealed fixture tests pass with no failures, errors, skips or undeclared imports. Independent review passed 142 scoped tests with sockets and process creation denied. Real inert validation of four temporary user-unit files passed without registration or startup. The [verification receipt](../observability/pilot/evidence/tempo-diagnostic-prestart-verification-2026-09-30.json) records these checks and the [36 source pins](../observability/pilot/diagnostic-source-pins.json).
+
+The approved maximum remains 900 seconds including cleanup, with a 95-second cleanup reserve, at most 25 synthetic spans, four isolated loopback services, 2,176 MiB and 2.25 CPU cores combined. Tempo retains a 90-second stop allowance. A restart remains conditional on every first-stop gate, including verified terminal OOM evidence. Missing OOM proof fails qualification and prevents restart. No downloads, real sessions, model calls, external telemetry or original-pilot changes are authorized or introduced. Preparation time precedes the runtime window.
+
+The original packet, pilot failure receipts and state remain preserved. This document records pre-start repair only; live outcomes belong in a separate result receipt.

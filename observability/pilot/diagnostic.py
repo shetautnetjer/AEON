@@ -130,6 +130,9 @@ class Runner:
             budget = Budget(self.clock)
             result['window'] = {'wall_deadline':budget.wall_deadline,'monotonic_deadline':budget.mono_deadline,
                                 'maximum_seconds':900,'cleanup_reserve_seconds':95}
+            stage = 'start'
+            record_window = getattr(self.backend,'record_window',None)
+            if record_window is not None: record_window(result['window'])
             step('start',30,lambda t:self.backend.start(runtime_seconds=budget.runtime_cap(),timeout=t))
             step('limits',10,lambda t:self.backend.verify_active(timeout=t))
             step('configuration',10,lambda t:self.backend.effective_config(timeout=t))
@@ -147,7 +150,7 @@ class Runner:
                 return validate_readback(emitted,value)
             result['initial_denominators'] = step('initial',60,lambda t:read('initial',t))
             stage = 'first_graceful_stop'
-            self.backend.quiesce(seconds=40,timeout=budget.phase(40))
+            self.backend.quiesce(seconds=40,timeout=budget.phase(41))
             def stop(timeout):
                 proof=self.backend.stop_tempo(timeout=timeout)
                 validate_graceful(proof,peers_required=True)
@@ -157,7 +160,7 @@ class Runner:
             step('restart_limits',10,lambda t:self.backend.verify_active(timeout=t))
             result['durability_denominators'] = step('durability',60,lambda t:read('durability',t))
             stage='final_graceful_stop'
-            self.backend.quiesce(seconds=40,timeout=budget.phase(40))
+            self.backend.quiesce(seconds=40,timeout=budget.phase(41))
             flow_complete=True
         except BaseException as error:
             checks[stage]='failed'

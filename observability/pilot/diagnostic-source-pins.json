@@ -42,7 +42,7 @@
     },
     {
       "path": "observability/pilot/diagnostic.py",
-      "sha256": "25e24f45cdbe9fc0599125135d38438f50f020de86de01595478521d36b92f42"
+      "sha256": "a7143b8d264366dfffae6c6472021a35866f48c6573225c81cab30ad3974eba3"
     },
     {
       "path": "observability/pilot/diagnostic_config.py",
@@ -50,7 +50,7 @@
     },
     {
       "path": "observability/pilot/diagnostic_system.py",
-      "sha256": "75a9ce540623c1b209bf508d3c20978d5de4e50117f22a2acea6e81946c46c1e"
+      "sha256": "a2acc2415761f1400622c36c5aacf3cf8e049ebce0fd465f06593cbbca29d55a"
     },
     {
       "path": "observability/pilot/emit_synthetic.py",
@@ -105,6 +105,14 @@
       "sha256": "844e148d3bcefce7eab61704b8e63aee605715a2e25bb2ef4321bf2e0173515a"
     },
     {
+      "path": "observability/pilot/tests/test_diagnostic_prepare_env.py",
+      "sha256": "37c21e9f3f6125033d45905fa3794cea604ed48b700bcc89fe84fa79bca2ea36"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_quiescence.py",
+      "sha256": "54dd6683c42051ddbf4c54a6fe60c50081d883225a744c588dab5f583e043108"
+    },
+    {
       "path": "observability/pilot/tests/test_diagnostic_readback.py",
       "sha256": "6241aa75cf9e8e1ce6ac8b835f65196f19240a6ab98abd8ba563f99c49a78671"
     },
@@ -119,6 +127,10 @@
     {
       "path": "observability/pilot/tests/test_diagnostic_terminal.py",
       "sha256": "9d92e3ff764b24d79fb59f2e7cad869608c751278861dbd811b80ec5089c5796"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_window.py",
+      "sha256": "d1f62d6f481e493d40b81ee85dd792ade16f5e98d3e8e1186530a749a858c095"
     },
     {
       "path": "observability/pilot/tests/test_pilot_readback.py",

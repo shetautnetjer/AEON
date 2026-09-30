@@ -1,0 +1,48 @@
+{
+  "verified_at": "2026-09-30T21:29:28.052662+00:00",
+  "approved_packet_commit": "9a1165df6d2fbb0fc1793f2d14a23505b98d5b82",
+  "approval_reference": "Sentinel_f23a24e183788191a0eeb9be9c42144c",
+  "evidence_class": "exposed-development pre-start verification",
+  "utility_qualified": false,
+  "release_evaluated": false,
+  "services_started": false,
+  "runtime_window_started": false,
+  "downloads_or_installs": false,
+  "full_sealed_fixture_tests": {
+    "passed": true,
+    "tests_run": 170,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "undeclared_imports": []
+  },
+  "independent_review": {
+    "passed": true,
+    "security_concerns": [],
+    "logic_errors": [],
+    "suggestions": [],
+    "tests_run": 142,
+    "guards": "sockets and subprocess creation denied",
+    "diagnostic_sha256": "a7143b8d264366dfffae6c6472021a35866f48c6573225c81cab30ad3974eba3",
+    "backend_sha256": "a2acc2415761f1400622c36c5aacf3cf8e049ebce0fd465f06593cbbca29d55a"
+  },
+  "inert_user_unit_verification": {
+    "exit_code": 0,
+    "unit_count": 4,
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_sha256": "2b92b393d3a1026b139cbf2005d8c38aa53e2b35f296aa4f6fb39870d8cea591",
+    "service_registration": false,
+    "service_start": false
+  },
+  "manifest_files": 36,
+  "manifest_sha256": "cad4b25d01a38dccbc8172c93b658f44a386bc04379e37a4e3e5a8f10d19708c",
+  "preserved_limits": {
+    "total_runtime_seconds": 900,
+    "cleanup_reserve_seconds": 95,
+    "tempo_stop_seconds": 90,
+    "max_spans": 25,
+    "memory_mib": 2176,
+    "cpu_cores": 2.25
+  },
+  "terminal_oom_requirement": "final counter verified; missing proof fails and prevents restart"
+}

@@ -278,7 +278,8 @@ class SystemBackend:
         results = []
         env = {'PATH': '/usr/bin:/bin', 'HOME': str(self.spec.home), 'LANG': 'C.UTF-8', 'TZ': 'UTC'}
         for command in commands:
-            result = self._command(command, deadline, env=env)
+            command_env = dict(env, XDG_RUNTIME_DIR='/run/user/'+str(self.os.uid)) if command[0]=='systemd-analyze' else env
+            result = self._command(command, deadline, env=command_env)
             results.append({'command': list(map(str, command)), 'exit_code': result.returncode,
                             'stdout': result.stdout, 'stderr': result.stderr})
         self.prepared = True
@@ -290,6 +291,9 @@ class SystemBackend:
 
     def record(self, result):
         return self._save('result.json', result)
+
+    def record_window(self, window):
+        return self._save('window.json',dict(window,approval_reference=getattr(self,'approval_reference',None)))
 
     def _hash_stream(self, stream, deadline):
         digest = hashlib.sha256()
@@ -873,8 +877,13 @@ class SystemBackend:
             raise ValueError('invalid_diagnostic_quiescence')
         if self._remaining(deadline)<seconds: raise TimeoutError('insufficient_quiescence_budget')
         until = self.clock.monotonic()+seconds
-        while self.clock.monotonic()<until:
-            self.clock.sleep(min(.5,until-self.clock.monotonic(),self._remaining(deadline)))
+        while True:
+            now = self.clock.monotonic()
+            quiet_remaining = until-now
+            if quiet_remaining<=0: break
+            remaining = deadline-now
+            if remaining<=0: raise TimeoutError('diagnostic_phase_deadline')
+            self.clock.sleep(min(.5,quiet_remaining,remaining))
         return {'seconds':seconds,'requests':0}
 
     def _selected_config(self, content):
