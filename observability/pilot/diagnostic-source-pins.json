@@ -54,7 +54,7 @@
     },
     {
       "path": "observability/pilot/diagnostic_system.py",
-      "sha256": "3ad3ed37e3a4d1b75a6050fc38630352d427344fca3928142ec2dc7577d933a6"
+      "sha256": "0f246f455ef5b0be6fae03c0f1c7400e7f7285ad00deb1a79e1d4ef02eb75655"
     },
     {
       "path": "observability/pilot/emit_synthetic.py",
@@ -115,6 +115,10 @@
     {
       "path": "observability/pilot/tests/test_diagnostic_flow.py",
       "sha256": "24dbd2caa54d64efa9af7673e17c1b28a80c9f3a44c6e35402cf45deb2d8146d"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_implicit_slice.py",
+      "sha256": "97fe97b478d75d7da45d6b0df86085e7db0204a462bf9ed013524e37cb5f114a"
     },
     {
       "path": "observability/pilot/tests/test_diagnostic_prepare_env.py",

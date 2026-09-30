@@ -1,0 +1,264 @@
+{
+  "verified_at": "2026-09-30T22:31:03.311047+00:00",
+  "scope": "pre-start implicit-slice freshness correction; no runtime window used",
+  "approved_packet_commit": "def5f3fd7d98795dd6c3373f036bb761a8b146e8",
+  "approval_reference": "Sentinel_98128e977dd8819184a6adbdea5ca5d7",
+  "approval_utc": "2026-09-30T22:20:44+00:00",
+  "evidence_class": "exposed-development offline preflight repair",
+  "offline_preparation_passed": true,
+  "runtime_started": false,
+  "utility_qualified": false,
+  "release_evaluated": false,
+  "source_manifest": {
+    "path": "observability/pilot/diagnostic-source-pins.json",
+    "sha256": "32c0e0245668588f98fa4d6638a8dcbc7b4f634d366f43f303ed113fe56cc07e",
+    "source_count": 43
+  },
+  "source_refs": [
+    {
+      "path": "observability/pilot/diagnostic_system.py",
+      "sha256": "0f246f455ef5b0be6fae03c0f1c7400e7f7285ad00deb1a79e1d4ef02eb75655"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_implicit_slice.py",
+      "sha256": "97fe97b478d75d7da45d6b0df86085e7db0204a462bf9ed013524e37cb5f114a"
+    }
+  ],
+  "full_suite": {
+    "passed": true,
+    "tests_run": 241,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "undeclared_imports": []
+  },
+  "independent_review": {
+    "passed": true,
+    "security_concerns": [],
+    "logic_errors": [],
+    "tests_run": 8,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "guard": "actual subprocess, sockets and native bus calls denied; injected command/process seams only",
+    "adversarial_replays_passed": 26,
+    "scope": "changed/missing fields at start, late cgroup appearance, unreadable registration, both gates, safe host metadata and all43sourcepins",
+    "reviewed_source_hashes": {
+      "observability/pilot/diagnostic_system.py": "0f246f455ef5b0be6fae03c0f1c7400e7f7285ad00deb1a79e1d4ef02eb75655",
+      "observability/pilot/tests/test_diagnostic_implicit_slice.py": "97fe97b478d75d7da45d6b0df86085e7db0204a462bf9ed013524e37cb5f114a",
+      "observability/pilot/diagnostic-source-pins.json": "32c0e0245668588f98fa4d6638a8dcbc7b4f634d366f43f303ed113fe56cc07e"
+    },
+    "live_behavior_qualified": false
+  },
+  "readonly_corrected_host_preflight": {
+    "passed": true,
+    "pins": {
+      "artifacts": 28,
+      "source": 28,
+      "plugin": 40,
+      "native": 1001,
+      "fixture": 1339,
+      "protected": 5,
+      "config": 11,
+      "retention_library": 1,
+      "original_runtime_source": 15,
+      "retained_evidence": 63
+    },
+    "collectors": [
+      {
+        "protocol": "tcp",
+        "port": 4317,
+        "address": "127.0.0.1:4317",
+        "owners": []
+      },
+      {
+        "protocol": "tcp",
+        "port": 4318,
+        "address": "127.0.0.1:4318",
+        "owners": []
+      },
+      {
+        "protocol": "tcp",
+        "port": 4320,
+        "address": "127.0.0.1:4320",
+        "owners": []
+      },
+      {
+        "protocol": "tcp",
+        "port": 13133,
+        "address": "127.0.0.1:13133",
+        "owners": []
+      }
+    ],
+    "ports_free": [
+      12346,
+      13000,
+      13200,
+      14317,
+      14318,
+      19090,
+      19095,
+      24317,
+      24318
+    ],
+    "inventory": {
+      "roots": [
+        "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot",
+        "/home/aya-hmw/Documents/ChatGPT/AEON/artifacts/observability"
+      ],
+      "bytes": 2204835840,
+      "logical_file_bytes": 2154761228,
+      "allocated_bytes": 2204835840,
+      "symlinks_not_followed": 30,
+      "unique_inodes": 17995,
+      "limit_bytes": 10737418240,
+      "hard_quota": false,
+      "approved_external_python_target_bytes_counted": false
+    },
+    "read_only": true,
+    "state_created": false,
+    "runtime_started": false
+  },
+  "preserved_preflight_failure": {
+    "path": "/home/aya-hmw/Documents/Codex/2026-09-30/task-3/evidence/tempoLife20260930B-preflight-failure-2026-09-30.json",
+    "sha256": "73bd01ab2aa34f7c854bd892a5e896e6d07e3e764a0da59a0eb04dc4f95e7870",
+    "raw_log_ref": {
+      "path": "/tmp/tempoLife20260930B-controller.log",
+      "sha256": "f86accad16d5b755744b3e5c6062601ebeaeab21fc783a949e9617506ae87908"
+    },
+    "check_counts": {
+      "passed": 0,
+      "failed": 2,
+      "not_run": 12
+    },
+    "namespace_absent": true,
+    "accounting_cgroup_absent": true,
+    "remaining_pilot_listeners": [],
+    "selected_units": [
+      {
+        "Id": "aeon-tempo-check-tempo-tempoLife20260930B.service",
+        "Following": "",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "FragmentPath": "",
+        "SourcePath": "",
+        "DropInPaths": "",
+        "Job": "",
+        "Transient": "no",
+        "InvocationID": "",
+        "MainPID": "0",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-alloy-tempoLife20260930B.service",
+        "Following": "",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "FragmentPath": "",
+        "SourcePath": "",
+        "DropInPaths": "",
+        "Job": "",
+        "Transient": "no",
+        "InvocationID": "",
+        "MainPID": "0",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-prometheus-tempoLife20260930B.service",
+        "Following": "",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "FragmentPath": "",
+        "SourcePath": "",
+        "DropInPaths": "",
+        "Job": "",
+        "Transient": "no",
+        "InvocationID": "",
+        "MainPID": "0",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-grafana-tempoLife20260930B.service",
+        "Following": "",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "FragmentPath": "",
+        "SourcePath": "",
+        "DropInPaths": "",
+        "Job": "",
+        "Transient": "no",
+        "InvocationID": "",
+        "MainPID": "0",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "app-aeonTempoChecktempoLife20260930B.slice",
+        "Following": "",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "FragmentPath": "",
+        "SourcePath": "",
+        "DropInPaths": "",
+        "Job": "",
+        "Transient": "no",
+        "InvocationID": "",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-emitter-tempoLife20260930B.scope",
+        "Following": "",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "FragmentPath": "",
+        "SourcePath": "",
+        "DropInPaths": "",
+        "Job": "",
+        "Transient": "no",
+        "InvocationID": "",
+        "ControlGroup": ""
+      }
+    ],
+    "interpretation": "cleanup defaults and state_retained=true/unit_references_released=true are not physical-runtime proof; no keeper or state namespace was created"
+  },
+  "test_refs": [
+    {
+      "path": "/tmp/tempo-implicit-slice-red.log",
+      "sha256": "b1040807a1c2401ee32ba2a1e1ae35b165d1eba29ce65c732bede5a20c876f7c"
+    },
+    {
+      "path": "/tmp/tempo-implicit-slice-green.log",
+      "sha256": "f1da7f5d074ffe296f43dbca64f634c839c3d2a8d87de48e1f902222155e4308"
+    },
+    {
+      "path": "/tmp/tempo-implicit-recheck-red.log",
+      "sha256": "82222d34fa12d5a6d8c19c9c0fcac82c338a44ac76393646c3c9e566843bf755"
+    },
+    {
+      "path": "/tmp/tempo-implicit-recheck-green.log",
+      "sha256": "450371ea889b15e5e806d8b97ed5187ad01b146494b485cf2b83b4c085f807aa"
+    },
+    {
+      "path": "/tmp/tempo-implicit-slice-full.json",
+      "sha256": "a4dd47c7177047e646a8b45eb7eedd7bbe21424c78addf952885b5bad221204b"
+    },
+    {
+      "path": "/tmp/tempo-implicit-slice-full.log",
+      "sha256": "a8fb3f5d39bff5fb262a91ef39097b86fc501066dec023ad654e936b4831f28b"
+    },
+    {
+      "path": "/tmp/tempo-implicit-slice-host-preflight.json",
+      "sha256": "4d488d90d178d91686f8547675cff4656ee83490628745fbdae40259e9acd0d1"
+    }
+  ],
+  "runtime_acceptance_limits_capture_unchanged": true,
+  "live_exit_oom_restart_durability": "not_run",
+  "original_frozen_receipts_modified": false,
+  "new_runtime_window_allowed": 1,
+  "new_downloads_installs_destinations_services": false
+}

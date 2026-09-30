@@ -27,7 +27,7 @@ SHOW_PROPERTIES = ('Id,LoadState,ActiveState,SubState,Result,MainPID,ControlGrou
                    'MemoryMax,MemoryHigh,MemorySwapMax,CPUQuotaPerSecUSec,TasksMax,RuntimeMaxUSec,'
                    'Restart,NoNewPrivileges,UMask,TimeoutStopUSec,KillMode,ExecMainCode,ExecMainStatus,Transient,'
                    'Slice,InvocationID,ExecMainPID,ExecMainStartTimestampMonotonic,ExecMainExitTimestampMonotonic,'
-                   'MemoryAccounting,StopWhenUnneeded')
+                   'MemoryAccounting,StopWhenUnneeded,SourcePath,DropInPaths,Following,Job')
 LEGACY_READBACK_SHA256 = 'dc8b1a78efb644e25c06e8b13e75df3ccb8d430b017fe720a9855680126480c3'
 
 
@@ -351,6 +351,27 @@ class SystemBackend:
                                 '--property=' + SHOW_PROPERTIES], deadline, check=False)
         return dict(line.split('=', 1) for line in output.stdout.splitlines() if '=' in line)
 
+    def _fresh_unit_name(self, name, state):
+        """An inactive implicit slice is metadata, never permission to adopt state."""
+        if state.get('Id') != name: return False
+        for root in (self.os.persistent_root, self.os.runtime_root):
+            for path in (root/name, root/(name+'.d')):
+                try: path.lstat()
+                except FileNotFoundError: continue
+                except OSError: return False
+                return False
+        if name == self.spec.accounting_slice_name:
+            try: self.os.group(self.accounting_group).lstat()
+            except FileNotFoundError: pass
+            except OSError: return False
+            else: return False
+        if state.get('LoadState') == 'not-found': return True
+        if name != self.spec.accounting_slice_name: return False
+        expected = {'Id':name, 'LoadState':'loaded', 'ActiveState':'inactive', 'SubState':'dead',
+                    'FragmentPath':'', 'SourcePath':'', 'DropInPaths':'', 'Transient':'no',
+                    'ControlGroup':'', 'InvocationID':'', 'Following':'', 'Job':''}
+        return all(state.get(key) == value for key,value in expected.items())
+
     def _sockets(self, deadline, *, established=False):
         if self.socket_adapter is not None:
             return self.socket_adapter(deadline)
@@ -394,11 +415,8 @@ class SystemBackend:
             raise ValueError('diagnostic_port_conflict')
         names = list(self.spec.unit_names.values()) + [self.spec.accounting_slice_name,self.spec.emitter_name]
         for name in names:
-            if self._show(name, deadline).get('LoadState') != 'not-found':
+            if not self._fresh_unit_name(name, self._show(name, deadline)):
                 raise ValueError('diagnostic_unit_name_already_owned')
-            for root in (self.os.persistent_root, self.os.runtime_root):
-                for path in (root / name, root / (name + '.d')):
-                    if path.exists() or path.is_symlink(): raise ValueError('diagnostic_registration_already_owned')
         controllers = self.os.cgroup_root / 'user.slice' / f'user-{self.os.uid}.slice' / f'user@{self.os.uid}.service' / 'cgroup.controllers'
         if not {'cpu', 'memory', 'pids'} <= set(controllers.read_text().split()):
             raise ValueError('resource_controllers_unavailable')
@@ -802,7 +820,7 @@ class SystemBackend:
             raise ValueError('diagnostic_port_conflict_at_start')
         names = list(self.spec.unit_names.values())
         registration = [*names,self.spec.accounting_slice_name]
-        if any(self._show(name,deadline).get('LoadState')!='not-found' for name in [*registration,self.spec.emitter_name]):
+        if any(not self._fresh_unit_name(name,self._show(name,deadline)) for name in [*registration,self.spec.emitter_name]):
             raise ValueError('diagnostic_unit_claimed_since_preflight')
         self._render_runtime(names,runtime_seconds)
         self.started = True
