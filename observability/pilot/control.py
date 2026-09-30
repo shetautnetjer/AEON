@@ -8,6 +8,7 @@ LIMITS={'alloy':(384,320,50),'tempo':(768,640,75),'prometheus':(384,320,50),'gra
 EXPECTED_PORTS={14317:'alloy',14318:'alloy',12346:'alloy',13200:'tempo',19095:'tempo',24317:'tempo',24318:'tempo',19090:'prometheus',13000:'grafana'}
 COLLECTOR_PORTS={4317,4318,4320,13133}
 MAX_WINDOW_SECONDS=1800
+RUNTIME_FILES=frozenset({'observability/pilot/config/'+name for name in ('README.md','config.alloy','grafana.ini','hermes_otel.synthetic.yaml','prometheus.yaml','provisioning/datasources/local.yaml','tempo.yaml')}|{'observability/pilot/units/'+name for name in NAMES})
 def new_window(now_epoch,now_monotonic):
  assert math.isfinite(now_epoch) and math.isfinite(now_monotonic),'invalid pilot clock'
  return {'started_at':datetime.fromtimestamp(now_epoch,timezone.utc).isoformat(),'deadline_at':datetime.fromtimestamp(now_epoch+MAX_WINDOW_SECONDS,timezone.utc).isoformat(),'started_epoch':now_epoch,'deadline_epoch':now_epoch+MAX_WINDOW_SECONDS,'started_monotonic':now_monotonic,'deadline_monotonic':now_monotonic+MAX_WINDOW_SECONDS,'unit_runtime_seconds':{n:MAX_WINDOW_SECONDS for n in NAMES}}
@@ -26,7 +27,9 @@ def save_window(window):
  (E/'runtime-window.json').write_text(json.dumps(window,indent=2)+'\n')
 def runtime_hashes():
  receipt=E/'binary-prereqs.json';raw=receipt.read_bytes();pins=json.loads(raw)['config_pins']
- assert len(pins)==13,'authored runtime configuration pin set changed'
+ paths=[pin['path'] for pin in pins]
+ assert len(paths)==len(set(paths)),'duplicate configuration pin'
+ assert set(paths)==RUNTIME_FILES,'authored runtime configuration pin set changed'
  out={'binary-prereqs.json':hashlib.sha256(raw).hexdigest()}
  for pin in pins:
   relative=Path(pin['path']);assert not relative.is_absolute() and '..' not in relative.parts,'invalid configuration pin path'
@@ -34,8 +37,6 @@ def runtime_hashes():
   assert str(relative) not in out,'duplicate configuration pin'
   digest=hashlib.sha256(path.read_bytes()).hexdigest();assert digest==pin['sha256'],'authored runtime configuration changed'
   out[str(relative)]=digest
- required={'observability/pilot/config/config.alloy',*('observability/pilot/units/'+name for name in NAMES)}
- assert required<=set(out),'runtime configuration pins omit a pilot unit or Alloy configuration'
  return out
 def verify_runtime_files(window):
  assert runtime_hashes()==window['runtime_hashes'],'pilot configuration differs from the first startup'

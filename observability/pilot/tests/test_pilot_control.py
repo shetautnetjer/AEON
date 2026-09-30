@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -23,6 +24,57 @@ class PilotControlTests(unittest.TestCase):
             24317:'22', 24318:'22', 19090:'33', 13000:'44'}
         self.rows = [{'protocol':'tcp', 'port':port, 'address':f'127.0.0.1:{port}',
             'owners':[pid]} for port, pid in mapping.items()]
+
+    def test_runtime_hashes_require_exact_approved_eleven_files_and_fresh_hashes(self):
+        approved = [
+            'observability/pilot/config/README.md',
+            'observability/pilot/config/config.alloy',
+            'observability/pilot/config/grafana.ini',
+            'observability/pilot/config/hermes_otel.synthetic.yaml',
+            'observability/pilot/config/prometheus.yaml',
+            'observability/pilot/config/provisioning/datasources/local.yaml',
+            'observability/pilot/config/tempo.yaml',
+            'observability/pilot/units/aeon-pilot-alloy.service',
+            'observability/pilot/units/aeon-pilot-grafana.service',
+            'observability/pilot/units/aeon-pilot-prometheus.service',
+            'observability/pilot/units/aeon-pilot-tempo.service',
+        ]
+        with tempfile.TemporaryDirectory(prefix='aeon-control-pins-') as directory:
+            self.control.A = Path(directory)
+            self.control.E = Path(directory)/'evidence'
+            self.control.E.mkdir()
+            pins = []
+            for relative in approved:
+                path = self.control.A/relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                content = ('synthetic configuration '+relative).encode()
+                path.write_bytes(content)
+                pins.append({'path':relative, 'sha256':hashlib.sha256(content).hexdigest()})
+            receipt = self.control.E/'binary-prereqs.json'
+            def write_receipt(entries):
+                receipt.write_text(json.dumps({'config_pins':entries}))
+            write_receipt(pins)
+            with patch.object(self.control, 'run', side_effect=AssertionError('service call forbidden')) as run:
+                actual = self.control.runtime_hashes()
+                self.assertEqual(set(actual), set(approved)|{'binary-prereqs.json'})
+                self.assertEqual(actual['binary-prereqs.json'], hashlib.sha256(receipt.read_bytes()).hexdigest())
+                for pin in pins:
+                    self.assertEqual(actual[pin['path']], pin['sha256'])
+                unexpected = {'path':'observability/pilot/config/unapproved.yaml', 'sha256':'0'*64}
+                for invalid in (pins[:-1], pins+[unexpected], pins+[pins[0]], pins[:-1]+[unexpected],
+                        pins[:-1]+[pins[0]], [dict(pins[0], path='/tmp/unapproved')]+pins[1:]):
+                    with self.subTest(paths=[pin['path'] for pin in invalid]):
+                        write_receipt(invalid)
+                        with self.assertRaises(AssertionError):
+                            self.control.runtime_hashes()
+                write_receipt([dict(pins[0], sha256='0'*64)]+pins[1:])
+                with self.assertRaisesRegex(AssertionError, 'configuration changed'):
+                    self.control.runtime_hashes()
+                write_receipt(pins)
+                (self.control.A/approved[0]).write_text('changed synthetic configuration')
+                with self.assertRaisesRegex(AssertionError, 'configuration changed'):
+                    self.control.runtime_hashes()
+                run.assert_not_called()
 
     def test_listener_validation_checks_every_pilot_pid_and_exact_component_ports(self):
         self.assertTrue(hasattr(self.control, 'validate_listeners'), 'pure listener validator missing')
