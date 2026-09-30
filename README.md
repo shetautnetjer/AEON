@@ -4,7 +4,7 @@ Local navigation home for AYA memory-related work. Projects keep their existing 
 
 ## Current
 
-The reviewed offline rebuild/packing evaluator is committed on `codex/aya-local-continuation-20260930` at `9043cc9a92aff59475fc329b189601afacd91b48`, following local intent reconciliation at `23bd0e06844199a160bda7680f0a27c72ac05597`. The 19 focused tests and 105 disjoint relevant suite tests pass. Results remain exposed development: `utility_qualified=false`, `release_evaluated=false`. No consumer experiment has run in this continuation.
+The reviewed offline rebuild/packing evaluator is committed on `codex/aya-local-continuation-20260930` at `9043cc9a92aff59475fc329b189601afacd91b48`, following local intent reconciliation at `23bd0e06844199a160bda7680f0a27c72ac05597`. The 19 focused tests passed; 105 tests passed across the relevant suites, including those 19. Results remain exposed development: `utility_qualified=false`, `release_evaluated=false`. No consumer experiment has run in this continuation.
 
 This folder was already initialized as Git and contains existing dispatcher metadata. The navigation addition preserves that state. Repository, runtime, database and evidence locations have not been moved.
 
@@ -17,6 +17,18 @@ This folder was already initialized as Git and contains existing dispatcher meta
 | Jev contracts, catalog, decisions and receipts | [Jev owner instructions](/home/aya-hmw/aya/projects/jev-cli/HERMES.md) |
 | AYA native workspace and runtime | [Workspace instructions](/home/aya-hmw/.aya/workspace/AGENTS.md), [persistence instructions](/home/aya-hmw/.aya/codex/INSTRUCTIONS.md) — existing private runtime directories remain in place |
 | Local `aya-working` supporting memory projection | `/home/aya-hmw/aya/basic-memory-mirror`; [bounded qualification adapter](/home/aya-hmw/.aya/workspace/tools/aya_memory_gate.py) — source-backed qualification, not general admission or migration |
+
+## Stack navigation
+
+The [September 30 local inventory](docs/stack-inventory-2026-09-30.md) records versions, running/stopped state, source owners, data bindings and retained qualification. The [staged consolidation proposal](docs/stack-consolidation-2026-09-30.md) maps dependencies and rollback before any physical move or deployment.
+
+| Area | Components / verified status |
+|---|---|
+| Storage | Redis 8.10.2 and PostgreSQL 17.11 run for Firecrawl; three Brainstem PG16.15 test containers are stopped. Caura/MemoryD configuration and historical receipts remain separate. Qdrant is a design target; server not found, client availability unknown. |
+| Learning / execution | Pydantic Monty 1.0.0 is cached with an untracked Jev mock probe. DSPy/ReAnchor are design references; runtime/fitting evidence not found. Brainstem Observer has prototype source/build and partial receipts with unresolved native review failures. |
+| Observability | Separate OTel SDK installations and two collectors exist. Hermes has a configured trace route with historical qualification. Alloy 1.20.1 and Prometheus 3.15.0 are installed but unwired; OpenLLMetry installation not found in checked scopes. Metrics collector's SPARK target is currently absent. |
+
+These findings support one navigation home while existing projects own implementation and state. Package availability and running containers do not establish accepted AYA memory utility. No installs, runtime/configuration changes, database reads/moves or remote operations occurred during this inventory.
 
 ## Plans
 
