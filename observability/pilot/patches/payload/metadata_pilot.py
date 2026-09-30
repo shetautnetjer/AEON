@@ -46,7 +46,8 @@ def metadata_span(span):
             attrs[key] = value
     prefix = span.name.split('.', 1)[0]
     name = prefix if prefix in _NAMES else 'other'
-    if span.instrumentation_scope and span.instrumentation_scope.name == 'opentelemetry.instrumentation.openai':
+    if span.instrumentation_scope and span.instrumentation_scope.name in (
+            'opentelemetry.instrumentation.openai', 'opentelemetry.instrumentation.openai.v1'):
         name = 'sdk'
     return ReadableSpan(
         name=name, context=_metadata_context(span.context), parent=_metadata_context(span.parent),
