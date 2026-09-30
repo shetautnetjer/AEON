@@ -1,6 +1,8 @@
 # AEON staged consolidation proposal — 2026-09-30
 
-AEON is the creator's organizing home at `/home/aya-hmw/Documents/ChatGPT/AEON`. It already owns its navigation Git repository. The [local inventory](stack-inventory-2026-09-30.md) identifies existing source, runtime and evidence owners; grouping them here does not transfer ownership or qualify memory utility. This proposal records future gates. No relocation, deployment or state migration has been performed.
+**Dated completion:** the creator approved Stage 1 and the linked worktree moved at **2026-09-30T16:18:20.605519Z**. [Path map, verification and unchanged database boundary](worktree-relocation-2026-09-30.md). Stages 2–4 remain proposals. The sections below preserve the pre-move inventory and plan; old-path literals identify its source, while current navigation resolves the new path.
+
+AEON is the creator's organizing home at `/home/aya-hmw/Documents/ChatGPT/AEON`. It already owns its navigation Git repository. The [local inventory](stack-inventory-2026-09-30.md) identifies existing source, runtime and evidence owners; grouping them here does not transfer ownership or qualify memory utility. This proposal records future gates. At the pre-move planning checkpoint, no relocation, deployment or state migration had been performed. Stage 1 is now complete as recorded above; deployment and state migration remain unperformed.
 
 ## One home, existing owners
 
@@ -10,7 +12,7 @@ AEON is the creator's organizing home at `/home/aya-hmw/Documents/ChatGPT/AEON`.
 | Learning / execution | Monty probe: Jev. DSPy/ReAnchor: Brainstem HLD and creator sources. Observer: Brainstem; legacy index and preflight areas remain separately identified. | Keep source, decisions and acceptance evidence in those owners. Monty host callbacks and Observer native isolation retain their unresolved gates. |
 | Observability | Running primary collector: `aya-otel-bootstrap`; metrics collector: `nervous-system-bus-v0`; instrumentation: Hermes and candidate identity lab. Alloy/Prometheus: existing local binary/tooling owner. OpenLLMetry: not found in checked scopes. | Map current routes, state and credential custody before proposing adoption. Downloaded binaries stay under `~/.local/opt/observability`; package caches stay caches. |
 
-The eventual navigation layout may use `docs/` for AEON organization plans and inventory, `worktrees/` for separately owned linked checkouts, and `projects/` only for an existing source owner's separately reviewed relocation. Project-specific plans, decisions and evidence remain in their source project. Cross-cutting Brainstem code is not split into new storage/learning/observability repositories. This phase creates only navigation documents; it does not create those checkout/project directories.
+The eventual navigation layout may use `docs/` for AEON organization plans and inventory, `worktrees/` for separately owned linked checkouts, and `projects/` only for an existing source owner's separately reviewed relocation. Project-specific plans, decisions and evidence remain in their source project. Cross-cutting Brainstem code is not split into new storage/learning/observability repositories. The initial documentation phase created only navigation documents; it did not create checkout/project directories.
 
 ## Stage 0 — completed organization work
 
@@ -18,21 +20,21 @@ Source-linked inventory and this proposal are authored in AEON's existing reposi
 
 Rollback for this documentation stage is an ordinary scoped Git revert of the navigation commit. It does not touch implementation owners, dispatcher metadata or state. This inventory records a dated snapshot; later observations should be added with dates rather than silently rewriting original qualification outcomes.
 
-## Stage 1 — smallest physical move to approve
+## Stage 1 — approved move, completed; retained execution plan
 
 Move only the already reviewed Brainstem continuation linked worktree:
 
-- Current: `/home/aya-hmw/Documents/Codex/2026-09-30/task-3/brainstem-continuation`.
-- Proposed: `/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation`.
+- Pre-move location: `/home/aya-hmw/Documents/Codex/2026-09-30/task-3/brainstem-continuation`.
+- Approved destination, now current: `/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation`.
 - Original Git/source owner remains `/home/aya-hmw/aya/projects/developmental-lab/brainstem`, including its 63 pre-existing changes, source paths and stopped qualification data.
 
 Before execution: confirm no active editor/test/agent uses the checkout, clean branch/index and exact HEAD, destination absent, original Git/worktree metadata intact, and all app/task/navigation references mapped. Explicitly approve AEON's scoped `/worktrees/` Git exclusion so the navigation repository cannot stage another owner's checkout. Record a dated old→new locator map and update current navigation links; keep historical source paths as provenance, with the map resolving them.
 
 Use the original repository's `git worktree move`, preserving the existing branch, commits and bytes; do not copy or initialize another repository. Verify both Git pointers, source pins, branch/HEAD/status, original dirty baseline, document links and the relevant offline evaluator suite from the new path. The checkout name remains `brainstem-continuation`, so the already documented test-only package alias remains necessary. No database, runtime, service, cron, credentials or installed plugin moves are included.
 
-**Exact creator approval:** the two paths above, scoped AEON `/worktrees/` exclusion, current-navigation/dated path-map edits, post-move offline verification, and reverse `git worktree move` if verification fails. If destination/concurrency/reference checks fail, stop before moving. The task's selected cwd remains outside the checkout. Rollback requires quiescence again, the old destination free, reverse Git move and restored current navigation, followed by the same pointer/hash/status checks. No move has been made.
+**Creator-approved scope, now completed:** the two paths above, scoped AEON `/worktrees/` exclusion, current-navigation/dated path-map edits, post-move offline verification, and reverse `git worktree move` if verification fails. If destination/concurrency/reference checks fail, stop before moving. The task's selected cwd remains outside the checkout. Rollback requires quiescence again, the old destination free, reverse Git move and restored current navigation, followed by the same pointer/hash/status checks. This exact move completed; see the dated receipt above.
 
-The detailed existing [owner/dependency plan](/home/aya-hmw/Documents/Codex/2026-09-30/task-3/brainstem-continuation/docs/plans/2026-09-30-aeon-local-organization.md) remains the source for this stage. Moving the original dirty Brainstem repository or Jev is a later, larger proposal.
+The detailed existing [owner/dependency plan](/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/brainstem-continuation/docs/plans/2026-09-30-aeon-local-organization.md) remains the source for this stage. Moving the original dirty Brainstem repository or Jev is a later, larger proposal.
 
 ## Stage 2 — source-owner consolidation, separately reviewed
 

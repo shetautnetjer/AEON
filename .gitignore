@@ -1,0 +1,2 @@
+# Linked worktrees keep their original Git ownership.
+/worktrees/
