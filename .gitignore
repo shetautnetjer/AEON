@@ -3,3 +3,4 @@
 # Proposed pilot artifacts/state stay outside source custody.
 /artifacts/observability/
 /var/observability-pilot/
+/var/tempo-shutdown-check/
