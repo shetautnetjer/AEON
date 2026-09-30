@@ -1,0 +1,792 @@
+{
+  "verified_at": "2026-09-30T22:38:37.081785+00:00",
+  "run_id": "tempoLife20260930B",
+  "approved_packet_commit": "def5f3fd7d98795dd6c3373f036bb761a8b146e8",
+  "executed_source_commit": "5f9bcf4d74f873b27870824ac84e879759a7258d",
+  "approval_reference": "Sentinel_98128e977dd8819184a6adbdea5ca5d7",
+  "approval_utc": "2026-09-30T22:20:44+00:00",
+  "prestart_correction": "docs/tempo-implicit-slice-preflight-correction-2026-09-30.md",
+  "evidence_class": "exposed-development synthetic telemetry infrastructure lifecycle",
+  "runtime_lifecycle_passed": true,
+  "utility_qualified": false,
+  "release_evaluated": false,
+  "memory_integration_qualified": false,
+  "checks": {
+    "preflight": "passed",
+    "prepare": "passed",
+    "start": "passed",
+    "limits": "passed",
+    "configuration": "passed",
+    "emit": "passed",
+    "initial": "passed",
+    "first_graceful_stop": "passed",
+    "restart": "passed",
+    "restart_limits": "passed",
+    "durability": "passed",
+    "final_graceful_stop": "passed",
+    "cleanup": "passed",
+    "lifetime": "passed"
+  },
+  "check_counts": {
+    "passed": 14,
+    "failed": 0,
+    "not_run": 0
+  },
+  "window_open_utc": "2026-09-30T22:31:31.076041+00:00",
+  "deadline_utc": "2026-09-30T22:46:31.076041+00:00",
+  "runner_end_utc_approx": "2026-09-30T22:34:39.694791+00:00",
+  "elapsed_seconds": 188.618750333786,
+  "maximum_seconds": 900,
+  "minimum_soak_seconds": 0,
+  "cleanup_reserve_seconds": 95,
+  "tempo_stop_allowance_seconds": 90,
+  "single_emission": {
+    "spans": 25,
+    "traces": 6,
+    "canonical_api_calls": 5,
+    "provider_instance_count": 1,
+    "emission_sha256": "523503e10c79f738c35d9803cf663246ccce82a00bc84abeb0f0e72e8841763b",
+    "canonical_receipt_fingerprint": "736957cba77d4635e45e6d58019dd83d2810454e7fbdaf8ea59d02a69f9d231a",
+    "synthetic_only": true,
+    "sensitive_sentinel_absent": true,
+    "model_transport": "mocked; no real provider requests"
+  },
+  "initial_denominators": {
+    "traces": 6,
+    "spans": 25,
+    "trace_endpoints": 12,
+    "calls": 5,
+    "errors": 2,
+    "duration_count": 5,
+    "series": 2
+  },
+  "durability_denominators": {
+    "traces": 6,
+    "spans": 25,
+    "trace_endpoints": 12,
+    "calls": 5,
+    "errors": 2,
+    "duration_count": 5,
+    "series": 2
+  },
+  "conditional_restart_count": 1,
+  "additional_spans_on_restart": 0,
+  "first_stop": {
+    "result": "success",
+    "exit_code": 0,
+    "signal": null,
+    "forced_kill": false,
+    "oom_events": 0,
+    "oom_verification": "verified_isolated_hierarchical_ancestor",
+    "oom_evidence": {
+      "verified": true,
+      "reason": "verified_isolated_ancestor",
+      "group": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-aeonTempoChecktempoLife20260930B.slice",
+      "baseline": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "end": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "delta": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "oom_events": 0,
+      "coverage": "isolated_hierarchical_ancestor"
+    },
+    "invocation_verified": true,
+    "invocation": {
+      "invocation_id": "76a7995997b64844a80df73b91484b97",
+      "start_monotonic_usec": 955623686293,
+      "main_pid": "3448968",
+      "pids": [
+        "3448968"
+      ]
+    },
+    "completion_milestone": true,
+    "cgroup_pids": [],
+    "pids_alive": [],
+    "listeners": [],
+    "peers_unchanged": true,
+    "request_epoch": 1790807577.6056123,
+    "exit_observed_epoch": 1790807607.688682,
+    "lifecycle": [
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807577.608363,
+        "milestone": "module stopped",
+        "module": "query-frontend"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807577.608373,
+        "milestone": "module stopped",
+        "module": "overrides-api"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807577.608653,
+        "milestone": "module stopped",
+        "module": "distributor"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807577.608681,
+        "milestone": "module stopped",
+        "module": "querier"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807577.608696,
+        "milestone": "module stopped",
+        "module": "metrics-generator"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807577.620452,
+        "milestone": "module stopped",
+        "module": "live-store"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807577.717151,
+        "milestone": "module stopped",
+        "module": "partition-ring"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807577.817301,
+        "milestone": "module stopped",
+        "module": "live-store-ring"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807578.232108,
+        "milestone": "module stopped",
+        "module": "backend-scheduler"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807607.608802,
+        "milestone": "module stopped",
+        "module": "backend-worker"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807607.608802,
+        "milestone": "module stopped",
+        "module": "overrides"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807607.608802,
+        "milestone": "module stopped",
+        "module": "memberlist-kv"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807607.608802,
+        "milestone": "module stopped",
+        "module": "store"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807607.608802,
+        "milestone": "module stopped",
+        "module": "cache-provider"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807607.609006,
+        "milestone": "module stopped",
+        "module": "server"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807607.609033,
+        "milestone": "module stopped",
+        "module": "internal-server"
+      },
+      {
+        "pid": "3448968",
+        "time_epoch": 1790807607.609046,
+        "milestone": "Tempo stopped"
+      }
+    ],
+    "command_succeeded": true,
+    "passed": true
+  },
+  "final_stop": {
+    "result": "success",
+    "exit_code": 0,
+    "signal": null,
+    "forced_kill": false,
+    "oom_events": 0,
+    "oom_verification": "verified_isolated_hierarchical_ancestor",
+    "oom_evidence": {
+      "verified": true,
+      "reason": "verified_isolated_ancestor",
+      "group": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-aeonTempoChecktempoLife20260930B.slice",
+      "baseline": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "end": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "delta": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "oom_events": 0,
+      "coverage": "isolated_hierarchical_ancestor"
+    },
+    "invocation_verified": true,
+    "invocation": {
+      "invocation_id": "17c89f0774674bffabc6c97d977590ac",
+      "start_monotonic_usec": 955740073444,
+      "main_pid": "3453207",
+      "pids": [
+        "3453207"
+      ]
+    },
+    "completion_milestone": true,
+    "cgroup_pids": [],
+    "pids_alive": [],
+    "listeners": [],
+    "peers_unchanged": true,
+    "request_epoch": 1790807648.595905,
+    "exit_observed_epoch": 1790807678.6793869,
+    "lifecycle": [
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807648.59872,
+        "milestone": "module stopped",
+        "module": "querier"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807648.59881,
+        "milestone": "module stopped",
+        "module": "query-frontend"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807648.59881,
+        "milestone": "module stopped",
+        "module": "overrides-api"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807648.599043,
+        "milestone": "module stopped",
+        "module": "distributor"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807648.599077,
+        "milestone": "module stopped",
+        "module": "metrics-generator"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807648.610443,
+        "milestone": "module stopped",
+        "module": "live-store"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807648.72454,
+        "milestone": "module stopped",
+        "module": "partition-ring"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807648.824683,
+        "milestone": "module stopped",
+        "module": "live-store-ring"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807649.22278,
+        "milestone": "module stopped",
+        "module": "backend-scheduler"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807678.599723,
+        "milestone": "module stopped",
+        "module": "backend-worker"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807678.599723,
+        "milestone": "module stopped",
+        "module": "overrides"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807678.599723,
+        "milestone": "module stopped",
+        "module": "store"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807678.599723,
+        "milestone": "module stopped",
+        "module": "memberlist-kv"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807678.599723,
+        "milestone": "module stopped",
+        "module": "cache-provider"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807678.599887,
+        "milestone": "module stopped",
+        "module": "server"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807678.599897,
+        "milestone": "module stopped",
+        "module": "internal-server"
+      },
+      {
+        "pid": "3453207",
+        "time_epoch": 1790807678.599907,
+        "milestone": "Tempo stopped"
+      }
+    ],
+    "command_succeeded": true,
+    "passed": true
+  },
+  "cleanup": {
+    "passed": true,
+    "owned_emitter_stopped": true,
+    "remaining_pids": [],
+    "remaining_groups": [],
+    "remaining_listeners": [],
+    "rejected_foreign_units": [],
+    "oom_events": 0,
+    "oom_evidence": {
+      "verified": true,
+      "reason": "verified_isolated_ancestor",
+      "group": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-aeonTempoChecktempoLife20260930B.slice",
+      "baseline": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "end": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "delta": {
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "oom_events": 0,
+      "coverage": "isolated_hierarchical_ancestor"
+    },
+    "accounting_slice_stopped": true,
+    "forced_units": [],
+    "unit_references_released": true,
+    "original_preserved": true
+  },
+  "collector_preservation": {
+    "selected_listener_snapshot_unchanged": true,
+    "process_identity_observed": false,
+    "reason": "owner lists in collector snapshot are empty"
+  },
+  "effective_limits": {
+    "combined_memory_max_mib": 2176,
+    "combined_cpu_max_cores": 2.25,
+    "swap_max_bytes": 0,
+    "tasks_max": 576,
+    "ports_tcp_loopback": [
+      12346,
+      13000,
+      13200,
+      14317,
+      14318,
+      19090,
+      19095,
+      24317,
+      24318
+    ],
+    "active_parent_evidence": {
+      "verified_at": "2026-09-30T22:33:03.120980+00:00",
+      "passed": true,
+      "unit": {
+        "Id": "app-aeonTempoChecktempoLife20260930B.slice",
+        "ActiveState": "active",
+        "FragmentPath": "/run/user/1000/systemd/user/app-aeonTempoChecktempoLife20260930B.slice",
+        "StopWhenUnneeded": "no",
+        "ControlGroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/app-aeonTempoChecktempoLife20260930B.slice",
+        "CPUQuotaPerSecUSec": "2.250000s",
+        "MemoryAccounting": "yes",
+        "MemoryMax": "2281701376",
+        "MemorySwapMax": "0",
+        "TasksMax": "576"
+      },
+      "effective_limits": {
+        "memory.max": "2281701376",
+        "memory.swap.max": "0",
+        "pids.max": "576",
+        "cpu.max": "225000 100000"
+      },
+      "parent_direct_processes": [],
+      "owned_descendants": [
+        "aeon-tempo-check-prometheus-tempoLife20260930B.service",
+        "aeon-tempo-check-alloy-tempoLife20260930B.service",
+        "aeon-tempo-check-tempo-tempoLife20260930B.service",
+        "aeon-tempo-check-grafana-tempoLife20260930B.service"
+      ],
+      "memory_events": {
+        "low": "0",
+        "high": "0",
+        "max": "0",
+        "oom": "0",
+        "oom_kill": "0",
+        "oom_group_kill": "0",
+        "sock_throttled": "0"
+      },
+      "observed_memory_current_bytes": 374157312,
+      "owned_established_connections": [
+        {
+          "local": "127.0.0.1:46790",
+          "peer": "127.0.0.1:19095",
+          "owners": [
+            "3448968"
+          ]
+        },
+        {
+          "local": "127.0.0.1:57476",
+          "peer": "127.0.0.1:19095",
+          "owners": [
+            "3448968"
+          ]
+        },
+        {
+          "local": "127.0.0.1:43122",
+          "peer": "127.0.0.1:19090",
+          "owners": [
+            "3448969"
+          ]
+        },
+        {
+          "local": "127.0.0.1:19090",
+          "peer": "127.0.0.1:43122",
+          "owners": [
+            "3448970"
+          ]
+        },
+        {
+          "local": "127.0.0.1:19095",
+          "peer": "127.0.0.1:46790",
+          "owners": [
+            "3448968"
+          ]
+        },
+        {
+          "local": "127.0.0.1:12346",
+          "peer": "127.0.0.1:56506",
+          "owners": [
+            "3448969"
+          ]
+        },
+        {
+          "local": "127.0.0.1:19095",
+          "peer": "127.0.0.1:57476",
+          "owners": [
+            "3448968"
+          ]
+        },
+        {
+          "local": "127.0.0.1:56506",
+          "peer": "127.0.0.1:12346",
+          "owners": [
+            "3448970"
+          ]
+        }
+      ],
+      "external_established_connections": [],
+      "capture": "OS metadata only; no user content"
+    },
+    "retention_while_running": "24h",
+    "monitored_disk_budget_bytes": 10737418240,
+    "hard_disk_quota": false
+  },
+  "physical_shutdown": {
+    "verified_at": "2026-09-30T22:35:27.065299+00:00",
+    "passed": true,
+    "units": [
+      {
+        "Id": "aeon-tempo-check-tempo-tempoLife20260930B.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-alloy-tempoLife20260930B.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-prometheus-tempoLife20260930B.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-grafana-tempoLife20260930B.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "Transient": "no",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "app-aeonTempoChecktempoLife20260930B.slice",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "Transient": "no",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-emitter-tempoLife20260930B.scope",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "Transient": "no",
+        "Result": "success",
+        "ControlGroup": ""
+      }
+    ],
+    "retained_pids_checked": 18,
+    "remaining_retained_pids": [],
+    "remaining_pilot_listeners": [],
+    "accounting_cgroup_absent": true,
+    "before_deadline": true,
+    "deadline_utc": "2026-09-30T22:46:31.076041+00:00",
+    "controller_elapsed_seconds": 188.618750333786,
+    "unit_references_released": true,
+    "method": "selected read-only host unit/proc/cgroup/socket metadata; no stop/start/config changes",
+    "utility_qualified": false,
+    "release_evaluated": false
+  },
+  "emitter_and_collector_readback": {
+    "verified_at": "2026-09-30T22:36:21.093663+00:00",
+    "passed": true,
+    "emitter_pids_checked": 2,
+    "remaining_emitter_pids": [],
+    "collectors_unchanged": true,
+    "method": "read-only exact collector snapshot comparison and retained emitter PID existence check"
+  },
+  "preservation": {
+    "verified_at": "2026-09-30T22:36:21.014994+00:00",
+    "passed": true,
+    "original_snapshot_files_checked": 74,
+    "original_snapshot_mismatches": [],
+    "failed_run_receipt_pins_checked": {
+      "tempo-shutdown-diagnostic-result-2026-09-30.json": 10,
+      "synthetic-runtime-verification-2026-09-30.json": 29
+    },
+    "old_pilot_tempo_result": "timeout",
+    "prior_pilot_units": [
+      {
+        "Id": "aeon-pilot-tempo.service",
+        "LoadState": "loaded",
+        "ActiveState": "failed",
+        "MainPID": "0",
+        "Result": "timeout",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-pilot-alloy.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-pilot-prometheus.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-pilot-grafana.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-tempo-tempoDiag20260930A.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-alloy-tempoDiag20260930A.service",
+        "LoadState": "loaded",
+        "ActiveState": "failed",
+        "MainPID": "0",
+        "Result": "signal",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-prometheus-tempoDiag20260930A.service",
+        "LoadState": "loaded",
+        "ActiveState": "failed",
+        "MainPID": "0",
+        "Result": "signal",
+        "ControlGroup": ""
+      },
+      {
+        "Id": "aeon-tempo-check-grafana-tempoDiag20260930A.service",
+        "LoadState": "loaded",
+        "ActiveState": "failed",
+        "MainPID": "0",
+        "Result": "signal",
+        "ControlGroup": ""
+      }
+    ],
+    "remaining_pilot_listeners": [],
+    "method": "read-only hashes and selected host unit/socket properties; no bus keeper opened or services started",
+    "runtime_started": false
+  },
+  "prior_preflight_only_attempt": {
+    "checks_passed": 0,
+    "checks_failed": 2,
+    "checks_not_run": 12,
+    "runtime_window_opened": false,
+    "evidence_ref": "observability/pilot/evidence/tempo-implicit-slice-preflight-verification-2026-09-30.json"
+  },
+  "raw_evidence_refs": [
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/binary-prereqs.json",
+      "sha256": "44291df9df1dc17db9be37c2df13abfeafb801d9faefaed7a030bafb380efb06"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/cleanup-terminal-evidence.json",
+      "sha256": "9120893fd7211423b244379e8130b376f6209336ab71d668acf94c76eb5d7548"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/cleanup.json",
+      "sha256": "b0372c3dc3df0373f3a9e10ca6110543c4321437868afdd015ae6ce302cdd4cb"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/effective-tempo-config.json",
+      "sha256": "2ed48721dc8aaf83668960968fe98d7cb7c543c23bad93118d0c2f3942a2b555"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/emitted.json",
+      "sha256": "523503e10c79f738c35d9803cf663246ccce82a00bc84abeb0f0e72e8841763b"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/emitter-scope.json",
+      "sha256": "f9073b5aaba39e79f32d162df386e0d5497fcc42626679a0938d8ddd39927ddc"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/host-accounting-active.json",
+      "sha256": "9feb69e47983ccdf212605b7d2205251645338633f0ac67bb1666a7757c75d94"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/host-post-shutdown-emitter-collectors.json",
+      "sha256": "06092b6a818d857c38a91112495cbb0bd20997534b906b967272e3e6fe3d0dc2"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/host-post-shutdown.json",
+      "sha256": "d7ba8a25d4565cebc3dff942fe0ee67c8970901e352df6cf033f011fc0ea28f3"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/preflight.json",
+      "sha256": "af348b1347537a7951e0dc9796acc84bf7735838c01078470a57dce2115dffd5"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/readback-durability.json",
+      "sha256": "b2fbe36d04e2f290f1be514e2fb20ff4df11d0903c2e4e53ba51ec302a59b119"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/readback-initial.json",
+      "sha256": "55a235802c8157efb8a8359e2ef5f3e6f1e6b74685a4dee806c5d11d5e612353"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/result.json",
+      "sha256": "01eafee4c8c22eb67bb2322590bf775a7c8d42abbf18f346cc14eac5db7d3f54"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/start.json",
+      "sha256": "4e68c1e1b93b68db8c0a90e8d298295bf3fd2e98c29ca461e9e19d101d73f76e"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/tempo-first-stop.json",
+      "sha256": "ec39ac43adb5b15f6efbfd3a224934d9ad06e748e4f9033d0c9e8b7297ead101"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/tempo-restart.json",
+      "sha256": "4745679745705c769ba6911e7e5bc1a9d3660c2369da6331e9946e7827049db8"
+    },
+    {
+      "path": "var/tempo-shutdown-check/tempoLife20260930B/evidence/window.json",
+      "sha256": "5f989a6d31d87f4a9a61388ae8680d7c7989fbfb7d749f739141c2a18c3a58c6"
+    }
+  ],
+  "controller_log_ref": {
+    "path": "/tmp/tempoLife20260930B-runtime-controller.log",
+    "sha256": "9444861dc0428dc9c876a9cc087c7c79c9cbac31b8e894f4172f5717c0f2bb34"
+  },
+  "independent_review": {
+    "passed": true,
+    "security_concerns": [],
+    "logic_errors": [],
+    "checks_passed": 14,
+    "checks_failed": 0,
+    "checks_not_run": 0,
+    "method": "fresh independent read-only raw response, metric, retained terminal, post-stop and preservation evidence review",
+    "scope": "synthetic telemetry infrastructure lifecycle only",
+    "initial_durability_denominators_recomputed": true,
+    "limitations": [
+      "Collector snapshot exposes no owner PIDs; unchanged selected listener snapshot does not establish process identity",
+      "First stop proof is computed by pinned source; final raw retained exit fields were independently cross-checked",
+      "No real AYA/memory behavior, utility or release qualification"
+    ]
+  },
+  "remaining_qualification_boundaries": [
+    "No unseen memory-benefit evidence",
+    "No real-session content or model/provider execution",
+    "No AYA/Hermes runtime integration or provider cutover",
+    "No further live attempt authorized by this completed run"
+  ],
+  "downloads_installs_real_sessions_model_requests_external_telemetry_memory_admission": false
+}
