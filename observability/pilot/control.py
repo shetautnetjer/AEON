@@ -123,7 +123,12 @@ def sockets():
 def validate_retry_unit(state,name):
  assert unit_stopped(state),'retry requires all pilot units stopped'
  if state.get('LoadState')!='not-found':
-  assert state.get('LoadState')=='loaded' and state.get('FragmentPath')==str(A/'observability/pilot/units'/name),'retry unit does not use the pinned pilot fragment'
+  assert state.get('LoadState')=='loaded','retry unit is not loaded'
+  fragment=state.get('FragmentPath','');assert isinstance(fragment,str) and Path(fragment).is_absolute(),'retry unit does not use the pinned pilot fragment'
+  try:
+   actual=Path(fragment).resolve(strict=True);approved=(A/'observability/pilot/units'/name).resolve(strict=True)
+  except (OSError,RuntimeError):raise AssertionError('retry unit fragment is missing or unresolved') from None
+  assert actual==approved and actual.is_file(),'retry unit does not use the pinned pilot fragment'
 def preflight(window=None):
  assert not [x for x in sockets() if x['port'] in PORTS],'pilot port conflict'
  for name in NAMES:

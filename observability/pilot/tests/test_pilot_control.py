@@ -241,6 +241,43 @@ class PilotControlTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 self.control.validate_retry_unit(dict(good, **changes), name)
 
+    def test_retry_unit_validation_accepts_only_resolved_approved_runtime_alias(self):
+        name = self.control.NAMES[0]
+        with tempfile.TemporaryDirectory(prefix='aeon-control-runtime-alias-') as directory:
+            root = Path(directory)
+            self.control.A = root/'AEON'
+            source = self.control.A/'observability/pilot/units'/name
+            source.parent.mkdir(parents=True)
+            source.write_text('[Unit]\nDescription=Synthetic pilot unit\n')
+            runtime = root/'run/user/1000/systemd/user'/name
+            runtime.parent.mkdir(parents=True)
+            runtime.symlink_to(source)
+            stopped = {'LoadState':'loaded', 'ActiveState':'inactive', 'MainPID':'0',
+                'FragmentPath':str(runtime)}
+            with patch.object(self.control, 'run', side_effect=AssertionError('service call forbidden')) as run:
+                self.control.validate_retry_unit(stopped, name)
+                self.control.validate_retry_unit(dict(stopped, FragmentPath=str(source)), name)
+                with self.assertRaises(AssertionError):
+                    self.control.validate_retry_unit(dict(stopped, ActiveState='active'), name)
+                runtime.unlink()
+                foreign = root/'foreign.service'
+                foreign.write_text('[Unit]\nDescription=Foreign fixture\n')
+                runtime.symlink_to(foreign)
+                with self.assertRaises(AssertionError):
+                    self.control.validate_retry_unit(stopped, name)
+                foreign.unlink()
+                with self.assertRaises(AssertionError):
+                    self.control.validate_retry_unit(stopped, name)
+                runtime.unlink()
+                wrong = source.with_name('aeon-pilot-wrong.service')
+                wrong.write_text('[Unit]\nDescription=Wrong fixture\n')
+                runtime.symlink_to(wrong)
+                with self.assertRaises(AssertionError):
+                    self.control.validate_retry_unit(stopped, name)
+                with self.assertRaises(AssertionError):
+                    self.control.validate_retry_unit(dict(stopped, FragmentPath='relative.service'), name)
+                run.assert_not_called()
+
     def test_alloy_outage_and_recovery_touch_only_alloy_with_remaining_budget(self):
         self.assertTrue(hasattr(self.control, 'outage'), 'bounded Alloy outage action missing')
         self.assertTrue(hasattr(self.control, 'recover_alloy'), 'bounded Alloy recovery action missing')
