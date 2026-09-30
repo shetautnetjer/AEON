@@ -1,0 +1,62 @@
+{
+  "format_version": 1,
+  "recorded_at": "2026-09-30T19:18:30.739703+00:00",
+  "reviewer": "/root/telemetry_code_review",
+  "method": "Independent source/test and retained-runtime-file review; no service actions or endpoint calls. Recorded from reviewer final response.",
+  "passed": true,
+  "security_concerns": [],
+  "logic_errors": [],
+  "remaining_blockers": [],
+  "execution_source_commit": "bea6a061d32659c0f1ce363c4377846ede6af0e9",
+  "telemetry_tests_passed": 66,
+  "navigation_tests_passed": 15,
+  "focused_tests_independently_rerun": 43,
+  "verified_counts": {
+    "runtime_attempted_spans": 58,
+    "span_ceiling": 1000,
+    "complete_emission_receipt_spans": 54,
+    "refused_span_ids_not_retained": 4,
+    "successfully_read_back_distinct_spans": 50,
+    "successful_distinct_traces": 12,
+    "intentional_refusals": 8,
+    "unexpected_missing_successful_spans": 0,
+    "unexpected_dropped_successful_spans": 0,
+    "canonical_api_calls_across_successful_phases": 10,
+    "canonical_errors_across_successful_phases": 4
+  },
+  "latency_crosscheck_ms": {
+    "normal": {
+      "OK": 88.456212,
+      "ERROR": 3.188697
+    },
+    "recovery": {
+      "OK": 83.970617,
+      "ERROR": 2.496014
+    }
+  },
+  "histogram_buckets_verified_per_phase": 18,
+  "claims_checked": [
+    "Tempo/Grafana IDs/parents/statuses/typed attributes match",
+    "no forbidden content",
+    "canonical counts/errors/durations per batch5/2/5",
+    "latency sums/buckets match source API durations",
+    "effective limits/listener ownership unchanged",
+    "only Alloy peers preserved during outage",
+    "final shutdown before original deadline",
+    "recorded52 owned PIDs dead/four groups empty/no listeners",
+    "protected pins and existing collector owners preserved"
+  ],
+  "preservation_receipt": {
+    "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/final-preservation-and-shutdown-verification.json",
+    "sha256": "e7c1f3ce5b97443df07aa0da193f7c750701fa2341250e40a90caada4576e21f"
+  },
+  "qualifications": [
+    "First intentional-outage adapter failed before receipt write: four spans are counted from executed fixed assertion/export failure, but their IDs were not retained.",
+    "Normal metrics are explicit persisted historical samples at18:44:16UTC; recovery samples are current after connector reset. Each phase is five calls/two errors/five duration observations.",
+    "Tempo bounded stop used SIGKILL after25s grace; graceful shutdown and later-restart durability are unqualified. Exact internal delay cause remains unidentified in bounded warn-level logs.",
+    "Configured local export routes and owned-process socket snapshots are verified, not continuous whole-host packet capture.",
+    "Stopped artifacts/state/runtime registrations remain retained.24h retention applies only while running;10GiB is a monitored budget, not hard quota."
+  ],
+  "utility_qualified": false,
+  "release_evaluated": false
+}

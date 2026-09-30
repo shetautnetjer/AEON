@@ -1,0 +1,357 @@
+{
+  "format_version": 1,
+  "recorded_at": "2026-09-30T19:18:30.739674+00:00",
+  "scope": "completed approved synthetic local-only pilot; sanitized metadata receipt, no raw sessions or configuration contents",
+  "approved_packet_commit": "242e3eae61ce848e61b2a22e21e536bcbebad1d0",
+  "approval_reference": "Sentinel_7f947dcabb948191ac99ffefbf8bba4f",
+  "approved_at": "2026-09-30T18:02:19Z",
+  "source_commits": [
+    "0be99a4ab112e97923f8ae2d27cee6a46767c34e",
+    "0d95fe914f6e4440d9979b1fac341d4d4cb731ea",
+    "ac0a103a424d8e1085216c13b553ee5be7d9697b",
+    "1c2648add88d3b067bbc4975271d59a93e93445c",
+    "597c4bbd910dcb0467d5bb2182250d628f1a201a",
+    "bea6a061d32659c0f1ce363c4377846ede6af0e9"
+  ],
+  "final_execution_source_commit": "bea6a061d32659c0f1ce363c4377846ede6af0e9",
+  "source_refs": [
+    {
+      "path": "observability/pilot/artifact-pins.json",
+      "sha256": "3da72366e3bef8db1e4a3b6899b63238b7013d1c9878f676fd828e0055878039"
+    },
+    {
+      "path": "observability/pilot/source-baseline.json",
+      "sha256": "db318defcd12297cefb8aad5847a4a374f734b34cd36eb3e352ff83fe26548d7"
+    },
+    {
+      "path": "observability/pilot/source-custody.json",
+      "sha256": "7dd0c8ccd4cf98d88b977fb2494a43d9bb68164a0b5eda8c976f5d5a5847888a"
+    },
+    {
+      "path": "observability/pilot/instrumentor-full-wheel-lock.txt",
+      "sha256": "b2cd8dd4761fa5d7bb760ab145d6e26bb5cf4002a7d70ee7311234a86185f62c"
+    }
+  ],
+  "retained_evidence_refs": [
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/acquisition.json",
+      "sha256": "11fa94240003c839d41bb6666683f4670101ed2e61fae7a89bfb4a005ece0964"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/pm-build.json",
+      "sha256": "679c0dfeaa22999bb57db13fbfc3a8821f0872de09e2a681a06cf76abd5d7b1a"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/native-existing-dependencies.json",
+      "sha256": "802f855d92c335601273431484457c49e547a95eefbf608904b1b7161bb4c618"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/binary-prereqs.json",
+      "sha256": "9ae70b55861fc06f4828d4ec77a8ed430c19bc66eadd4b674dbd94750c1fe026"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/prestart-gates.json",
+      "sha256": "42c2224da15856f5a372e532f979cda0b547803999dc919406576ba87c7bcee2"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/prestart-tests-outagefix.log",
+      "sha256": "4d4b51a37401c27bdbb94dbb6147ffdeab95e4b468b0a59b11696e431be2faac"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/instrumentor-imports-outagefix.json",
+      "sha256": "e4142d0ea606f903d34e8bd2762eac18d3769d9e0c7641da45853ca6f6caebf3"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/navigation-prestart.log",
+      "sha256": "a80fbd88ef4c94d3056b3bb4a835047bfdb6e1d7def0e010587a00f5dde2ce66"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/emitted-normal.json",
+      "sha256": "5859f871ae412f00f43bc3ce573a719b98b35644d27dec54424edb26a65f23c4"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/readback-normal-verified.json",
+      "sha256": "336a8831226543c61db7ffe9ace5042376e9e9d5649888e4b4e9fb6116657c4f"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/emitted-outage.json",
+      "sha256": "b44509c56b980bccd0707f14e5509565c33f97b98c692697dce1b05199b49c57"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/emitted-recovery.json",
+      "sha256": "4dafc773a310df8f41bf4871e239763959dc1d2e355ac468e3560e851e986c0f"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/readback-recovery.json",
+      "sha256": "17ef241b6ff3b352efcfff2cedccc6fbd537ad44ba32ee7a71a21f320342fbc0"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/runtime-window.json",
+      "sha256": "cb585e26c0d7372e11add3041377fbaa85fb233565b5c4a83268fdd7fa6c48d0"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/runtime-preflight-attempt1.json",
+      "sha256": "06c4b80d725e8b99aa5a20fb8093e0ccb2929a4768bc657d8d9e04558a4b4deb"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/runtime-limits-and-listeners.json",
+      "sha256": "16124ea0f7dea4bc99ad47dd2b98f095520e01b0c5491bb70ae6b3411326afde"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/alloy-outage.json",
+      "sha256": "7b8b775bab6da52f9dd5a0f7eb0b3487c2a74d9b70bddbcf8bb317bf1729a0d2"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/alloy-recovery.json",
+      "sha256": "d4ddbf0c68d276c5fb746927da101a43c73c7b3f2eb6023e8fc9244b5337e1f9"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/limits-recovery.json",
+      "sha256": "16124ea0f7dea4bc99ad47dd2b98f095520e01b0c5491bb70ae6b3411326afde"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/measured-service-memory-recovery.json",
+      "sha256": "e74d1cafac7450a5d4f3d9155cf4ff07e98750b226a8d5850815fec9af6d7042"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/execution-final-recovery.json",
+      "sha256": "f1ee912a7ec4c34c3325fd78822669819ed641447a453fc28f21db34a9650d82"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/shutdown.json",
+      "sha256": "15870a135118a179c7b3383f774afdfd117e452c75472c6107064048ea36c574"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/final-preservation-and-shutdown-verification.json",
+      "sha256": "e7c1f3ce5b97443df07aa0da193f7c750701fa2341250e40a90caada4576e21f"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/tempo-bounded-shutdown-diagnostic.json",
+      "sha256": "16732b8fd427c0ede4366aabf522716dab7ff2919f4128d85e8a861f3ecfcc9c"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/execution-steps-attempt1.json",
+      "sha256": "ea71d213535db6a964e81b3f02d977f4980586cc1473958c24dd71bc092ab670"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/execution-steps-attempt2.json",
+      "sha256": "e5deb5a575089e638a6c7895cfa3acbc7e6bd981d523c5ef43e80ab3d4b0d559"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/execution-finish.json",
+      "sha256": "5578426eeee3254cec87f1a1fa58a558fdfd610a24a780b855e115d81810dba0"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/alloy-outage-before-export-fix.json",
+      "sha256": "872c25f1c1fb3ff0b7ecd4448a9d3faf5a226199c6ee3be77eee48ca0585d6db"
+    },
+    {
+      "path": "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot/evidence/shutdown-before-export-fix.json",
+      "sha256": "391627b7d18521a118ba7a35d54c46f203114ddd4e122112e0a9618e2f5de1a1"
+    }
+  ],
+  "checks": {
+    "artifact_hashes": "PASS",
+    "binary_prerequisites": "PASS:6 commands",
+    "telemetry_tests": {
+      "passed": 66,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "imported_origins": 1389,
+      "undeclared_imports": 0
+    },
+    "navigation_tests": {
+      "passed": 15,
+      "failures": 0
+    },
+    "readback": "QUALIFIED_PASS",
+    "outage_recovery": "PASS after recorded narrow adapter repair",
+    "bounded_shutdown": "PASS",
+    "graceful_tempo_shutdown": "FAILED timeout",
+    "restart_durability": "NOT_RUN",
+    "protected_source_preservation": "PASS",
+    "existing_collector_owners": "PASS"
+  },
+  "phases": [
+    {
+      "name": "normal",
+      "attempted_spans": 25,
+      "export_verdict": "SUCCESS",
+      "canonical_api_count": 5,
+      "categories": {
+        "sdk": 5,
+        "api": 5,
+        "llm": 5,
+        "agent": 6,
+        "tool": 1,
+        "lookup": 1,
+        "decision": 2
+      },
+      "emitter_memory_peak_bytes": 92721152,
+      "content_sentinel_absent": true,
+      "verified_spans_tempo_and_grafana": 25,
+      "metrics": {
+        "calls": 5,
+        "errors": 2,
+        "duration_count": 5,
+        "series": 2
+      },
+      "metric_query_time": "2026-09-30T18:44:16Z",
+      "metric_sample_scope": "persisted first-batch samples at explicit historical time"
+    },
+    {
+      "name": "outage",
+      "attempted_spans": 4,
+      "export_verdict": "FAILURE",
+      "canonical_api_count": 1,
+      "categories": {
+        "sdk": 1,
+        "api": 1,
+        "llm": 1,
+        "agent": 1
+      },
+      "emitter_memory_peak_bytes": 92389376,
+      "content_sentinel_absent": true,
+      "verified_spans_tempo_and_grafana": 0,
+      "bounded_error_type": "ConnectionError"
+    },
+    {
+      "name": "recovery",
+      "attempted_spans": 25,
+      "export_verdict": "SUCCESS",
+      "canonical_api_count": 5,
+      "categories": {
+        "sdk": 5,
+        "api": 5,
+        "llm": 5,
+        "agent": 6,
+        "tool": 1,
+        "lookup": 1,
+        "decision": 2
+      },
+      "emitter_memory_peak_bytes": 92356608,
+      "content_sentinel_absent": true,
+      "verified_spans_tempo_and_grafana": 25,
+      "metrics": {
+        "calls": 5,
+        "errors": 2,
+        "duration_count": 5,
+        "series": 2
+      },
+      "metric_query_time": null,
+      "metric_sample_scope": "current instant query"
+    }
+  ],
+  "first_intentional_outage": {
+    "span_count": 4,
+    "accepted_spans": 0,
+    "span_ids_retained": false,
+    "adapter_outcome": "FAILED before receipt; repaired and independently retested"
+  },
+  "denominators": {
+    "runtime_attempted_spans": 58,
+    "span_ceiling": 1000,
+    "complete_emission_receipt_spans": 54,
+    "refused_span_ids_not_retained": 4,
+    "successfully_read_back_distinct_spans": 50,
+    "successful_distinct_traces": 12,
+    "intentional_refusals": 8,
+    "unexpected_missing_successful_spans": 0,
+    "unexpected_dropped_successful_spans": 0,
+    "canonical_api_calls_across_successful_phases": 10,
+    "canonical_errors_across_successful_phases": 4
+  },
+  "limits": {
+    "combined_memory_max_mib": 2176,
+    "combined_cpu_percent": 225,
+    "services_memory_max_mib": 1920,
+    "emitter_memory_max_mib": 256,
+    "recorded_oom_events": 0,
+    "active_loopback_listener_count": 9,
+    "budget_bytes": 10737418240,
+    "hard_disk_quota": false
+  },
+  "shutdown": {
+    "started_at": "2026-09-30T18:43:19.836753+00:00",
+    "deadline_at": "2026-09-30T19:13:19.836753+00:00",
+    "shutdown_at": "2026-09-30T19:08:54.186240+00:00",
+    "shutdown_before_deadline": true,
+    "pilot_owned_pids_alive": 0,
+    "pilot_control_groups_nonempty": 0,
+    "pilot_listeners_remaining": 0,
+    "tempo_graceful_stop": false,
+    "emitter_scopes": {
+      "aeon-pilot-emitter-normal.scope": {
+        "load_state": "not-found",
+        "active_state": "inactive",
+        "main_pid": "0"
+      },
+      "aeon-pilot-emitter-outage.scope": {
+        "load_state": "not-found",
+        "active_state": "inactive",
+        "main_pid": "0"
+      },
+      "aeon-pilot-emitter-recovery.scope": {
+        "load_state": "not-found",
+        "active_state": "inactive",
+        "main_pid": "0"
+      }
+    }
+  },
+  "preservation": {
+    "protected_files_unchanged": 5,
+    "plugin_source_pins_unchanged": 40,
+    "core_custody_pins_unchanged": 28,
+    "existing_dependency_file_pins_unchanged": 1001,
+    "existing_dependency_distributions": 15,
+    "acquired_artifact_hashes_rechecked": 28,
+    "runtime_config_pins_unchanged": 11,
+    "existing_collector_listener_rows_unchanged": 4,
+    "original_brainstem_status_entries_preserved": 63,
+    "original_brainstem_source_pins_unchanged": 19,
+    "core_clean_unchanged": true,
+    "brainstem_continuation_clean_unchanged": true
+  },
+  "installed_binaries_rechecked": 3,
+  "disk_after_shutdown": {
+    "roots": [
+      "/home/aya-hmw/Documents/ChatGPT/AEON/var/observability-pilot",
+      "/home/aya-hmw/Documents/ChatGPT/AEON/artifacts/observability"
+    ],
+    "bytes": 2204827648,
+    "logical_file_bytes": 2154756774,
+    "allocated_bytes": 2204827648,
+    "symlinks_not_followed": 30,
+    "unique_inodes": 17993,
+    "limit_bytes": 10737418240,
+    "hard_quota": false,
+    "approved_external_python_target_bytes_counted": false
+  },
+  "services_running": false,
+  "real_sessions_captured": false,
+  "model_requests": false,
+  "outbound_telemetry": false,
+  "utility_qualified": false,
+  "release_evaluated": false,
+  "qualifications": [
+    "First intentional-outage adapter failed before receipt write: four spans are counted from executed fixed assertion/export failure, but their IDs were not retained.",
+    "Normal metrics are explicit persisted historical samples at18:44:16UTC; recovery samples are current after connector reset. Each phase is five calls/two errors/five duration observations.",
+    "Tempo bounded stop used SIGKILL after25s grace; graceful shutdown and later-restart durability are unqualified. Exact internal delay cause remains unidentified in bounded warn-level logs.",
+    "Configured local export routes and owned-process socket snapshots are verified, not continuous whole-host packet capture.",
+    "Stopped artifacts/state/runtime registrations remain retained.24h retention applies only while running;10GiB is a monitored budget, not hard quota.",
+    "26 sealed wheels supplement15 read-only installed distributions/1001 pins; no additional artifacts or active environment mutations.",
+    "Current prestart-gates metadata retains its first-gate timestamp; it is not a completed runtime verdict. Latest66-test evidence is outagefix, not older files named final."
+  ],
+  "not_run": [
+    "active Hermes/AYA cutover",
+    "native AYA invocation bridge",
+    "actual Jev/Brainstem memory operations",
+    "real sessions/model requests",
+    "native token metric export",
+    "memory utility/release evaluation",
+    "Respan",
+    "restart durability"
+  ],
+  "remaining_current_task_blockers": []
+}
