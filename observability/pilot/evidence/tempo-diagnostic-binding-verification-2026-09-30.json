@@ -1,0 +1,297 @@
+{
+  "verified_at": "2026-09-30T20:19:42.806246+00:00",
+  "evidence_class": "exposed-development offline diagnostic binding",
+  "passed": true,
+  "utility_qualified": false,
+  "release_evaluated": false,
+  "runtime_approval_status": "pending",
+  "services_started": false,
+  "downloads_or_installs": false,
+  "real_sessions_or_model_requests": false,
+  "full_sealed_fixture_tests": {
+    "passed": true,
+    "tests_run": 165,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "undeclared_imports": []
+  },
+  "navigation_tests": {
+    "passed": true,
+    "tests_run": 15,
+    "components": 20,
+    "relationships": 16,
+    "deterministic_views_match": true
+  },
+  "independent_review": {
+    "passed": true,
+    "security_concerns": [],
+    "logic_errors": [],
+    "suggestions": [
+      "Keep runtime qualification pending: unavailable terminal OOM counters remain unverified and prevent restart."
+    ],
+    "independent_tests_run": 137,
+    "guards": "sockets and subprocess creation denied",
+    "manifest_files_verified": 33,
+    "reviewed_backend_sha256": "75a9ce540623c1b209bf508d3c20978d5de4e50117f22a2acea6e81946c46c1e"
+  },
+  "inert_validation": {
+    "passed": true,
+    "scope": "inert config and unit validation; no service start",
+    "results": [
+      {
+        "command": [
+          "/home/aya-hmw/.local/bin/alloy",
+          "validate",
+          "INERT_DRAFT/config/config.alloy"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "command": [
+          "/home/aya-hmw/.local/bin/promtool",
+          "check",
+          "config",
+          "INERT_DRAFT/config/prometheus.yaml"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "cebc5de7f546f777fc6c8b23035a8f5d34396d40c5dfcdabac474657cfc3e9cb",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "command": [
+          "/home/aya-hmw/Documents/ChatGPT/AEON/artifacts/observability/tempo-3.1.0/tempo",
+          "-target=all",
+          "-config.file=INERT_DRAFT/config/tempo.yaml",
+          "-config.verify=true",
+          "-distributor.log-received-spans.enabled=false",
+          "-distributor.log-received-spans.include-attributes=false",
+          "-distributor.log-discarded-spans.enabled=false",
+          "-distributor.log-discarded-spans.include-attributes=false"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "command": [
+          "/home/aya-hmw/Documents/ChatGPT/AEON/artifacts/observability/tempo-3.1.0/tempo",
+          "-version"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "713463446e7f8eec5b1cf31b1ad9a0015e4d302c0f4dbcb4538383dcd1229928",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "command": [
+          "/home/aya-hmw/Documents/ChatGPT/AEON/artifacts/observability/grafana-13.2.3/bin/grafana",
+          "server",
+          "-v"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "d5f23795375d0f8e4f9ca9e32147ddadd1b77910d17ae99bbd37c0197931d873",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "command": [
+          "systemd-analyze",
+          "--user",
+          "verify",
+          "INERT_DRAFT/units/aeon-tempo-check-tempo-diagOffline20260930.service",
+          "INERT_DRAFT/units/aeon-tempo-check-alloy-diagOffline20260930.service",
+          "INERT_DRAFT/units/aeon-tempo-check-prometheus-diagOffline20260930.service",
+          "INERT_DRAFT/units/aeon-tempo-check-grafana-diagOffline20260930.service"
+        ],
+        "exit_code": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "2b92b393d3a1026b139cbf2005d8c38aa53e2b35f296aa4f6fb39870d8cea591",
+        "sandbox_retry": "read-only unit verifier required user-manager IPC permissions"
+      }
+    ],
+    "config_pins": [
+      {
+        "path": "config/README.md",
+        "sha256": "c9353b6d8dfd1a8e9b31bd98e7bcd5f5d4c83c56585dbbd9450714b96f92a86c"
+      },
+      {
+        "path": "config/config.alloy",
+        "sha256": "7f1a974e0f1f1563dd4d4f1136dc84cb229eca568ca7fac0bcc2f21e94478db9"
+      },
+      {
+        "path": "config/grafana.ini",
+        "sha256": "865afadb5228c9ac333d1d2803613ec7e4f1625a31a934cec5916dafd2592ef9"
+      },
+      {
+        "path": "config/hermes_otel.synthetic.yaml",
+        "sha256": "af491143e1d34e4f67654407b874bf3351e912bf962a70e2b88e293607922c53"
+      },
+      {
+        "path": "config/prometheus.yaml",
+        "sha256": "53a58bc706cfb5e6ffdb5cb7fbe3496f27990d9a82774f3007fed3dfbd4c6b12"
+      },
+      {
+        "path": "config/provisioning/datasources/local.yaml",
+        "sha256": "fd761e0275d98cc8344999aafb2e5d85f47abced1926b4b9a0e5b5ce36040271"
+      },
+      {
+        "path": "config/tempo.yaml",
+        "sha256": "510607a8d0c158a1021437f7476b83d4a1fdb582e03c9460abb62fb60a43d530"
+      },
+      {
+        "path": "units/aeon-tempo-check-alloy-diagOffline20260930.service",
+        "sha256": "1bf2137d519d16d8fb2819979fc1742c3bb007132d7b1a19f30f7631c09c8333"
+      },
+      {
+        "path": "units/aeon-tempo-check-grafana-diagOffline20260930.service",
+        "sha256": "999772e7a01e239654c4a6b03021eadc0a3b35db0b84d88c83850e4e32de199b"
+      },
+      {
+        "path": "units/aeon-tempo-check-prometheus-diagOffline20260930.service",
+        "sha256": "6b5d8f135d1986a61d13942a5185a08058e248f73c97d3519f3622119194336b"
+      },
+      {
+        "path": "units/aeon-tempo-check-tempo-diagOffline20260930.service",
+        "sha256": "93cb2d1bea84b0704b771a970daad55d6a7970bc08f7af540e7aa09699c4d83c"
+      }
+    ]
+  },
+  "original_preservation": {
+    "passed": true,
+    "original_retained_file_count": 74,
+    "protected_profile_git_file_count": 5,
+    "baseline_sha256": "7e4bf8762be9fbb063bdb6a8c877485757e703f5e8cbd85ea0fc42c95fd9780e",
+    "changed_paths": [],
+    "scope": "read-only original config/unit/evidence/profile preservation; new source changes excluded intentionally"
+  },
+  "source_artifact_read_only_check": {
+    "passed": true,
+    "scope": "read-only artifact/custody/native/fixture/source transition; no ports/service operations",
+    "verification_seconds": 6.193283695029095,
+    "phase_allowance_seconds": 30,
+    "counts": {
+      "artifacts": 28,
+      "source": 28,
+      "plugin": 40,
+      "native": 1001,
+      "fixture": 1339,
+      "protected": 5,
+      "config": 11,
+      "original_runtime_source": 15,
+      "retained_evidence": 63
+    },
+    "preservation_pin_count": 79,
+    "source_manifest_sha256": "55c06c2478ae108fedcdc4d92314c5a47d037c661f66b977ca69ba0802b08fef",
+    "final_preservation_passed": true,
+    "final_preservation_seconds": 0.8648741419892758,
+    "final_preservation_allowance_seconds": 5,
+    "approved_unique_file_count": 2291,
+    "retained_evidence_profile_config_count": 79
+  },
+  "stopped_read_only_check": {
+    "verified_at": "2026-09-30T20:18:41.538646+00:00",
+    "passed": true,
+    "scope": "read-only original pilot stopped, diagnostic namespace unregistered, nine pilot ports absent",
+    "old_units": {
+      "aeon-pilot-tempo.service": {
+        "Id": "aeon-pilot-tempo.service",
+        "LoadState": "loaded",
+        "ActiveState": "failed",
+        "MainPID": "0",
+        "Result": "timeout",
+        "ControlGroup": ""
+      },
+      "aeon-pilot-alloy.service": {
+        "Id": "aeon-pilot-alloy.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      "aeon-pilot-prometheus.service": {
+        "Id": "aeon-pilot-prometheus.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      "aeon-pilot-grafana.service": {
+        "Id": "aeon-pilot-grafana.service",
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      }
+    },
+    "offline_diagnostic_unit_names": {
+      "aeon-tempo-check-tempo-diagOffline20260930.service": {
+        "Id": "aeon-tempo-check-tempo-diagOffline20260930.service",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      "aeon-tempo-check-alloy-diagOffline20260930.service": {
+        "Id": "aeon-tempo-check-alloy-diagOffline20260930.service",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      "aeon-tempo-check-prometheus-diagOffline20260930.service": {
+        "Id": "aeon-tempo-check-prometheus-diagOffline20260930.service",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      },
+      "aeon-tempo-check-grafana-diagOffline20260930.service": {
+        "Id": "aeon-tempo-check-grafana-diagOffline20260930.service",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "MainPID": "0",
+        "Result": "success",
+        "ControlGroup": ""
+      }
+    },
+    "pilot_port_listeners": [],
+    "diagnostic_namespace_created": false,
+    "historical_tempo_timeout_preserved": true,
+    "criterion_note": "An inactive or failed unit with MainPID0/emptyControlGroup is stopped; the original failed graceful-stop result remains failed."
+  },
+  "manifest": {
+    "path": "observability/pilot/diagnostic-source-pins.json",
+    "sha256": "55c06c2478ae108fedcdc4d92314c5a47d037c661f66b977ca69ba0802b08fef",
+    "source_files": 33
+  },
+  "runtime_checks": {
+    "start": "not_run",
+    "effective_limits": "not_run",
+    "lifecycle_visibility": "not_run",
+    "initial_25_span_readback": "not_run",
+    "first_graceful_stop": "not_run",
+    "restart": "not_run",
+    "durability": "not_run",
+    "second_graceful_stop": "not_run",
+    "finite_lifetime": "not_run",
+    "diagnostic_cleanup": "not_run"
+  },
+  "qualification_limit": "Missing terminal memory.events counters are unverified, never cached zero; strict gate fails and prevents restart. Cooperative filesystem checks cannot preempt a blocked syscall; unit RuntimeMax limits provide a service backstop.",
+  "tdd_log_groups": [
+    "/tmp/tempo-flow-{01..10}-{red,green}.log",
+    "/tmp/tempo-config-{01..08}-{RED,GREEN}.log",
+    "/tmp/diagnostic-system-{01..08}-{red,green}.log",
+    "/tmp/diagnostic-readback-tdd",
+    "/tmp/diagnostic-disk-deadline-tdd-summary.txt",
+    "/tmp/diagnostic-record-tdd-summary.txt",
+    "/tmp/aeon-terminal-fix-receipt.json",
+    "/tmp/diagnostic-emitter-cleanup-tdd-summary.txt"
+  ]
+}

@@ -56,3 +56,7 @@ Record **passed / failed / not run** separately: lifecycle visibility, effective
 Rollback: stop only positively owned diagnostic units/scopes and leave synthetic state/evidence retained. No active install/export route or original config needs restoration. Deleting reviewed diagnostic state/unit registrations remains a separate decision.
 
 **One creator decision:** May Codex run this one new 15-minute, 25-span, local-only diagnostic with four isolated units, a 90-second Tempo stop allowance, one restart only after graceful stop, the unchanged 2,176 MiB/2.25-core ceilings and retained synthetic evidence? This authorizes that new runtime window only after offline binding/tests/review pass; no packages, real traffic, model access, active AYA integration or memory admission.
+
+## Subsequent offline implementation checkpoint
+
+The proposed binding is now implemented separately; [its readiness and qualification record](tempo-diagnostic-binding-ready-2026-09-30.md) supersedes only the earlier statement that binding code was not yet implemented. The original proposal, failed-run evidence and pending runtime approval boundary are preserved. Missing terminal cgroup OOM counters remain unverified and prevent restart under the strict proposed gate. No new diagnostic was executed for this checkpoint.

@@ -1,0 +1,147 @@
+{
+  "baseline_commit": "ecaa4035db61249d28ff3f6fbb874c8f676b9b8e",
+  "replaced_original_sources": [
+    {
+      "path": "observability/pilot/readback.py",
+      "previous_sha256": "dc8b1a78efb644e25c06e8b13e75df3ccb8d430b017fe720a9855680126480c3",
+      "sha256": "c31a5f6c3e4361716f68ac58db2a5e3884f7626ed3a252991fc0ea71788e5598"
+    }
+  ],
+  "source_pins": [
+    {
+      "path": "observability/pilot/artifact-pins.json",
+      "sha256": "3da72366e3bef8db1e4a3b6899b63238b7013d1c9878f676fd828e0055878039"
+    },
+    {
+      "path": "observability/pilot/config/README.md",
+      "sha256": "1492d01df3ede7d8e6dbcd1368a101de24350c9aed77d42dcd3dea2044e333ae"
+    },
+    {
+      "path": "observability/pilot/config/config.alloy",
+      "sha256": "7f1a974e0f1f1563dd4d4f1136dc84cb229eca568ca7fac0bcc2f21e94478db9"
+    },
+    {
+      "path": "observability/pilot/config/grafana.ini",
+      "sha256": "a7157c9fd0fa9091174bce90957903e4434084328761b69a1777451a04a721ec"
+    },
+    {
+      "path": "observability/pilot/config/hermes_otel.synthetic.yaml",
+      "sha256": "af491143e1d34e4f67654407b874bf3351e912bf962a70e2b88e293607922c53"
+    },
+    {
+      "path": "observability/pilot/config/prometheus.yaml",
+      "sha256": "53a58bc706cfb5e6ffdb5cb7fbe3496f27990d9a82774f3007fed3dfbd4c6b12"
+    },
+    {
+      "path": "observability/pilot/config/provisioning/datasources/local.yaml",
+      "sha256": "fd761e0275d98cc8344999aafb2e5d85f47abced1926b4b9a0e5b5ce36040271"
+    },
+    {
+      "path": "observability/pilot/config/tempo.yaml",
+      "sha256": "c69cfb0d5016b1cfeb0aca2fdb118869cd3fb9befd0c2dd96c6ce671a271f052"
+    },
+    {
+      "path": "observability/pilot/diagnostic.py",
+      "sha256": "25e24f45cdbe9fc0599125135d38438f50f020de86de01595478521d36b92f42"
+    },
+    {
+      "path": "observability/pilot/diagnostic_config.py",
+      "sha256": "1b38493670c0af6043deda1f296431953f6f0847b7d3014e625ea4ce2b8c8b53"
+    },
+    {
+      "path": "observability/pilot/diagnostic_system.py",
+      "sha256": "75a9ce540623c1b209bf508d3c20978d5de4e50117f22a2acea6e81946c46c1e"
+    },
+    {
+      "path": "observability/pilot/emit_synthetic.py",
+      "sha256": "08341693fab91691b61f76392c68592b5146f91b9e23f2a1072a7f5f0aa8a1a1"
+    },
+    {
+      "path": "observability/pilot/instrumentor-constraints.txt",
+      "sha256": "60b0d8b362a1478cae5d24a911e4631f6d79058c955400435d59698ed49a7af2"
+    },
+    {
+      "path": "observability/pilot/instrumentor-full-wheel-lock.txt",
+      "sha256": "b2cd8dd4761fa5d7bb760ab145d6e26bb5cf4002a7d70ee7311234a86185f62c"
+    },
+    {
+      "path": "observability/pilot/instrumentor_harness.py",
+      "sha256": "d8d41de4cc2f7c0c118d3b930dd1c656ce65fe72b765d8332f32f59be8c24e1c"
+    },
+    {
+      "path": "observability/pilot/readback.py",
+      "sha256": "c31a5f6c3e4361716f68ac58db2a5e3884f7626ed3a252991fc0ea71788e5598"
+    },
+    {
+      "path": "observability/pilot/run_instrumentor.py",
+      "sha256": "0fb06ecb5ab996792a1c2c25d58c3d141b977904b27b963c2c56217e8ebd5527"
+    },
+    {
+      "path": "observability/pilot/run_offline.py",
+      "sha256": "ab937400b290d2cdb39b800081056dcd2858652a74d22150c21eaf6f5edebb11"
+    },
+    {
+      "path": "observability/pilot/source-baseline.json",
+      "sha256": "db318defcd12297cefb8aad5847a4a374f734b34cd36eb3e352ff83fe26548d7"
+    },
+    {
+      "path": "observability/pilot/source-custody.json",
+      "sha256": "7dd0c8ccd4cf98d88b977fb2494a43d9bb68164a0b5eda8c976f5d5a5847888a"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_config.py",
+      "sha256": "16972a4c29f0a56240a8b4a65a41cf12dc68a76862f9d7700c68affc4d4003d8"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_disk_deadline.py",
+      "sha256": "46c2a75122660ddc8e265039fd3d0ddab24d5029886d260e32c3374bdcf3c22b"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_emitter_cleanup.py",
+      "sha256": "f57545880ab7dfd4cb83acbe0f5bcbd388f12acff4e30fa6b650a6b842b9ef84"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_flow.py",
+      "sha256": "844e148d3bcefce7eab61704b8e63aee605715a2e25bb2ef4321bf2e0173515a"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_readback.py",
+      "sha256": "6241aa75cf9e8e1ce6ac8b835f65196f19240a6ab98abd8ba563f99c49a78671"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_record.py",
+      "sha256": "1716a6ea1f3f51808bf062bdf6f97ac9afaf20dc095b16179e4a218b0dfeaa5f"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_system.py",
+      "sha256": "3202919aa4894f8b06b12e9f82e57aa6af0c41c06db0efe78bffdfcf2e8ab583"
+    },
+    {
+      "path": "observability/pilot/tests/test_diagnostic_terminal.py",
+      "sha256": "9d92e3ff764b24d79fb59f2e7cad869608c751278861dbd811b80ec5089c5796"
+    },
+    {
+      "path": "observability/pilot/tests/test_pilot_readback.py",
+      "sha256": "92bc26489f5a77ca9a510f2c751cac62127ebdc5fdd5b7ca89be6a0f34aee40b"
+    },
+    {
+      "path": "observability/pilot/units/aeon-pilot-alloy.service",
+      "sha256": "e8f066ea88175956290d26f851bddb267b2d2ba0d654ba7e7f72c8ef51cadd1f"
+    },
+    {
+      "path": "observability/pilot/units/aeon-pilot-grafana.service",
+      "sha256": "1f82b094aa16775d533a5b8a0d1fd033a11be70c7ee1281ae4aa60f897b2edde"
+    },
+    {
+      "path": "observability/pilot/units/aeon-pilot-prometheus.service",
+      "sha256": "96654e4e75f43af30d96c02afda98e6e376e3add99328da80f0a2dc88260fa8f"
+    },
+    {
+      "path": "observability/pilot/units/aeon-pilot-tempo.service",
+      "sha256": "ca052b4cfadc66d24f11914fbcaf251268bada3b1a9f7cd83ac051cffdf117d2"
+    }
+  ],
+  "evidence_class": "exposed-development offline diagnostic binding",
+  "utility_qualified": false,
+  "release_evaluated": false
+}

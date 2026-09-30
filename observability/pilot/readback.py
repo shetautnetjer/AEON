@@ -324,18 +324,28 @@ def poll(opener, url, deadline, validator, *, text=False):
     reject('poll_failed_' + last)
 
 
-def disk_usage(root=STATE, artifacts=ARTIFACTS, *, limit=DISK_LIMIT):
-    roots = [Path(root), Path(artifacts)]
+def disk_usage(root=STATE, artifacts=ARTIFACTS, *, limit=DISK_LIMIT, additional_roots=(), absolute_deadline=None):
+    if absolute_deadline is not None:
+        if type(absolute_deadline) not in (int, float) or not math.isfinite(absolute_deadline): reject('invalid_absolute_deadline')
+    def check_deadline():
+        if absolute_deadline is not None and time.monotonic() >= absolute_deadline: reject('poll_deadline_reached')
+    check_deadline()
+    if not isinstance(additional_roots, tuple): reject('invalid_additional_budget_roots')
+    try:
+        roots = [Path(root), Path(artifacts), *(Path(item) for item in additional_roots)]
+    except TypeError: reject('invalid_additional_budget_roots')
     if any(not p.is_dir() or p.is_symlink() for p in roots): reject('budget_root_missing_or_link')
     roots = [p.resolve() for p in roots]
     logical = allocated = links = 0
     seen = set()
     def account(path):
         nonlocal logical, allocated, links
+        check_deadline()
         info = path.lstat()
         if info.st_uid != os.getuid(): reject('budget_inode_owner_mismatch')
         if stat.S_ISLNK(info.st_mode):
             links += 1
+            check_deadline()
             try: target = path.resolve(strict=True)
             except (OSError, RuntimeError): reject('budget_link_unresolvable')
             internal = any(target.is_relative_to(p) for p in roots)
@@ -353,12 +363,17 @@ def disk_usage(root=STATE, artifacts=ARTIFACTS, *, limit=DISK_LIMIT):
     def unavailable(_): reject('budget_inventory_unavailable')
     for selected in roots:
         account(selected)
-        for directory, dirs, files in os.walk(selected, followlinks=False, onerror=unavailable):
+        directories = iter(os.walk(selected, followlinks=False, onerror=unavailable))
+        while True:
+            check_deadline()
+            try: directory, dirs, files = next(directories)
+            except StopIteration: break
             for name in dirs + files: account(Path(directory) / name)
+    check_deadline()
     return {'roots': [str(p) for p in roots], 'bytes': max(logical, allocated), 'logical_file_bytes': logical, 'allocated_bytes': allocated, 'symlinks_not_followed': links, 'unique_inodes': len(seen), 'limit_bytes': limit, 'hard_quota': False, 'approved_external_python_target_bytes_counted': False}
 
 
-def verify_grafana_health(body, config_bytes, prereqs):
+def verify_grafana_health(body, config_bytes, prereqs, *, config_pin_path='observability/pilot/config/grafana.ini'):
     """HTTP database health plus separately attested binary version; no I/O."""
     no_canary(body)
     if not isinstance(body, dict) or body.get('database') != 'ok': reject('grafana_health_mismatch')
@@ -367,7 +382,8 @@ def verify_grafana_health(body, config_bytes, prereqs):
     if len(matching) != 1 or matching[0].get('exit_code') != 0 or not isinstance(matching[0].get('stdout'), str) or not re.match(r'^Version 13\.2\.3(?:\s|$)', matching[0]['stdout']):
         reject('grafana_binary_receipt_mismatch')
     config_sha = hashlib.sha256(config_bytes).hexdigest()
-    pins = [item for item in prereqs.get('config_pins', []) if isinstance(item, dict) and item.get('path') == 'observability/pilot/config/grafana.ini']
+    if not isinstance(config_pin_path, str) or config_pin_path not in {'observability/pilot/config/grafana.ini', 'config/grafana.ini'}: reject('grafana_config_pin_mismatch')
+    pins = [item for item in prereqs.get('config_pins', []) if isinstance(item, dict) and item.get('path') == config_pin_path]
     if len(pins) != 1 or pins[0].get('sha256') != config_sha: reject('grafana_config_pin_mismatch')
     config = configparser.ConfigParser(interpolation=None)
     try:
@@ -398,26 +414,52 @@ def metric_query_url(name, metrics_time=None):
     return 'http://127.0.0.1:19090/api/v1/query?' + urllib.parse.urlencode(query)
 
 
-def run(emitted, phase, metrics_time=None):
+def run(emitted, phase, metrics_time=None, *, grafana_config_path=None,
+        binary_prereqs_path=None, inventory_roots=None, absolute_deadline=None,
+        metric_scope=None, config_pin_path='observability/pilot/config/grafana.ini'):
     expected = emitted.get('expected_spans') if isinstance(emitted, dict) else None
     wanted = validate_expected(expected)
     metrics_time = validate_metrics_time(metrics_time, phase)
-    grafana_config = GRAFANA_CONFIG.read_bytes()
-    binary_receipt = BINARY_PREREQS.read_bytes()
+    if inventory_roots is not None:
+        if not isinstance(inventory_roots, tuple) or len(inventory_roots) != 3: reject('invalid_inventory_roots')
+        try:
+            inventory_roots = tuple(Path(item) for item in inventory_roots)
+            if any(not item.is_absolute() for item in inventory_roots): reject('invalid_inventory_roots')
+            resolved = tuple(item.resolve() for item in inventory_roots)
+        except (TypeError, OSError, RuntimeError, ValueError): reject('invalid_inventory_roots')
+        if any(left.is_relative_to(right) or right.is_relative_to(left)
+               for index, left in enumerate(resolved) for right in resolved[index + 1:]):
+            reject('invalid_inventory_roots')
+    if metric_scope is not None:
+        if not isinstance(metric_scope, str) or not metric_scope.strip() or len(metric_scope) > 1024: reject('invalid_metric_scope')
+        no_canary(metric_scope)
+    if absolute_deadline is not None:
+        if type(absolute_deadline) not in (int, float) or not math.isfinite(absolute_deadline): reject('invalid_absolute_deadline')
+        started = time.monotonic()
+        deadline = min(started + 60, absolute_deadline)
+        if deadline <= started: reject('poll_deadline_reached')
+        deadline_seconds = deadline - started
+    config_source = GRAFANA_CONFIG if grafana_config_path is None else Path(grafana_config_path)
+    prereqs_source = BINARY_PREREQS if binary_prereqs_path is None else Path(binary_prereqs_path)
+    grafana_config = config_source.read_bytes()
+    binary_receipt = prereqs_source.read_bytes()
     prereqs = json_loads(binary_receipt)
+    if absolute_deadline is not None and time.monotonic() >= deadline: reject('poll_deadline_reached')
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
-    deadline = time.monotonic() + 60
-    evidence = {'phase': phase, 'capture': 'synthetic_metadata_only', 'metric_count_scope': 'Alloy connector reset before recovery' if phase == 'recovery' else 'first canonical synthetic batch', 'deadline_seconds': 60, 'endpoints': []}
+    if absolute_deadline is None:
+        deadline = time.monotonic() + 60
+        deadline_seconds = 60
+    evidence = {'phase': phase, 'capture': 'synthetic_metadata_only', 'metric_count_scope': metric_scope if metric_scope is not None else 'Alloy connector reset before recovery' if phase == 'recovery' else 'first canonical synthetic batch', 'deadline_seconds': deadline_seconds, 'endpoints': []}
     evidence['metric_query_time'] = metrics_time
     evidence['metric_sample_scope'] = 'persisted first-batch samples at explicit historical time' if metrics_time is not None else 'current instant query'
-    evidence['grafana_version_evidence'] = {'source': str(BINARY_PREREQS), 'sha256': hashlib.sha256(binary_receipt).hexdigest(), 'config_source': str(GRAFANA_CONFIG)}
+    evidence['grafana_version_evidence'] = {'source': str(prereqs_source), 'sha256': hashlib.sha256(binary_receipt).hexdigest(), 'config_source': str(config_source)}
     def keep(item): evidence['endpoints'].append(item); return item
     def ready(body):
         if not isinstance(body, str) or 'ready' not in body.lower(): reject('tempo_not_ready')
         return True
     keep(poll(opener, 'http://127.0.0.1:13200/ready', deadline, ready, text=True))
     def health(body):
-        return verify_grafana_health(body, grafana_config, prereqs)
+        return verify_grafana_health(body, grafana_config, prereqs, config_pin_path=config_pin_path)
     keep(poll(opener, 'http://127.0.0.1:13000/api/health', deadline, health))
     for uid, kind, url in [('aeon-pilot-tempo', 'tempo', 'http://127.0.0.1:13200'), ('aeon-pilot-prometheus', 'prometheus', 'http://127.0.0.1:19090')]:
         def datasource(body, uid=uid, kind=kind, url=url):
@@ -459,7 +501,9 @@ def run(emitted, phase, metrics_time=None):
         response = get(opener, query_url(name), deadline)
         vector(response, buckets=name.endswith('_bucket'))
         evidence['endpoints'].append({'url': query_url(name), 'response': response, 'verified': 'bounded_labels'})
-    evidence['disk'] = disk_usage(STATE)
+    disk_options = {'absolute_deadline': deadline} if absolute_deadline is not None else {}
+    evidence['disk'] = disk_usage(STATE, **disk_options) if inventory_roots is None else disk_usage(inventory_roots[0], inventory_roots[1], additional_roots=inventory_roots[2:], **disk_options)
+    if absolute_deadline is not None and time.monotonic() >= deadline: reject('poll_deadline_reached')
     evidence['passed'] = True
     return evidence
 
