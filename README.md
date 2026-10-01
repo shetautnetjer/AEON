@@ -4,7 +4,7 @@ Local navigation home for AYA memory-related work. Start with [operating rules](
 
 ## Current
 
-Current Brainstem continuation is `codex/brainstem-exposed4-protocol-20260930`, commit `24e16e818085f9ae26d4a1858a01928f411f165d`: compact judge preparation, 10 focused/61 branch tests, no new live model calls. The prior exposed attempt stopped at judge timeout; all eight consumers remain not run and no primary delta exists. The finite synthetic telemetry lifecycle passed 14 checks and stopped its owned resources. [Dated current evidence and remaining gates](STATUS.md).
+Current Brainstem continuation is `codex/brainstem-exposed4-protocol-20260930`, commit `8d7980afd4a3cc44e2c4483fe946011136829ed0`: the approved [compact retry](worktrees/brainstem-continuation/docs/reports/2026-09-30-aya-continuation/exposed4retry-20261001T000433Z-result.md) passed 30 mechanical controls and 14 lexical comparisons, then stopped at a 180.257-second judge timeout without independent cases or acceptance. All eight consumers remain not run, no primary delta exists, and owned processes are stopped. The earlier failed attempt is preserved. The focused batch suite passes 10/10; prior offline preparation had 61 branch tests. The finite synthetic telemetry lifecycle remains its separate 14-check stopped result. [Current evidence and remaining gates](STATUS.md).
 
 Historical foundation: offline evaluator `9043cc9a92aff59475fc329b189601afacd91b48` followed reconciliation `23bd0e06844199a160bda7680f0a27c72ac05597`, with 19 focused/105 relevant tests. These retained development results do not qualify learning or release.
 
@@ -46,7 +46,7 @@ These findings support one navigation home while existing projects own implement
 
 ## Decisions
 
-Project-specific decisions remain with their project and Jev owners. [Current decisions](DECISIONS.md) preserve the failed exposed attempt, compact-gate pending approval and event-based coordination direction.
+Project-specific decisions remain with their project and Jev owners. [Current decisions](DECISIONS.md) preserve both failed exposed attempts and the event-based coordination direction. A further model-bearing attempt requires a separately reviewed and approved packet.
 
 The creator approved the continuation worktree move to `AEON/worktrees/brainstem-continuation`; it is complete. The scoped `/worktrees/` exclusion keeps Brainstem code under its original Git owner. Any further source, service or persistent-state relocation needs its own dependency plan. No database or provider connection changed.
 
