@@ -1,0 +1,21 @@
+# AYA-NATIVE-CORR-009: fresh native correction gate
+
+State: **offline preparation complete; one native run awaits creator approval**. Parent Codex owns custody/decision; delegated Codex owns this finite implementation/run packet; fresh native platform reviewer owns independent source/criteria review. No new account model/judge/helper review was used. Current source is unchanged `f625984a47e9d5c83f778a63e150ca735aa57ae9`, with PG receipt `74df0643f90e37009ec5554a5894ec9195112f2c`. This packet's Brainstem documentation commit: `cbce2330467207d9d4fddbc5c47825705d616850`.
+
+Objective: close the actual installed AYA thread→synthetic fixture→source-backed correction seam. Reuse the existing facade/adapter/source owners. Creator intends Codex-plugin delivery while retaining the native harness; the present fixed MCP facade/transient binding is not a verified installed plugin, and no packaging work is included in this finite check. No new framework, installed profile activation/write, identity mutation or production memory admission. [Report/evidence](../../worktrees/brainstem-native-recall/docs/reports/2026-10-01-native-permission-review/README.md), [exact next-run decision](../../worktrees/brainstem-native-recall/docs/plans/2026-10-01-native-aya-correction-run.md), [inert invocation/protocol inputs](../../worktrees/brainstem-native-recall/docs/plans/2026-10-01-native-aya-correction-inputs.json).
+
+## Completed and unfinished checks
+
+- Completed ordinary source checks: launcher3/profile1 pass. No installed native/model execution. Existing123-test source result is dated, not repeated by this docs review.
+- Completed actual no-auth scratch mechanism: initialize+4read/discovery responses, one fixed fixture server/tool, zero threads/turns/tool calls; controller exit0/reaped. Trace only connect/bind/listen, no observed INET in those calls; observed16PID paths absent, not a complete descendant ledger.
+- Preserved failure: restricted strace ptrace denial before protocol; harmless reproduction and later narrowly approved scratch success. No native/account retry.
+- Completed inert syntax:8 request/notification wire shapes;62TOML leaves and34 known feature names. Fresh review corrected null parameters and environment default selection; prior partial validation remains recorded.
+- Unfinished: actual installed config/requirements/provenance/permission/tool/export readback; existing native account/model availability; one model applying correction with observed delivery; actual app-server+fixture tree cleanup. No new model run follows merely from this task entry.
+
+## Current decision, effects and done criteria
+
+One fresh native AYA GPT-6.1-sol/high session/one user turn,15minutes maximum including preflight/cleanup;600s turn+5s grace, no baseline/judge/helper/resume/retry/replacement/fallback. Existing AYA account allowance has no hard token/dollar/provider-request cap. Approval covers existing authentication and normal native-home log/cache/SQLite bookkeeping plus provider exposure of the unchanged host-loaded attributed identity/instructions and synthetic tool content. It does not include installed config/profile/identity writes, production stores, PG/container starts or exports. Process-only overrides and environments=[]; safety-critical missing native effective/binding evidence stops before the turn. Unobserved supplemental flags remain unobserved, not false by inference.
+
+After approval: recheck source pins; finite native preturn gates; one correction turn only if gates pass; deterministic observed-delivery/citation/correction/history grading; record all failures/unknown/not-run states and available usage; verify owned processes absent by deadline; independently check safe receipts and commit only owned artifacts. Keep raw identity/native events/runtime databases outside Git. Rollback is stopping the finite owned tree; no installed config is written or history rolled back. Another attempt needs a new decision.
+
+Passing would qualify this existing synthetic fixture correction through one native model thread only. PG integration already passed12 actual synthetic reads and remains stopped, distinct from native model-to-PG. Comparison remains M4/N4/fourties/delta0. `utility_qualified=false`, `release_evaluated=false`. Platform/manual events coordinate this task; no daemon/cron or new admission owner.

@@ -4,6 +4,7 @@ Index only: stable IDs route task/evidence owners. One owner per task; status ev
 
 | ID | State / owner | Existing owner and evidence |
 |---|---|---|
+| AYA-NATIVE-CORR-009 | offline packet complete; native run awaiting creator decision / delegated Codex + fresh native reviewer | [Owned queued task](queued/AYA-NATIVE-CORR-009.md); packet `cbce2330467207d9d4fddbc5c47825705d616850`; scratch mechanism only, zero native/model turns; exact one-session effects/budget preserved |
 | AYA-PG-008 | completed bounded synthetic read integration / delegated Codex + independent retained-artifact reviewer | [Owned task](completed/AYA-PG-008.md); receipt `74df0643f90e37009ec5554a5894ec9195112f2c`;12read checks passed (3identity+9tool), graceful stopped/PID0;A revisions1+2, Bmissing preserved; native profile/model and production gates remain |
 | BRAINSTEM-B4-SNAP-003 | completed offline; activation pending / delegated Codex + fresh reviewer | [Owned task](completed/BRAINSTEM-B4-SNAP-003.md);source `3f25fb1`, verification `7549f76`;30focused/151full pass; original dirty source preserved |
 | AYA-FIXTURE-006 | completed offline; native binding pending / delegated Codex + fresh reviewer | [Owned task](completed/AYA-FIXTURE-006.md);commit `cafa16a5c63cf3efd239db7317437afc7fd76b53`;17focused/79full pass; no model/provider/store or profile activation |
