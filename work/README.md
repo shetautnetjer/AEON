@@ -4,6 +4,9 @@ Index only: stable IDs route task/evidence owners. One owner per task; status ev
 
 | ID | State / owner | Existing owner and evidence |
 |---|---|---|
+| BRAINSTEM-B4-SNAP-003 | completed offline; activation pending / delegated Codex + fresh reviewer | [Owned task](completed/BRAINSTEM-B4-SNAP-003.md);source `3f25fb1`, verification `7549f76`;30focused/151full pass; original dirty source preserved |
+| AYA-FIXTURE-006 | completed offline; native binding pending / delegated Codex + fresh reviewer | [Owned task](completed/AYA-FIXTURE-006.md);commit `cafa16a5c63cf3efd239db7317437afc7fd76b53`;17focused/79full pass; no model/provider/store or profile activation |
+| AYA-NATIVE-007 | queued source-only native bridge; no activation/run budget / delegated Codex planning | [Existing-owner proposal](../worktrees/brainstem-continuation/docs/plans/2026-10-01-native-aya-fixture-bridge.md);use reviewed fixture/existingPGcontract, preserve private identity/store |
 | AEON-LAYOUT-001 | completed documentation / delegated Codex | [Layout map](../docs/layout-convergence-2026-09-30.md); no physical relocation/runtime activation |
 | BRAINSTEM-B4-PUB-002 | completed offline; deployment blocked / delegated Codex + fresh reviewer | [Source/evidence owner](completed/BRAINSTEM-B4-PUB-002.md), commit `1a1b9b294ecf0acfed63d86b6922b3810d4fceaf`;59focused/121full pass; no runtime publisher/activation |
 | BRAINSTEM-B4-HANDOFF-001 | completed offline repair / delegated Codex + fresh independent reviewer | [Source/review/tests](../worktrees/brainstem-handoff-coverage/docs/reports/2026-10-01-handoff-coverage/README.md), commit `5e2c5b43801fba40ad0b54fe1a9e1cc92c8eeeac`; 42 focused/104 full branch passes; original dirty source preserved; no activation |

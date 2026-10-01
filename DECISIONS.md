@@ -14,3 +14,10 @@ These record creator direction and accepted local outcomes from coordination thr
 | Observability | Finite synthetic lifecycle is verified and stopped. Real session/tool/memory-decision capture, new exports, production deployment and Respan remain separate scope/data decisions. [Result](docs/tempo-lifecycle-synthetic-result-2026-09-30.md). |
 
 Review/planning must push back when an architecture lacks a working production path or acceptance evidence. A user suggestion is a direction to assess, not proof of correctness. Keep design, source implementation, deployment and qualification explicit. A minimal bounded work cycle uses the [existing task owners](work/README.md), then tests/review/commit/checkpoint; event/runtime automation remains unimplemented until reviewed.
+
+## Creator direction — 2026-10-01 continuation
+
+- Brainstem, rather than AYA’s private identity or personal material, is the open-source aspiration. No public publication is authorized by this statement.
+- Continue the next engineering task after M4/N4: preserve the ceiling tie and zero measured gain; positive utility is not a prerequisite to reversible integration work. Utility/release promotion remains unqualified.
+- Evaluate realistic correction/resumption/history/repeated-mistake work longitudinally against regular Codex, with matched permitted sources/tools/model/config and comparable budgets. Record quality, rework, time and usage; version changes, exposure and failures stay visible. No arbitrary 100-run campaign, private capture policy or autonomous account budget is inferred.
+- Session continuity organization remains a design discussion. Reuse [existing AYA_UTC/AYA_NOW owners](docs/continuity-owner-check-2026-10-01.md); per-session summaries grouped by day and a daily rollup would be derived records with source/session references, rather than replacing raw receipt authority. Summary ownership/admission/retention and cross-process writer controls remain unresolved; QMD tooling/collection is not established.
