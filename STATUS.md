@@ -1,6 +1,6 @@
 # AEON current evidence
 
-Verified documentation checkpoint: `2026-10-01T02:11:48.382518+00:00`. This summarizes dated local source/receipts; it is not a fresh host-wide service or database inspection.
+Verified documentation checkpoint: `2026-10-01T03:27:31.610775+00:00`. This summarizes dated local source/receipts; it is not a fresh host-wide service or database inspection.
 
 | Lane | Last verified result / remaining gate |
 |---|---|
@@ -32,3 +32,13 @@ Continuity direction is now clarified: qmd means query markup documents; UUIDv7 
 ## STDIO delivery checkpoint — 2026-10-01
 
 [Bounded model-free result](worktrees/brainstem-native-recall/docs/reports/2026-10-01-stdio-qualification/README.md), receipt commit `7a4dd0338ed2ee2ed804cf6638fd8bc2310f0b3d`: original4scheduled routes0pass/1fail/3notrun, one additional failed diagnostic, two endpoints total. Both initialized requests timed out; diagnostic records25s MCP response timeout. No tool/provenance/parity result is qualified. Children returned-15 and were absent at recordedstop02:44:01 UTC before02:45:12 deadline. Source5456f8e remains unchanged; no model/account/store/installedconfiguration effects. Ordinary local tests need no new creator approval solely as tests. Actual native bookkeeping/permissions/model budget, stopped syntheticPG startup/access and admission remain gates.
+
+## Working synthetic tool and PG consumer source — 2026-10-01
+
+[Current source/readback](worktrees/brainstem-native-recall/docs/reports/2026-10-01-native-read-integration/README.md), Brainstem commit `f625984a47e9d5c83f778a63e150ca735aa57ae9`: **123/123 relevant full-suite tests pass**, including61 fixture/native/pipe/PG component tests. Actual standalone MCP STDIO delivery now passes all4 fixed fixture routes, source/history parity, tested malformed-body privacy, EOF and forced-controller-timeout cleanup. Restricted asyncio worker-wakeup EPERM was reproduced; direct pipe streams reuse the installed SDK framing/dispatch. The endpoint, installed packages and permissions have no production configuration changes.
+
+Existing PG client launch/timeout normalization and fixed consumer recall/source/history dispatcher are implemented behind the same tool factory; source and fake-only review passed, with a separate SDK test-runner fix rechecked. Source-custody hashes preserve the original untracked packet. PG uses a distinct code/label fixture task from the weight-rule BM fixture; no cross-fixture comparison is implied. Partial response validation, synchronous30s transport/concurrency/cancellation, latest-only source lookup and history-not-as-known-at remain explicit limits. Historical SQL SCOPED PASS remains distinct from this new facade runtime.
+
+Current successor metadata is stopped/PID0, network none, no ports, restart=no,512MiB/1CPU, original synthetic data directory. No PG query/start/admission, model/account, profile/export, install, service/cron or identity change occurred. Original63dirty entries, installed AYA pins/config,48 frozen comparison refs and earlier report bytes remain unchanged; the scoped worktree is clean and current known-task process scan is empty. Earlier failed/partial receipts remain, including corrected historical mock-run closure uncertainty.
+
+Next actual decision: [one ten-minute existing-container consumer-read smoke](worktrees/brainstem-native-recall/docs/plans/2026-10-01-pg-consumer-readonly-smoke.md), with original512MiB/1CPU limits, at most3 identity+9 tool reads, no seed/reset/writer API and final stop. Approval must cover PG lifecycle physical writes in the existing RWvolume as well as retained synthetic read access. Native account/profile permission readback and any model budget remain separate. Reflection/Pipelex/.mthds/ADI/skill distinctions stay design inputs without new runtime. `utility_qualified=false`, `release_evaluated=false`; completed eight-consumer result remains4ties/delta0.
