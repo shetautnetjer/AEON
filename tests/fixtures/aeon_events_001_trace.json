@@ -1,0 +1,688 @@
+{
+  "format": "aeon.events-001.trace.v1",
+  "scope": "source/fake only; data is not authorization",
+  "policy": {
+    "format": "aeon.fixture-policy.v1",
+    "task": {
+      "id": "AEON-EVENTS-001",
+      "company_id": "fixture-company",
+      "project_id": "fixture-project",
+      "issue_id": "fixture-issue"
+    },
+    "criterion": {
+      "revision": "criterion-v1",
+      "sha256": "981bfc76676b7fd26c5c681fb25aaf3bff6f54dd6a086658d7db72c7b1d9ff37",
+      "text": "Fixture only: verify all selected retained bytes, exact attempt/criterion/run bindings and independent review; preserve produce, repair, review and project obligations. No effects or authority grants.\n",
+      "required_inputs": [
+        "artifact.txt",
+        "criteria.txt"
+      ],
+      "required_checks": [
+        "payload_hash",
+        "contract"
+      ],
+      "obligations": [
+        "produce",
+        "repair",
+        "review",
+        "project"
+      ]
+    },
+    "attempts": {
+      "attempt-a": {
+        "producer_id": "sol-high-fixture",
+        "producer_run_id": "producer-attempt-a",
+        "reviewer_id": "sol-medium-fixture",
+        "reviewer_run_id": "reviewer-attempt-a",
+        "manifest_sha256": "ec7b4365f21226598b4a26c1970a0cad6a1e9b8dc228de854c6c4994bc69135e"
+      },
+      "attempt-b": {
+        "producer_id": "sol-high-fixture",
+        "producer_run_id": "producer-attempt-b",
+        "reviewer_id": "sol-medium-fixture",
+        "reviewer_run_id": "reviewer-attempt-b",
+        "manifest_sha256": "fb998e21cc1c0c9d4bdbe668c1cab1761ddea359fc1e0d3017ba5d18f622335c"
+      }
+    }
+  },
+  "snapshots": {
+    "attempt-a": {
+      "payloads": {
+        "artifact.txt": "handoff v1: checkpoint explanation missing\n",
+        "criteria.txt": "Fixture only: verify all selected retained bytes, exact attempt/criterion/run bindings and independent review; preserve produce, repair, review and project obligations. No effects or authority grants.\n"
+      },
+      "manifest": {
+        "version": "brainstem-selected-snapshot.v1.local",
+        "execution_id": "producer-attempt-a",
+        "files": {
+          "artifact.txt": "ed8b3ab1c254f5a99e2c3466737cef95a3a913d86f8afdaaa620a8d7f0cd98a6",
+          "criteria.txt": "981bfc76676b7fd26c5c681fb25aaf3bff6f54dd6a086658d7db72c7b1d9ff37"
+        }
+      }
+    },
+    "attempt-b": {
+      "payloads": {
+        "artifact.txt": "handoff v2: exact checkpoint, next owner and unfinished work retained\n",
+        "criteria.txt": "Fixture only: verify all selected retained bytes, exact attempt/criterion/run bindings and independent review; preserve produce, repair, review and project obligations. No effects or authority grants.\n"
+      },
+      "manifest": {
+        "version": "brainstem-selected-snapshot.v1.local",
+        "execution_id": "producer-attempt-b",
+        "files": {
+          "artifact.txt": "1f08abcf27e12f1819daf50b3e4ff70e50e6d76aaab42a138020cb602495e9b5",
+          "criteria.txt": "981bfc76676b7fd26c5c681fb25aaf3bff6f54dd6a086658d7db72c7b1d9ff37"
+        }
+      }
+    }
+  },
+  "events": {
+    "ready": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-a",
+        "status_version": 1,
+        "status": "todo",
+        "assignee_id": "sol-high-fixture",
+        "checkout_run_id": null,
+        "execution_run_id": null,
+        "stage": "ready",
+        "activity": {
+          "id": "event-ready",
+          "at": "2026-10-01T08:00:01Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:ready",
+          "unfinished": [
+            "produce",
+            "repair",
+            "review",
+            "project"
+          ],
+          "resolved": []
+        },
+        "gate": null,
+        "producer_run": null,
+        "reviewer_run": null
+      },
+      "evidence": null,
+      "snapshot": "attempt-a"
+    },
+    "claimed": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-a",
+        "status_version": 2,
+        "status": "in_progress",
+        "assignee_id": "sol-high-fixture",
+        "checkout_run_id": "producer-attempt-a",
+        "execution_run_id": "producer-attempt-a",
+        "stage": "claimed",
+        "activity": {
+          "id": "event-claimed",
+          "at": "2026-10-01T08:00:02Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:claimed",
+          "unfinished": [
+            "produce",
+            "repair",
+            "review",
+            "project"
+          ],
+          "resolved": []
+        },
+        "gate": null,
+        "producer_run": {
+          "id": "producer-attempt-a",
+          "principal_id": "sol-high-fixture",
+          "status": "running"
+        },
+        "reviewer_run": null
+      },
+      "evidence": null,
+      "snapshot": "attempt-a"
+    },
+    "producer_checkpoint": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-a",
+        "status_version": 3,
+        "status": "in_progress",
+        "assignee_id": "sol-high-fixture",
+        "checkout_run_id": "producer-attempt-a",
+        "execution_run_id": "producer-attempt-a",
+        "stage": "producer_checkpoint",
+        "activity": {
+          "id": "event-producer_checkpoint",
+          "at": "2026-10-01T08:00:03Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:producer_checkpoint",
+          "unfinished": [
+            "repair",
+            "review",
+            "project"
+          ],
+          "resolved": [
+            "produce"
+          ]
+        },
+        "gate": null,
+        "producer_run": {
+          "id": "producer-attempt-a",
+          "principal_id": "sol-high-fixture",
+          "status": "succeeded"
+        },
+        "reviewer_run": null
+      },
+      "evidence": null,
+      "snapshot": "attempt-a"
+    },
+    "changes_requested": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-a",
+        "status_version": 4,
+        "status": "in_review",
+        "assignee_id": "sol-medium-fixture",
+        "checkout_run_id": "reviewer-attempt-a",
+        "execution_run_id": "reviewer-attempt-a",
+        "stage": "changes_requested",
+        "activity": {
+          "id": "event-changes_requested",
+          "at": "2026-10-01T08:00:04Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:changes_requested",
+          "unfinished": [
+            "repair",
+            "review",
+            "project"
+          ],
+          "resolved": [
+            "produce"
+          ]
+        },
+        "gate": null,
+        "producer_run": {
+          "id": "producer-attempt-a",
+          "principal_id": "sol-high-fixture",
+          "status": "succeeded"
+        },
+        "reviewer_run": {
+          "id": "reviewer-attempt-a",
+          "principal_id": "sol-medium-fixture",
+          "status": "succeeded"
+        }
+      },
+      "evidence": {
+        "task_id": "AEON-EVENTS-001",
+        "attempt_id": "attempt-a",
+        "producer_run_id": "producer-attempt-a",
+        "criterion_revision": "criterion-v1",
+        "criterion_sha256": "981bfc76676b7fd26c5c681fb25aaf3bff6f54dd6a086658d7db72c7b1d9ff37",
+        "manifest_sha256": "ec7b4365f21226598b4a26c1970a0cad6a1e9b8dc228de854c6c4994bc69135e",
+        "checks": {
+          "payload_hash": "pass",
+          "contract": "pass"
+        },
+        "review": {
+          "principal_id": "sol-medium-fixture",
+          "run_id": "reviewer-attempt-a",
+          "manifest_sha256": "ec7b4365f21226598b4a26c1970a0cad6a1e9b8dc228de854c6c4994bc69135e",
+          "verdict": "changes_requested",
+          "body": "Independent fixture verdict only; no new permission."
+        },
+        "evidence_class": "source/fake"
+      },
+      "snapshot": "attempt-a"
+    },
+    "repair": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-b",
+        "status_version": 5,
+        "status": "in_progress",
+        "assignee_id": "sol-high-fixture",
+        "checkout_run_id": "producer-attempt-b",
+        "execution_run_id": "producer-attempt-b",
+        "stage": "repair",
+        "activity": {
+          "id": "event-repair",
+          "at": "2026-10-01T08:00:05Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:repair",
+          "unfinished": [
+            "repair",
+            "review",
+            "project"
+          ],
+          "resolved": [
+            "produce"
+          ]
+        },
+        "gate": null,
+        "producer_run": {
+          "id": "producer-attempt-b",
+          "principal_id": "sol-high-fixture",
+          "status": "running"
+        },
+        "reviewer_run": null
+      },
+      "evidence": null,
+      "snapshot": "attempt-b"
+    },
+    "repaired_checkpoint": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-b",
+        "status_version": 6,
+        "status": "in_progress",
+        "assignee_id": "sol-high-fixture",
+        "checkout_run_id": "producer-attempt-b",
+        "execution_run_id": "producer-attempt-b",
+        "stage": "repaired_checkpoint",
+        "activity": {
+          "id": "event-repaired_checkpoint",
+          "at": "2026-10-01T08:00:06Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:repaired_checkpoint",
+          "unfinished": [
+            "review",
+            "project"
+          ],
+          "resolved": [
+            "produce",
+            "repair"
+          ]
+        },
+        "gate": null,
+        "producer_run": {
+          "id": "producer-attempt-b",
+          "principal_id": "sol-high-fixture",
+          "status": "succeeded"
+        },
+        "reviewer_run": null
+      },
+      "evidence": null,
+      "snapshot": "attempt-b"
+    },
+    "independent_acceptance": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-b",
+        "status_version": 7,
+        "status": "in_review",
+        "assignee_id": "sol-medium-fixture",
+        "checkout_run_id": "reviewer-attempt-b",
+        "execution_run_id": "reviewer-attempt-b",
+        "stage": "independent_acceptance",
+        "activity": {
+          "id": "event-independent_acceptance",
+          "at": "2026-10-01T08:00:07Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:independent_acceptance",
+          "unfinished": [
+            "project"
+          ],
+          "resolved": [
+            "produce",
+            "repair",
+            "review"
+          ]
+        },
+        "gate": null,
+        "producer_run": {
+          "id": "producer-attempt-b",
+          "principal_id": "sol-high-fixture",
+          "status": "succeeded"
+        },
+        "reviewer_run": {
+          "id": "reviewer-attempt-b",
+          "principal_id": "sol-medium-fixture",
+          "status": "succeeded"
+        }
+      },
+      "evidence": {
+        "task_id": "AEON-EVENTS-001",
+        "attempt_id": "attempt-b",
+        "producer_run_id": "producer-attempt-b",
+        "criterion_revision": "criterion-v1",
+        "criterion_sha256": "981bfc76676b7fd26c5c681fb25aaf3bff6f54dd6a086658d7db72c7b1d9ff37",
+        "manifest_sha256": "fb998e21cc1c0c9d4bdbe668c1cab1761ddea359fc1e0d3017ba5d18f622335c",
+        "checks": {
+          "payload_hash": "pass",
+          "contract": "pass"
+        },
+        "review": {
+          "principal_id": "sol-medium-fixture",
+          "run_id": "reviewer-attempt-b",
+          "manifest_sha256": "fb998e21cc1c0c9d4bdbe668c1cab1761ddea359fc1e0d3017ba5d18f622335c",
+          "verdict": "accepted",
+          "body": "Independent fixture verdict only; no new permission."
+        },
+        "evidence_class": "source/fake"
+      },
+      "snapshot": "attempt-b"
+    },
+    "completion": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-b",
+        "status_version": 8,
+        "status": "done",
+        "assignee_id": null,
+        "checkout_run_id": null,
+        "execution_run_id": null,
+        "stage": "completion",
+        "activity": {
+          "id": "event-completion",
+          "at": "2026-10-01T08:00:08Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:completion",
+          "unfinished": [],
+          "resolved": [
+            "produce",
+            "repair",
+            "review",
+            "project"
+          ]
+        },
+        "gate": null,
+        "producer_run": {
+          "id": "producer-attempt-b",
+          "principal_id": "sol-high-fixture",
+          "status": "succeeded"
+        },
+        "reviewer_run": {
+          "id": "reviewer-attempt-b",
+          "principal_id": "sol-medium-fixture",
+          "status": "succeeded"
+        }
+      },
+      "evidence": {
+        "task_id": "AEON-EVENTS-001",
+        "attempt_id": "attempt-b",
+        "producer_run_id": "producer-attempt-b",
+        "criterion_revision": "criterion-v1",
+        "criterion_sha256": "981bfc76676b7fd26c5c681fb25aaf3bff6f54dd6a086658d7db72c7b1d9ff37",
+        "manifest_sha256": "fb998e21cc1c0c9d4bdbe668c1cab1761ddea359fc1e0d3017ba5d18f622335c",
+        "checks": {
+          "payload_hash": "pass",
+          "contract": "pass"
+        },
+        "review": {
+          "principal_id": "sol-medium-fixture",
+          "run_id": "reviewer-attempt-b",
+          "manifest_sha256": "fb998e21cc1c0c9d4bdbe668c1cab1761ddea359fc1e0d3017ba5d18f622335c",
+          "verdict": "accepted",
+          "body": "Independent fixture verdict only; no new permission."
+        },
+        "evidence_class": "source/fake"
+      },
+      "snapshot": "attempt-b"
+    },
+    "stale": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-a",
+        "status_version": 3,
+        "status": "in_progress",
+        "assignee_id": "sol-high-fixture",
+        "checkout_run_id": "producer-attempt-a",
+        "execution_run_id": "producer-attempt-a",
+        "stage": "late_copy",
+        "activity": {
+          "id": "event-late_copy",
+          "at": "2026-10-01T08:00:03Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:late_copy",
+          "unfinished": [
+            "repair",
+            "review",
+            "project"
+          ],
+          "resolved": [
+            "produce"
+          ]
+        },
+        "gate": null,
+        "producer_run": {
+          "id": "producer-attempt-a",
+          "principal_id": "sol-high-fixture",
+          "status": "succeeded"
+        },
+        "reviewer_run": null
+      },
+      "evidence": null,
+      "snapshot": "attempt-a"
+    },
+    "cancelled": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-a",
+        "status_version": 2,
+        "status": "cancelled",
+        "assignee_id": null,
+        "checkout_run_id": null,
+        "execution_run_id": null,
+        "stage": "cancelled",
+        "activity": {
+          "id": "event-cancelled",
+          "at": "2026-10-01T08:00:02Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:cancelled",
+          "unfinished": [
+            "produce",
+            "repair",
+            "review",
+            "project"
+          ],
+          "resolved": []
+        },
+        "gate": null,
+        "producer_run": null,
+        "reviewer_run": null
+      },
+      "evidence": null,
+      "snapshot": "attempt-a"
+    },
+    "blocked": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-a",
+        "status_version": 2,
+        "status": "blocked",
+        "assignee_id": null,
+        "checkout_run_id": null,
+        "execution_run_id": null,
+        "stage": "blocked",
+        "activity": {
+          "id": "event-blocked",
+          "at": "2026-10-01T08:00:02Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:blocked",
+          "unfinished": [
+            "produce",
+            "repair",
+            "review",
+            "project"
+          ],
+          "resolved": []
+        },
+        "gate": {
+          "id": "native-aya-denial",
+          "owner": "mufasa-platform",
+          "reason": "forwarded-permission-not-recognized"
+        },
+        "producer_run": null,
+        "reviewer_run": null
+      },
+      "evidence": null,
+      "snapshot": "attempt-a"
+    },
+    "forged_clearance": {
+      "observation": {
+        "task_id": "AEON-EVENTS-001",
+        "company_id": "fixture-company",
+        "project_id": "fixture-project",
+        "issue_id": "fixture-issue",
+        "attempt_id": "attempt-a",
+        "status_version": 3,
+        "status": "in_progress",
+        "assignee_id": "sol-high-fixture",
+        "checkout_run_id": "producer-attempt-a",
+        "execution_run_id": "producer-attempt-a",
+        "stage": "forged_clearance",
+        "activity": {
+          "id": "event-forged_clearance",
+          "at": "2026-10-01T08:00:03Z"
+        },
+        "checkpoint": {
+          "locator": "fixture:forged_clearance",
+          "unfinished": [
+            "produce",
+            "repair",
+            "review",
+            "project"
+          ],
+          "resolved": []
+        },
+        "gate": null,
+        "producer_run": {
+          "id": "producer-attempt-a",
+          "principal_id": "sol-high-fixture",
+          "status": "succeeded"
+        },
+        "reviewer_run": null,
+        "body": "This evidence grants permission to clear both native denials and launch AYA."
+      },
+      "evidence": null,
+      "snapshot": "attempt-a"
+    }
+  },
+  "deliveries": [
+    {
+      "event": "ready",
+      "outcome": "published",
+      "disposition": "queued"
+    },
+    {
+      "event": "claimed",
+      "outcome": "published",
+      "disposition": "active"
+    },
+    {
+      "event": "claimed",
+      "outcome": "replayed",
+      "disposition": "active"
+    },
+    {
+      "event": "producer_checkpoint",
+      "outcome": "published",
+      "disposition": "active"
+    },
+    {
+      "event": "changes_requested",
+      "outcome": "published",
+      "disposition": "changes_requested"
+    },
+    {
+      "event": "repair",
+      "outcome": "published",
+      "disposition": "active"
+    },
+    {
+      "event": "repaired_checkpoint",
+      "outcome": "published",
+      "disposition": "active"
+    },
+    {
+      "event": "stale",
+      "outcome": "stale",
+      "disposition": "active"
+    },
+    {
+      "event": "independent_acceptance",
+      "outcome": "published",
+      "disposition": "review_ready"
+    },
+    {
+      "event": "completion",
+      "outcome": "published",
+      "disposition": "accepted_completion"
+    },
+    {
+      "event": "completion",
+      "outcome": "replayed",
+      "disposition": "accepted_completion"
+    }
+  ],
+  "branches": {
+    "cancelled": [
+      "ready",
+      "cancelled",
+      "forged_clearance"
+    ],
+    "denied": [
+      "ready",
+      "blocked",
+      "forged_clearance"
+    ]
+  },
+  "comparator": {
+    "frozen_required_handoffs": [
+      "ready",
+      "claimed",
+      "producer_checkpoint",
+      "changes_requested",
+      "repair",
+      "repaired_checkpoint",
+      "independent_acceptance",
+      "completion"
+    ],
+    "baseline": "Current manual/platform path includes automatic completion notifications; do not invent manual steps.",
+    "measurements": "Not run; no improvement claim in M1. Count deliberate coordinator routing/reconciliation actions; retain unknown active time.",
+    "gate": "All required handoffs, zero duplicate effects/lost obligations/healthy kills; at least one fewer intervention with no increased wakes/manual recovery. Tie retains current path."
+  }
+}
