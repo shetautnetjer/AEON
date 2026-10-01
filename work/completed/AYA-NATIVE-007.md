@@ -1,0 +1,7 @@
+# AYA-NATIVE-007 — fixture-only native recall facade
+
+Owner: delegated Codex; independent reviewer `/root/native_facade_fresh_review`, separate fix context. State: **completed offline; activation pending**. Source commit `5456f8eb0e452113245e7fb028c947b2e8d39366` in the existing Brainstem Git owner, scoped worktree `brainstem-native-recall`; no second implementation owner.
+
+Completed: existing adapter hook reused unchanged, one fixed synthetic task/host route, source hashes/locators, equal raw-source/history access, empty unknown, explicit correction history, sanitized SDK envelopes and cancellation.12new/29combined fixture/91relevant full tests pass; reviewer R1 and original failed evidence preserved. [Report/review/verification](../../worktrees/brainstem-native-recall/docs/reports/2026-10-01-native-recall/README.md), [source](../../worktrees/brainstem-native-recall/tests/aya_recall_fixture/native_facade.py).
+
+Unfinished: model-free STDIO delivery; native effective tool/profile/export permissions; bounded model smoke; PostgreSQL independent post-fix runtime/consumer error characterization; production admission/utility. [Exact next approval](../../worktrees/brainstem-native-recall/docs/plans/2026-10-01-native-fixture-activation.md). No active endpoint/model/DB, no production home/config change, no automatic next model budget. Utility/releasefalse. Custodian owns this pointer, not independent acceptance. Parent/manual platform events carry handoff; no new daemon.

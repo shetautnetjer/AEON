@@ -7,3 +7,5 @@ Completed independent review: [AYA-JUDGE-COMP-004](../work/completed/AYA-JUDGE-C
 Completed eight-consumer [comparison result](../worktrees/brainstem-continuation/docs/reports/2026-09-30-aya-continuation/consumer8-20261001T012540Z-result.md), commit `9aff1f6f766856e885ecb5aa7800e4a83b711754`:8artifacts correct,4ceiling ties,zero quality delta. Safe receipts retain input/output pins, usage, fixed-checker verdict and independent artifact validation; raw native logs stay restricted/ignored.
 
 Latest source-reviewed outputs: [snapshot publication](../worktrees/brainstem-snapshot-publication/docs/reports/2026-10-01-snapshot-publication/README.md) and [AYA fixture integration](../worktrees/brainstem-continuation/docs/reports/2026-10-01-aya-recall-fixture/README.md). Literal failed receipts remain retained; native activation/utility are unqualified.
+
+Reviewed result: [fixture-only native recall facade](../worktrees/brainstem-native-recall/docs/reports/2026-10-01-native-recall/README.md), source `5456f8eb0e452113245e7fb028c947b2e8d39366`. Source completion grants no runtime/model or production memory permission.

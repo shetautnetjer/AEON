@@ -7,3 +7,5 @@ Current judge evidence routing: [owned completion task](../work/completed/AYA-JU
 [Completed consumer task](../work/completed/AYA-CONSUMER8-005.md) routes the unchanged frozen protocol/cards/checker, accepted judge and eight-arm evidence at the existing Brainstem owner. It creates no memory admission or new material selection.
 
 Continuity/source routing: [AYA_UTC/AYA_NOW owner check](../docs/continuity-owner-check-2026-10-01.md) and [next native recall binding proposal](../worktrees/brainstem-continuation/docs/plans/2026-10-01-native-aya-fixture-bridge.md). Follow existing owner schemas/remits; no copied session bodies or new runtime data store.
+
+Source/inputs: [fixture-only native recall facade](../worktrees/brainstem-native-recall/docs/reports/2026-10-01-native-recall/README.md), source `5456f8eb0e452113245e7fb028c947b2e8d39366`. Source completion grants no runtime/model or production memory permission.
