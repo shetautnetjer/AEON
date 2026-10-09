@@ -74,3 +74,5 @@ Mufasa remains the existing external coordinator. Brainstem remains memory/admis
 ## Reference-first delivery — 2026-10-09
 
 [BRAINSTEM-REF-010](work/active/BRAINSTEM-REF-010.md) records the reviewed offline slice and private export. [Shared agent start](docs/shared-agent-start.md) routes source owners, precise receipts and reconciliation. This isolated branch preserves the canonical active checkout and Paperclip lane; production admission and measured utility remain unqualified.
+
+Private reference-first delivery checkpoint: all36 initial export files read back exactly from [private AEON](https://github.com/shetautnetjer/AEON), delivery `f6716ddc3ec971a91dea6e5cce44e3a3fc41219e`. [Publication receipt](outputs/BRAINSTEM-REF-010-publication.json); production integration remains pending.

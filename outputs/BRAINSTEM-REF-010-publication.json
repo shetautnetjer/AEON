@@ -1,0 +1,210 @@
+{
+  "repository": "https://github.com/shetautnetjer/AEON",
+  "visibility": "private",
+  "publication_method": "Existing connected GitHub app API; no CLI login or new grants",
+  "local_git_owner": "/home/aya-hmw/Documents/ChatGPT/AEON",
+  "local_worktree": "/home/aya-hmw/Documents/ChatGPT/AEON/worktrees/aeon-reference-first-20261009",
+  "local_reviewed_commit": "967d68bfc55d4d8172063cf2df6be77a226132a3",
+  "private_seed_commit": "8d94922bab9b1942469c6f7e40108f3577900d45",
+  "initial_delivery_commit": "f6716ddc3ec971a91dea6e5cce44e3a3fc41219e",
+  "initial_delivery_tree": "f2a517d6997deef31f9488619784851b0db469b9",
+  "exact_initial_readback": [
+    {
+      "path": "README.md",
+      "blob_sha": "597e900a82546d9e8a33b066f140018e1bc738eb",
+      "match": true
+    },
+    {
+      "path": "docs/shared-agent-start.md",
+      "blob_sha": "040bfb6b8ed2404dc8ff694523af0c4d731703e8",
+      "match": true
+    },
+    {
+      "path": "work/active/BRAINSTEM-REF-010.md",
+      "blob_sha": "77c97ad4afe19b53617ea56cbc4bd95394908d51",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/IMPLEMENTATION-HANDOFF.md",
+      "blob_sha": "36ee365413946959e49cbd4fe00ee7986d7299d4",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/README.md",
+      "blob_sha": "faa985bc7ca7167f32e5dbd25ce35a93a041b435",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/admission-clippy-final.log",
+      "blob_sha": "6681b712adcfa427a5dddb95255873feedb934d2",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/admission-python-final.log",
+      "blob_sha": "acdfff1072d88f12d2d65bc1a6382ba5bca80c78",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/admission-red.log",
+      "blob_sha": "9a943f1275c5da034487e3d3bb4a6c480cebd76a",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/admission-reference-final.log",
+      "blob_sha": "1916ddf920feed9ad882d65d34425ca03d38b1bf",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/admission-roundtrip-final.log",
+      "blob_sha": "7857311564db52435d8b820fa3e34ab4e12c36a5",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/admission-rust-final.log",
+      "blob_sha": "712255367701e9c1c73caf8b1574e8e35f6986d0",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/admission-rust-regression-final.log",
+      "blob_sha": "f6850ad5dcaf89bccd7e6ed567ef3b13d45766fa",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/admission-rust-regression.log",
+      "blob_sha": "99fbf0a84b5050d90d833df39699dc099b886a27",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/aeon-packet-review.md",
+      "blob_sha": "d4ab08eddebd00f1a3b652e1cfbd25406bb67128",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/baseline-manifest.json",
+      "blob_sha": "7cd58a2c83d51429173eba18023ba4c2a5c55cb4",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/brainstem-reference-first.patch",
+      "blob_sha": "4203447b629c3fdb6a9628507c81580a0473d45e",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/changed-paths.json",
+      "blob_sha": "199041337f458315ecf2d7373e10935ef2563e67",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/cumulative-review-red.log",
+      "blob_sha": "5b88ef8021602f071a692977ecd29f2127d04882",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/cumulative-review.md",
+      "blob_sha": "75ae56856a8ad785dfd0a372a5301ca9a5136e9d",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/durable-admission-review.md",
+      "blob_sha": "fc0ad62940cc943cc4665382c36fca22b45980b7",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/durable-admission-row-alias-final-proof.json",
+      "blob_sha": "294a2e7cda20efe31ca93f9971144d4370bb020e",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/durable-admission-row-alias-proof.json",
+      "blob_sha": "286e24523a7c6fbb39b3bd94c6080d3f195af92f",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/owner-preservation.json",
+      "blob_sha": "8c0875ad2b7e03dcd818719b678c798e9b6627bf",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/packet-manifest.json",
+      "blob_sha": "61c23fe771c8b6c187e85e92b535afaf52475e50",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reference-rereview.md",
+      "blob_sha": "c1d25f1a05826facd4c1cebc4ee4e86d141d6fba",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reference-review.md",
+      "blob_sha": "5326273d563c8d6f11c9e5ebba4051957271753f",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reproduce.py",
+      "blob_sha": "1ed444d8685c2be319d9e28b1f67d2dd43e30e60",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reproduction-check-01.log",
+      "blob_sha": "447820fd22bb59b8c1166ac37ced45f86f1ab56a",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reproduction-check-02.log",
+      "blob_sha": "1eacc8246445eb922a4524ea7fe14939118856cf",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reproduction-check-03.log",
+      "blob_sha": "c53abca41fe0f8dbfc741ecb40bafedad519061d",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reproduction-check-04.log",
+      "blob_sha": "dfa13d2f3653c7d885d2d27ca4c67dff4b97ae2f",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reproduction-check-05.log",
+      "blob_sha": "dbde7442a1d7556bc7151227af710ad947133e08",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reproduction-final.log",
+      "blob_sha": "75eda0a4ce896382126996fb64f6f2ef70febbd6",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reproduction-initial.log",
+      "blob_sha": "a5ce56839ee580934a404cbbf70793d1434f5fdc",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/reproduction-results.json",
+      "blob_sha": "55fcea4e1fb3caa69ba5753a228119a8bd01bcf2",
+      "match": true
+    },
+    {
+      "path": "outputs/BRAINSTEM-REF-010/review-red.log",
+      "blob_sha": "28b6bf2821f2a0b7a7ac69c4279d24716af8fc11",
+      "match": true
+    }
+  ],
+  "old_aeon_history_uploaded": false,
+  "source_owner": "/home/aya-hmw/aya/projects/developmental-lab/brainstem",
+  "test_class": "offline synthetic source/test; no production qualification",
+  "checks": {
+    "rust_passed": 55,
+    "clippy": "passed warnings denied",
+    "focused_python_passed": 25,
+    "full_python_passed": 154,
+    "inherited_full_python_errors": 1
+  },
+  "remaining": [
+    "production Observer writer authority and registration",
+    "Postgres custody/transaction integration",
+    "broader acceptance adapters and retention",
+    "hash-bound integration by active Brainstem source owner",
+    "original AEON shared navigation reconciliation by its current owner"
+  ]
+}

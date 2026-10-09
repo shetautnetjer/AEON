@@ -1,6 +1,6 @@
 # BRAINSTEM-REF-010 — reference-first private delivery
 
-Owner/writer: delegated Codex, coordinator in the current authorized session. Implementation owner: existing Brainstem repository. Independent reviewers: retained reference/cumulative review and fresh durable-admission review; exact hashes are in the packet. AEON owns navigation/export custody only. State: bounded offline implementation reviewed; private repository established; reviewed packet prepared for scoped publication; production integration remains pending.
+Owner/writer: delegated Codex, coordinator in the current authorized session. Implementation owner: existing Brainstem repository. Independent reviewers: retained reference/cumulative review and fresh durable-admission review; exact hashes are in the packet. AEON owns navigation/export custody only. State: bounded offline implementation reviewed; private Git delivery completed and read back; production integration pending; production integration remains pending.
 
 ## Authorized direction and acceptance
 
@@ -21,3 +21,7 @@ Issues: production Observer authority/registration, Postgres transaction/custody
 ## Evidence and boundaries
 
 The [functional handoff](../../outputs/BRAINSTEM-REF-010/IMPLEMENTATION-HANDOFF.md) preserves exact source/test/failed-attempt references. The [packet manifest](../../outputs/BRAINSTEM-REF-010/packet-manifest.json) binds selected bytes; exported logs are synthetic tests, not private native transcripts. Local Git commit and remote publication commit/tree are recorded separately in publication receipts if different. [Fresh reproduction](../../outputs/BRAINSTEM-REF-010/reproduction-results.json) and [packet review](../../outputs/BRAINSTEM-REF-010/aeon-packet-review.md) are retained. This task uses manual/platform coordination; no memory admission or automatic dispatch is asserted.
+
+## Private publication checkpoint — 2026-10-09
+
+[Private AEON repository](https://github.com/shetautnetjer/AEON), initial delivery commit `f6716ddc3ec971a91dea6e5cce44e3a3fc41219e`: all36 reviewed files matched byte-for-byte on readback; private visibility confirmed. Only the new seed and delivery history were uploaded. Local reviewed source/navigation commit `967d68bfc55d4d8172063cf2df6be77a226132a3` remains in the existing AEON owner; its older ancestors are not published. [Publication receipt](../../outputs/BRAINSTEM-REF-010-publication.json) distinguishes these histories. Existing GitHub app API performed the upload; no CLI login, credential or grant change.
