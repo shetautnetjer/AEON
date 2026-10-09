@@ -1,0 +1,87 @@
+[
+  {
+    "path": "memory_v0.py",
+    "owner_sha256": "57a9cff2804e3098fa046008fd4dba0b86ce50b95b66778adcf57053b1a80a2b",
+    "baseline_match": true
+  },
+  {
+    "path": "README.md",
+    "owner_sha256": "a63e39a210d1b20c5ebedddf4b0d0ad673b3e014dd189fe7dff0acb492a2034c",
+    "baseline_match": true
+  },
+  {
+    "path": "architecture.html",
+    "owner_sha256": "418752c60dd46f5e3f61c5169c257f33cdb38138c0eae7051876cefb5ae00c2d",
+    "baseline_match": true
+  },
+  {
+    "path": "tests/test_reference_admission.py",
+    "owner_sha256": null,
+    "baseline_match": true
+  },
+  {
+    "path": "tests/test_capture_reference_wiring.py",
+    "owner_sha256": null,
+    "baseline_match": true
+  },
+  {
+    "path": "fixtures/aya-utc-schema.v0.1.sql",
+    "owner_sha256": null,
+    "baseline_match": true
+  },
+  {
+    "path": "docs/plans/2026-10-09-reference-first-slice.md",
+    "owner_sha256": null,
+    "baseline_match": true
+  },
+  {
+    "path": "observer-probe/src/admission.rs",
+    "owner_sha256": null,
+    "baseline_match": true
+  },
+  {
+    "path": "observer-probe/src/lib.rs",
+    "owner_sha256": "149ede2130b6a13b7a7fc45fec0692dc18332b3c1ec3e70cf199585964074a7b",
+    "baseline_match": true
+  },
+  {
+    "path": "observer-probe/src/main.rs",
+    "owner_sha256": "85c2758a8e044bf5da980e245b6b79161c7ca36c23543cb850f38653f749baec",
+    "baseline_match": true
+  },
+  {
+    "path": "observer-probe/Cargo.toml",
+    "owner_sha256": "fcc4721f06529f1b8ed5c80ceaa853a6c57d517a154b55a9863b3161b012ff86",
+    "baseline_match": true
+  },
+  {
+    "path": "observer-probe/Cargo.lock",
+    "owner_sha256": "92fc6aa9872c3bc1343c9cd1b3371753dd113c1d282c9f6cadba2080280f628d",
+    "baseline_match": true
+  },
+  {
+    "path": "observer-probe/tests/admission.rs",
+    "owner_sha256": null,
+    "baseline_match": true
+  },
+  {
+    "path": "observer-probe/README.md",
+    "owner_sha256": "20e76c35dd057d0ab986848e9793ee423087bfb17ec47ad4761f02519c5453f1",
+    "baseline_match": true
+  },
+  {
+    "path": "docs/plans/2026-10-09-offline-capture-admission.md",
+    "owner_sha256": null,
+    "baseline_match": true
+  },
+  {
+    "path": "tests/test_durable_capture_roundtrip.py",
+    "owner_sha256": null,
+    "baseline_match": true
+  },
+  {
+    "path": "bindings/observer-capture-admission.v0.2.candidate.json",
+    "owner_sha256": null,
+    "baseline_match": true
+  }
+]

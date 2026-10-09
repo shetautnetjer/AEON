@@ -1,0 +1,123 @@
+{
+  "row_1": [
+    0,
+    {
+      "fixture_only": true,
+      "source_event": {
+        "artifact_ids": [],
+        "capture": {
+          "capture_policy": "NORMAL",
+          "content_disposition": "METADATA_ONLY"
+        },
+        "capture_mode": "HISTORICAL_IMPORT",
+        "correlation": {
+          "runtime_profile_id": "default",
+          "session_id": "session-A"
+        },
+        "coverage": {
+          "gap_refs": [],
+          "limitations": [
+            "fixture-only selected metadata"
+          ],
+          "status": "PARTIAL"
+        },
+        "event_id": "01a11ee9-ee1a-7449-bf3c-9dffdf8a0b24",
+        "event_type": "fixture.hermes.message",
+        "observer": {
+          "observer_instance_id": "fixture-writer-generation-A",
+          "observer_sequence": 1,
+          "writer_actor_id": "fixture-service-actor",
+          "writer_authority_receipt_ref": "fixture:writer-authority"
+        },
+        "origin": {},
+        "payload": {
+          "record_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "record_kind": "SOURCE_EVENT",
+        "schema_version": "0.2",
+        "source": {
+          "adapter_id": "fixture-hermes",
+          "adapter_version": "0.1",
+          "native_event_id": "1",
+          "sequence_epoch": "fixture-epoch-A",
+          "source_id": "hermes",
+          "source_instance_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_kind": "HERMES",
+          "source_position": {
+            "locator": "/fixture/state.db",
+            "position_kind": "ROW_PRIMARY_KEY",
+            "row_primary_key": "1"
+          },
+          "source_stream_id": "messages"
+        },
+        "source_context_class": "PRE_OBSERVER_SOURCE_CONTEXT",
+        "time": {
+          "ingested_at": "2026-10-09T04:26:49.754570028Z",
+          "observed_at": "1970-01-01T00:01:40Z"
+        }
+      },
+      "state": "new"
+    }
+  ],
+  "row_01": [
+    0,
+    {
+      "fixture_only": true,
+      "source_event": {
+        "artifact_ids": [],
+        "capture": {
+          "capture_policy": "NORMAL",
+          "content_disposition": "METADATA_ONLY"
+        },
+        "capture_mode": "HISTORICAL_IMPORT",
+        "correlation": {
+          "runtime_profile_id": "default",
+          "session_id": "session-A"
+        },
+        "coverage": {
+          "gap_refs": [],
+          "limitations": [
+            "fixture-only selected metadata"
+          ],
+          "status": "PARTIAL"
+        },
+        "event_id": "01a11ee9-ee1b-7380-8e85-c7c9045e70ad",
+        "event_type": "fixture.hermes.message",
+        "observer": {
+          "observer_instance_id": "fixture-writer-generation-A",
+          "observer_sequence": 2,
+          "writer_actor_id": "fixture-service-actor",
+          "writer_authority_receipt_ref": "fixture:writer-authority"
+        },
+        "origin": {},
+        "payload": {
+          "record_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "record_kind": "SOURCE_EVENT",
+        "schema_version": "0.2",
+        "source": {
+          "adapter_id": "fixture-hermes",
+          "adapter_version": "0.1",
+          "native_event_id": "01",
+          "sequence_epoch": "fixture-epoch-A",
+          "source_id": "hermes",
+          "source_instance_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_kind": "HERMES",
+          "source_position": {
+            "locator": "/fixture/state.db",
+            "position_kind": "ROW_PRIMARY_KEY",
+            "row_primary_key": "01"
+          },
+          "source_stream_id": "messages"
+        },
+        "source_context_class": "PRE_OBSERVER_SOURCE_CONTEXT",
+        "time": {
+          "ingested_at": "2026-10-09T04:26:49.755723305Z",
+          "observed_at": "1970-01-01T00:01:40Z"
+        }
+      },
+      "state": "new"
+    }
+  ],
+  "frame_count": 2
+}

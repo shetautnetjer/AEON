@@ -1,0 +1,2232 @@
+--- a/memory_v0.py
++++ b/memory_v0.py
+@@ -830,5 +830,558 @@
+     return 0
+ 
+ 
++# Reference-first bindings are a candidate projection, not an Observer writer.
++def _reference_json(record, id_field, kind=None):
++    if (not isinstance(record, dict) or
++            not isinstance(record.get(id_field), str) or
++            not _UUID7.fullmatch(record[id_field]) or record.get('schema_version') != '0.2' or
++            (kind is not None and record.get('record_kind') != kind)):
++        raise ValueError('reference_record_invalid')
++    try:
++        return json.dumps(record, sort_keys=True, separators=(',', ':'), allow_nan=False)
++    except (TypeError, ValueError) as exc:
++        raise ValueError('reference_record_invalid') from exc
++
++
++def _reference_scope(project_id, profile_id):
++    if not _identity(project_id) or not _identity(profile_id):
++        raise ValueError('source_scope_invalid')
++    return project_id, profile_id
++
++
++def _reference_tables(con):
++    columns = {r[1] for r in con.execute('PRAGMA table_info(reference_sources)')}
++    if columns and 'sequence_epoch' not in columns:
++        raise ValueError('reference_schema_unbound')
++    con.execute('''CREATE TABLE IF NOT EXISTS reference_sources (
++        project_id TEXT NOT NULL, profile_id TEXT NOT NULL, event_id TEXT NOT NULL,
++        source_key TEXT NOT NULL, source_json TEXT NOT NULL, artifact_json TEXT NOT NULL,
++        sequence_epoch TEXT NOT NULL,
++        PRIMARY KEY(project_id,profile_id,event_id),
++        UNIQUE(project_id,profile_id,source_key,sequence_epoch))''')
++    con.execute('''CREATE TABLE IF NOT EXISTS reference_interpretations (
++        project_id TEXT NOT NULL, profile_id TEXT NOT NULL, event_id TEXT NOT NULL,
++        source_event_id TEXT NOT NULL, evidence_json TEXT NOT NULL, supersedes_event_id TEXT,
++        PRIMARY KEY(project_id,profile_id,event_id),
++        UNIQUE(project_id,profile_id,supersedes_event_id))''')
++    con.execute('''CREATE TABLE IF NOT EXISTS candidate_reference_links (
++        project_id TEXT NOT NULL, profile_id TEXT NOT NULL, save_id TEXT NOT NULL,
++        evidence_event_id TEXT NOT NULL,
++        PRIMARY KEY(project_id,profile_id,save_id),
++        UNIQUE(project_id,profile_id,evidence_event_id))''')
++
++
++def admit_reference(db_path, *, project_id, profile_id, source_key, source_event,
++                    artifact_record, allow_content=False):
++    """Bind supplied Observer occurrence/custody to already captured metadata.
++
++    Only the current Hermes ROW_PRIMARY_KEY binding is supported. Full caller
++    records are retained unchanged; validation is not writer-provenance admission.
++    No ID is issued and neither a source digest nor content equality dedupes.
++    """
++    if not allow_content:
++        raise ValueError('content_not_authorized')
++    scope = _reference_scope(project_id, profile_id)
++    source_json = _reference_json(source_event, 'event_id', 'SOURCE_EVENT')
++    artifact_json = _reference_json(artifact_record, 'artifact_id')
++    source = source_event.get('source', {})
++    correlation = source_event.get('correlation', {})
++    capture = artifact_record.get('capture', {})
++    digest = artifact_record.get('content_digest', {})
++    if (not all(isinstance(x, dict) for x in (source, correlation, capture, digest)) or
++            not isinstance(source.get('source_position'), dict) or
++            not _identity(source.get('sequence_epoch')) or
++            digest.get('algorithm') != 'sha256' or
++            not isinstance(digest.get('value'), str) or not _HEX.fullmatch(digest['value']) or
++            type(artifact_record.get('size_bytes')) is not int or artifact_record['size_bytes'] < 0 or
++            not isinstance(artifact_record.get('storage_object_ref'), str) or
++            not artifact_record['storage_object_ref'] or
++            capture.get('source_event_id') != source_event['event_id'] or
++            source_event.get('artifact_ids') != [artifact_record['artifact_id']] or
++            not isinstance(source_key, str)):
++        raise ValueError('reference_binding_invalid')
++    con = _connect(db_path, require_existing=True)
++    try:
++        con.execute('BEGIN IMMEDIATE')
++        staged = con.execute('''SELECT session_id, source_generation_id, source_path,
++            source_position FROM source_events WHERE project_id=? AND profile_id=?
++            AND source_key=?''', (*scope, source_key)).fetchall()
++        position = source['source_position']
++        hermes = (source.get('source_id') == 'hermes' and
++                  source.get('source_stream_id') == 'messages' and
++                  position.get('position_kind') == 'ROW_PRIMARY_KEY' and
++                  len(staged) == 1 and
++                  (correlation.get('session_id'), source.get('source_instance_id'),
++                   position.get('locator'), source.get('native_event_id')) == staged[0] and
++                  position.get('row_primary_key') == staged[0][3])
++        components = position.get('components', {})
++        aya_utc = (source_key.startswith('ayautc:') and len(staged) == 1 and
++                   position.get('position_kind') == 'COMPOSITE' and isinstance(components, dict) and
++                   (correlation.get('session_id'), source.get('source_instance_id'),
++                    position.get('locator'), str(components.get('byte_offset'))) == staged[0] and
++                   components.get('source_path') == staged[0][2] and
++                   str(components.get('source_generation')) == staged[0][1] and
++                   source.get('source_stream_id') == staged[0][2])
++        if not (hermes or aya_utc):
++            raise ValueError('reference_source_mismatch')
++        _reference_tables(con)
++        if con.execute('''SELECT 1 FROM reference_interpretations
++            WHERE project_id=? AND profile_id=? AND event_id=?''',
++            (*scope, source_event['event_id'])).fetchone():
++            raise ValueError('reference_event_id_conflict')
++        rows = con.execute('''SELECT event_id,source_key,source_json,artifact_json
++            FROM reference_sources WHERE project_id=? AND profile_id=?
++            AND (event_id=? OR (source_key=? AND sequence_epoch=?))''',
++            (*scope, source_event['event_id'], source_key, source['sequence_epoch'])).fetchall()
++        expected = (source_event['event_id'], source_key, source_json, artifact_json)
++        if rows == [expected]:
++            state = 'replayed'
++        elif rows:
++            raise ValueError('reference_changed_on_replay')
++        else:
++            # Artifact identity also stays occurrence-specific, never digest-specific.
++            for (body,) in con.execute('''SELECT artifact_json FROM reference_sources
++                    WHERE project_id=? AND profile_id=?''', scope):
++                if json.loads(body)['artifact_id'] == artifact_record['artifact_id']:
++                    raise ValueError('reference_artifact_id_conflict')
++            con.execute('INSERT INTO reference_sources VALUES(?,?,?,?,?,?,?)',
++                        (*scope, *expected, source['sequence_epoch']))
++            state = 'new'
++        con.commit()
++        return {'state': state, 'event_id': source_event['event_id'], 'status': 'candidate_reference'}
++    except Exception:
++        con.rollback()
++        raise
++    finally:
++        con.close()
++
++
++def admit_interpretation(db_path, *, project_id, profile_id, evidence_event,
++                         supersedes_event_id=None, allow_content=False):
++    """Append supplied immutable EvidenceEvent; no semantic truth or promotion."""
++    if not allow_content:
++        raise ValueError('content_not_authorized')
++    scope = _reference_scope(project_id, profile_id)
++    body = _reference_json(evidence_event, 'event_id', 'EVIDENCE_EVENT')
++    normalization = evidence_event.get('normalization')
++    if (not isinstance(normalization, dict) or
++            not isinstance(normalization.get('derived_from_event_ids'), list) or
++            len(normalization['derived_from_event_ids']) != 1 or
++            not isinstance(normalization['derived_from_event_ids'][0], str) or
++            not _UUID7.fullmatch(normalization['derived_from_event_ids'][0]) or
++            not isinstance(evidence_event.get('correlation'), dict) or
++            (supersedes_event_id is not None and
++             (not isinstance(supersedes_event_id, str) or not _UUID7.fullmatch(supersedes_event_id)))):
++        raise ValueError('reference_interpretation_invalid')
++    source_id = normalization['derived_from_event_ids'][0]
++    con = _connect(db_path, require_existing=True)
++    try:
++        con.execute('BEGIN IMMEDIATE')
++        _reference_tables(con)
++        source = con.execute('''SELECT artifact_json FROM reference_sources
++            WHERE project_id=? AND profile_id=? AND event_id=?''', (*scope, source_id)).fetchone()
++        if not source or evidence_event.get('artifact_ids') != [json.loads(source[0])['artifact_id']]:
++            raise ValueError('reference_source_missing')
++        if con.execute('''SELECT 1 FROM reference_sources WHERE project_id=?
++                AND profile_id=? AND event_id=?''', (*scope, evidence_event['event_id'])).fetchone():
++            raise ValueError('reference_event_id_conflict')
++        fields = (*scope, evidence_event['event_id'], source_id, body, supersedes_event_id)
++        prior = con.execute('''SELECT * FROM reference_interpretations
++            WHERE project_id=? AND profile_id=? AND event_id=?''',
++            (*scope, evidence_event['event_id'])).fetchone()
++        if prior == fields:
++            state = 'replayed'
++        elif prior:
++            raise ValueError('reference_interpretation_changed')
++        else:
++            if supersedes_event_id is not None:
++                predecessor = con.execute('''SELECT source_event_id FROM reference_interpretations
++                    WHERE project_id=? AND profile_id=? AND event_id=?''',
++                    (*scope, supersedes_event_id)).fetchone()
++                successor = con.execute('''SELECT 1 FROM reference_interpretations
++                    WHERE project_id=? AND profile_id=? AND supersedes_event_id=?''',
++                    (*scope, supersedes_event_id)).fetchone()
++                if predecessor != (source_id,) or successor:
++                    raise ValueError('reference_lineage_invalid')
++            con.execute('INSERT INTO reference_interpretations VALUES(?,?,?,?,?,?)', fields)
++            state = 'new'
++        con.commit()
++        return {'state': state, 'status': 'candidate_interpretation'}
++    except Exception:
++        con.rollback()
++        raise
++    finally:
++        con.close()
++
++
++def reference_history(db_path, *, project_id, profile_id, event_id, allow_content=False):
++    """Read frozen source, artifact custody and all additive interpretations."""
++    if not allow_content:
++        raise ValueError('content_not_authorized')
++    scope = _reference_scope(project_id, profile_id)
++    con = _connect(db_path, read_only=True)
++    try:
++        if not con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reference_sources'").fetchone():
++            raise ValueError('reference_missing')
++        row = con.execute('''SELECT source_key,source_json,artifact_json FROM reference_sources
++            WHERE project_id=? AND profile_id=? AND event_id=?''', (*scope, event_id)).fetchone()
++        if row is None:
++            raise ValueError('reference_missing')
++        # JSON UUIDv7 ordering is not used as native source or causal order.
++        evidence = con.execute('''SELECT evidence_json,supersedes_event_id
++            FROM reference_interpretations WHERE project_id=? AND profile_id=?
++            AND source_event_id=? ORDER BY rowid''', (*scope, event_id)).fetchall()
++        return {'source_key': row[0], 'source_event': json.loads(row[1]),
++                'artifact_record': json.loads(row[2]),
++                'interpretations': [{'evidence_event': json.loads(e), 'supersedes_event_id': p}
++                                    for e, p in evidence]}
++    finally:
++        con.close()
++
++
++def resolve_reference(db_path, *, project_id, profile_id, event_id,
++                      artifact_reader, source_reader, allow_content=False):
++    """Reopen retained artifact bytes and separately check today's native source.
++
++    Readers are explicit adapter dependencies. source_reader receives the frozen
++    SourceEvent and returns (source_instance_id, exact hashed native bytes).
++    A changed generation is changed_source even when bytes are identical.
++    """
++    if not allow_content:
++        raise ValueError('content_not_authorized')
++    import hashlib
++    history = reference_history(db_path, project_id=project_id, profile_id=profile_id, event_id=event_id, allow_content=True)
++    artifact = history['artifact_record']
++    con = _connect(db_path, read_only=True)
++    try:
++        row = con.execute('''SELECT record_sha256 FROM source_events WHERE project_id=?
++            AND profile_id=? AND source_key=?''',
++            (project_id, profile_id, history['source_key'])).fetchone()
++        if row is None:
++            raise ValueError('reference_source_missing')
++        source_digest = row[0]
++    finally:
++        con.close()
++    result = {'event_id': event_id, 'artifact_id': artifact['artifact_id']}
++    for kind, reader, ref, digest, size in (
++            ('artifact', artifact_reader, artifact['storage_object_ref'], artifact['content_digest']['value'], artifact['size_bytes']),
++            ('source', source_reader, history['source_event'], source_digest, None)):
++        try:
++            data = reader(ref)
++            if kind == 'source':
++                if not isinstance(data, tuple) or len(data) != 2:
++                    raise TypeError('reference_reader_generation_required')
++                generation, data = data
++                if generation != history['source_event']['source']['source_instance_id']:
++                    result['source_state'] = 'changed_source'
++                    continue
++            if not isinstance(data, bytes):
++                raise TypeError('reference_reader_bytes_required')
++            valid = hashlib.sha256(data).hexdigest() == digest and (size is None or len(data) == size)
++            result[kind + '_state'] = 'verified' if valid else 'changed_' + kind
++            if kind == 'artifact' and valid:
++                result['content'] = data
++        except FileNotFoundError:
++            result[kind + '_state'] = 'missing_' + kind
++        except OSError:
++            result[kind + '_state'] = 'unavailable_' + kind
++    return result
++
++
++def link_candidate_reference(db_path, *, project_id, profile_id, save_id, evidence_event_id):
++    """Associate an existing unverified save; never create/promote a memory."""
++    scope = _reference_scope(project_id, profile_id)
++    if not all(isinstance(v, str) and _UUID7.fullmatch(v) for v in (save_id, evidence_event_id)):
++        raise ValueError('reference_link_invalid')
++    con = _connect(db_path, require_existing=True)
++    try:
++        con.execute('BEGIN IMMEDIATE')
++        _reference_tables(con)
++        if not con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='candidate_saves'").fetchone():
++            raise ValueError('reference_link_mismatch')
++        save = con.execute('''SELECT source_key,status FROM candidate_saves WHERE project_id=?
++            AND profile_id=? AND save_id=?''', (*scope, save_id)).fetchone()
++        reference = con.execute('''SELECT s.source_key FROM reference_sources s
++            JOIN reference_interpretations e ON e.project_id=s.project_id
++            AND e.profile_id=s.profile_id AND e.source_event_id=s.event_id
++            WHERE e.project_id=? AND e.profile_id=? AND e.event_id=?''',
++            (*scope, evidence_event_id)).fetchone()
++        if save is None or reference != (save[0],) or save[1] != 'candidate_unverified':
++            raise ValueError('reference_link_mismatch')
++        prior = con.execute('''SELECT save_id,evidence_event_id FROM candidate_reference_links
++            WHERE project_id=? AND profile_id=? AND (save_id=? OR evidence_event_id=?)''',
++            (*scope, save_id, evidence_event_id)).fetchall()
++        if prior == [(save_id, evidence_event_id)]:
++            state = 'replayed'
++        elif prior:
++            raise ValueError('reference_link_changed')
++        else:
++            con.execute('INSERT INTO candidate_reference_links VALUES(?,?,?,?)',
++                        (*scope, save_id, evidence_event_id))
++            state = 'new'
++        con.commit()
++        return {'state': state, 'status': 'candidate_unverified'}
++    except Exception:
++        con.rollback()
++        raise
++    finally:
++        con.close()
++
++
++def admit_capture_reference(db_path, *, project_id, profile_id, checkpoint,
++                            source_event, artifact_record, allow_content=False):
++    """Join the actual Rust checkpoint to a supplied canonical Observer event.
++
++    Canonical ID issuance remains upstream. The native tuple must select exactly
++    one checkpoint row; native IDs are never inferred from content or time.
++    Metadata capture and reference binding are separate idempotent operations.
++    """
++    if not allow_content:
++        raise ValueError('content_not_authorized')
++    profile, session, generation, records = _validated(checkpoint)
++    _reference_json(source_event, 'event_id', 'SOURCE_EVENT')
++    source = source_event.get('source', {})
++    correlation = source_event.get('correlation', {})
++    if (not isinstance(source, dict) or not isinstance(correlation, dict) or
++            profile != profile_id or correlation.get('session_id') != session or
++            source.get('source_instance_id') != generation):
++        raise ValueError('reference_source_mismatch')
++    selected = [key for key, position, _, _ in records
++                if position == source.get('native_event_id')]
++    if len(selected) != 1:
++        raise ValueError('reference_source_unresolved')
++    ingest_capture(db_path, project_id=project_id, checkpoint=checkpoint)
++    return admit_reference(db_path, project_id=project_id, profile_id=profile_id,
++        source_key=selected[0], source_event=source_event, artifact_record=artifact_record,
++        allow_content=True)
++
++
++def _aya_utc_row(archive_path, coordinates):
++    """Read the existing archive/view without ingestion, schema writes or ID issue."""
++    required = {'source_path', 'source_generation', 'byte_offset', 'byte_length',
++                'line_number', 'source_sha256'}
++    if (not isinstance(coordinates, dict) or not required.issubset(coordinates) or
++            not isinstance(coordinates['source_path'], str) or
++            not Path(coordinates['source_path']).is_absolute() or
++            not all(type(coordinates[k]) is int and coordinates[k] >= 0
++                    for k in ('source_generation', 'byte_offset', 'byte_length', 'line_number')) or
++            coordinates['byte_length'] == 0 or coordinates['line_number'] == 0 or
++            not isinstance(coordinates['source_sha256'], str) or
++            not _HEX.fullmatch(coordinates['source_sha256'])):
++        raise ValueError('aya_utc_reference_invalid')
++    con = _connect(archive_path, read_only=True)
++    try:
++        con.row_factory = sqlite3.Row
++        objects = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type IN ('table','view')")}
++        if not {'archive_metadata', 'observer_source_refs', 'source_lines', 'source_files', 'messages'}.issubset(objects):
++            raise ValueError('aya_utc_schema_unbound')
++        version = con.execute("SELECT value FROM archive_metadata WHERE key='schema_version'").fetchone()
++        if version is None or version[0] != 'ayautc.v0.1':
++            raise ValueError('aya_utc_schema_unbound')
++        rows = con.execute('''SELECT r.*,s.raw_json FROM observer_source_refs r
++            JOIN source_lines s ON s.id=r.source_line_id
++            WHERE r.source_path=? AND r.source_generation=? AND r.byte_offset=?''',
++            tuple(coordinates[k] for k in ('source_path', 'source_generation', 'byte_offset'))).fetchall()
++        if len(rows) != 1:
++            raise ValueError('aya_utc_source_unresolved')
++        row = dict(rows[0])
++        if any(k not in row or row[k] != v for k, v in coordinates.items()):
++            raise ValueError('aya_utc_reference_changed')
++        import hashlib
++        raw = row['raw_json']
++        if (not isinstance(raw, bytes) or len(raw) != row['byte_length'] or
++                hashlib.sha256(raw).hexdigest() != row['source_sha256']):
++            raise ValueError('aya_utc_artifact_changed')
++        messages = con.execute('''SELECT archive_key,native_message_id FROM messages
++            WHERE source_line_id=?''', (row['source_line_id'],)).fetchall()
++        row['messages'] = [dict(r) for r in messages]
++        current = con.execute('''SELECT generation,committed_offset,prefix_sha256
++            FROM source_files WHERE path=?''', (row['source_path'],)).fetchone()
++        row['current_file'] = dict(current) if current else None
++        return row
++    finally:
++        con.close()
++
++
++def admit_aya_utc_reference(db_path, *, project_id, profile_id, archive_path,
++                            source_event, artifact_record, allow_content=False):
++    """Bind an archive message using its existing archive_key and supplied event_id.
++
++    This is the COMPOSITE/AYA_UTC v0.1 adapter binding, not a new source schema.
++    Absent native session, unsupported nonmessage records or uncertain selection
++    remain unresolved; no native ID/correlation is manufactured.
++    """
++    if not allow_content:
++        raise ValueError('content_not_authorized')
++    scope = _reference_scope(project_id, profile_id)
++    _reference_json(source_event, 'event_id', 'SOURCE_EVENT')
++    source = source_event.get('source', {})
++    correlation = source_event.get('correlation', {})
++    position = source.get('source_position', {}) if isinstance(source, dict) else {}
++    if not isinstance(position, dict) or position.get('position_kind') != 'COMPOSITE':
++        raise ValueError('aya_utc_reference_invalid')
++    row = _aya_utc_row(archive_path, position.get('components'))
++    if (not _identity(row['session_id']) or row['parse_error'] is not None or
++            len(row['messages']) != 1):
++        raise ValueError('aya_utc_source_unresolved')
++    native = row['messages'][0]
++    if (not isinstance(correlation, dict) or
++            source.get('source_stream_id') != row['source_path'] or
++            source.get('source_instance_id') != str(row['source_generation']) or
++            source.get('native_event_id') != native['native_message_id'] or
++            position.get('locator') != row['source_path'] or
++            not isinstance(source.get('source_id'), str) or not source['source_id'] or
++            correlation.get('session_id') != row['session_id'] or
++            any(correlation.get(k) is not None and correlation[k] != row[k]
++                for k in ('turn_id', 'trace_id', 'span_id'))):
++        raise ValueError('reference_source_mismatch')
++    times = source_event.get('time', {})
++    if not isinstance(times, dict) or times.get('occurred_at') != row['timestamp']:
++        raise ValueError('reference_source_mismatch')
++    try:
++        observed = datetime.fromisoformat(times['observed_at'].replace('Z', '+00:00'))
++        if observed.utcoffset() != timezone.utc.utcoffset(observed):
++            raise ValueError()
++        captured_at = observed.timestamp()
++        if not math.isfinite(captured_at) or captured_at < 0:
++            raise ValueError()
++    except (KeyError, AttributeError, TypeError, ValueError) as exc:
++        raise ValueError('candidate_time_invalid') from exc
++    # The native archive owns this key. Do not create another occurrence key.
++    source_key = native['archive_key']
++    expected = (*scope, row['session_id'], source_key, str(row['source_generation']),
++                row['source_path'], str(row['byte_offset']), row['source_sha256'], captured_at)
++    con = _connect(db_path)
++    try:
++        con.execute('BEGIN IMMEDIATE')
++        prior = con.execute('''SELECT * FROM source_events WHERE project_id=?
++            AND profile_id=? AND session_id=? AND source_key=?''', expected[:4]).fetchone()
++        if prior is None:
++            con.execute('INSERT INTO source_events VALUES(?,?,?,?,?,?,?,?,?)', expected)
++        elif prior != expected:
++            raise ValueError('source_changed_on_replay')
++        con.commit()
++    except Exception:
++        con.rollback()
++        raise
++    finally:
++        con.close()
++    return admit_reference(db_path, project_id=project_id, profile_id=profile_id,
++        source_key=source_key, source_event=source_event, artifact_record=artifact_record,
++        allow_content=True)
++
++
++def resolve_aya_utc_source(archive_path, coordinates, *, utc_start=None, utc_end=None,
++                           allow_content=False):
++    """Resolve exact retained bytes and independently check today's source file.
++
++    UTC windows are half-open eligibility filters, never joins or causal proof.
++    The archive generation/prefix defines the source contract's change detection.
++    """
++    if not allow_content:
++        raise ValueError('content_not_authorized')
++    result = {'artifact_state': 'unresolved_artifact', 'source_state': 'unresolved_source'}
++    try:
++        row = _aya_utc_row(archive_path, coordinates)
++    except ValueError as exc:
++        states = {'db_missing': 'missing_artifact',
++                  'aya_utc_source_unresolved': 'unresolved_artifact',
++                  'aya_utc_reference_changed': 'changed_artifact',
++                  'aya_utc_artifact_changed': 'changed_artifact'}
++        if str(exc) not in states:
++            raise
++        result['artifact_state'] = states[str(exc)]
++        return result
++    except FileNotFoundError:
++        result['artifact_state'] = 'missing_artifact'
++        return result
++    except OSError:
++        result['artifact_state'] = 'unavailable_artifact'
++        return result
++    def utc(value):
++        try:
++            parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
++            if parsed.utcoffset() != timezone.utc.utcoffset(parsed):
++                raise ValueError()
++            return parsed
++        except (TypeError, AttributeError, ValueError) as exc:
++            raise ValueError('aya_utc_time_invalid') from exc
++    start = utc(utc_start) if utc_start is not None else None
++    end = utc(utc_end) if utc_end is not None else None
++    if start is not None and end is not None and end <= start:
++        raise ValueError('aya_utc_time_invalid')
++    if start is not None or end is not None:
++        if row['timestamp'] is None:
++            result['artifact_state'] = 'unresolved_time'
++            return result
++        occurred = utc(row['timestamp'])
++        if (start is not None and occurred < start) or (end is not None and occurred >= end):
++            result['artifact_state'] = 'outside_time_range'
++            return result
++    result.update(artifact_state='verified', content=row['raw_json'],
++        archive_messages=row['messages'], reference={k: v for k, v in row.items() if k not in ('raw_json', 'messages', 'current_file')})
++    current = row['current_file']
++    if current is None:
++        return result
++    if current['generation'] != row['source_generation']:
++        result['source_state'] = 'changed_source'
++        return result
++    import hashlib
++    path = Path(row['source_path'])
++    try:
++        # Read-only file open; no process, ingest, adapter dispatch or source write.
++        with path.open('rb') as file:
++            prefix = hashlib.sha256()
++            left = current['committed_offset']
++            while left:
++                part = file.read(min(left, 65536))
++                if not part:
++                    result['source_state'] = 'changed_source'
++                    return result
++                prefix.update(part)
++                left -= len(part)
++            file.seek(row['byte_offset'])
++            raw = file.read(row['byte_length'])
++        unchanged = (prefix.hexdigest() == current['prefix_sha256'] and raw == row['raw_json'])
++        result['source_state'] = 'verified' if unchanged else 'changed_source'
++    except FileNotFoundError:
++        result['source_state'] = 'missing_source'
++    except OSError:
++        result['source_state'] = 'unavailable_source'
++    return result
++
++
++def resolve_aya_utc_reference(db_path, *, project_id, profile_id, event_id,
++                              archive_path, utc_start=None, utc_end=None, allow_content=False):
++    """Resolve an admitted Observer reference through the existing AYA_UTC rows."""
++    if not allow_content:
++        raise ValueError('content_not_authorized')
++    history = reference_history(db_path, project_id=project_id, profile_id=profile_id,
++                                event_id=event_id, allow_content=True)
++    source = history['source_event']['source']
++    position = source['source_position']
++    if position.get('position_kind') != 'COMPOSITE':
++        raise ValueError('aya_utc_reference_invalid')
++    result = resolve_aya_utc_source(archive_path, position.get('components'),
++        utc_start=utc_start, utc_end=utc_end, allow_content=True)
++    artifact = history['artifact_record']
++    result.update(event_id=event_id, artifact_id=artifact['artifact_id'])
++    if result['artifact_state'] == 'verified':
++        import hashlib
++        reference = result['reference']
++        correlation = history['source_event'].get('correlation', {})
++        valid = (result.get('archive_messages') == [{'archive_key': history['source_key'],
++                    'native_message_id': source.get('native_event_id')}] and
++                 hashlib.sha256(result['content']).hexdigest() == artifact['content_digest']['value'] and
++                 len(result['content']) == artifact['size_bytes'] and
++                 all(correlation.get(k) is None or correlation[k] == reference[k] for k in
++                     ('session_id', 'turn_id', 'trace_id', 'span_id')) and
++                 history['source_event']['time'].get('occurred_at') == reference['timestamp'])
++        if not valid:
++            result['artifact_state'] = 'changed_artifact'
++            result.pop('content', None)
++    return result
++
++
+ if __name__ == '__main__':
+     sys.exit(main())
+--- a/README.md
++++ b/README.md
+@@ -131,3 +131,36 @@
+ - No live Cloud/model/tool diagnostic, held-out quality, ReAnchor fitting, learned ranking, autonomous MemoryD integration or original broad brainstem vision is claimed complete.
+ 
+ Contract sources: [official Hermes plugin guide](https://hermes-agent.nousresearch.com/docs/developer-guide/plugins), installed `hermes_cli/plugins.py` and discovery/loader, and the existing Jev `src/jev_cli/{catalog,hooks,models,engine}.py` / `docs/HOOKS.md`. Native Hermes compatibility is behavioral; no invented global plugin API number is required.
++
++
++## Reference-first candidate binding — 2026-10-09
++
++The additive Python API in `memory_v0.py` binds caller-supplied Observer
++SourceEvent `event_id` and ArtifactRecord custody to native captured metadata.
++`admit_capture_reference` joins the actual Rust checkpoint's native generation,
++session and row to the supplied event. `admit_aya_utc_reference` consumes the
++existing AYA_UTC v0.1 view, bytes and message archive_key with a canonical
++COMPOSITE position containing its exact column coordinates. No canonical ID is
++issued, replaced with a projection ID, or inferred from content/time.
++
++`admit_interpretation` appends supplied EvidenceEvents; corrections retain the
++predecessor and late native correlations do not rewrite the SourceEvent.
++`resolve_reference` supports injected artifact/native readers.
++`resolve_aya_utc_reference` reopens the bound archive message and checks retained
++hash/length, original archive/native identity, supplied correlation/time, current
++file generation and committed-prefix bytes. Missing, changed and unresolved
++outcomes stay distinct. Optional UTC bounds are half-open filters, never causal
++joins. `link_candidate_reference` associates an existing unverified save without
++creating or promoting memory. Source/Evidence/Artifact/save/memory IDs stay separate.
++
++This is an offline candidate projection, not an Observer writer or production
++admission. Only current Hermes rows and AYA_UTC message references with a known
++native session are admitted; unsupported/unknown source identity stays unresolved.
++Canonical record authenticity and ID issuance remain upstream. The inspected
++historical Observer index lab is rebuildable and is not an authorized ID fallback.
++PostgreSQL remains the durable target; no migration/runtime/provider change is
++included. See [plan](docs/plans/2026-10-09-reference-first-slice.md),
++[reference regressions](tests/test_reference_admission.py) and
++[capture/archive regressions](tests/test_capture_reference_wiring.py).
++
++Offline continuation: `observer-probe --admit-capture-fixture` now accepts one canonical UUIDv7 SourceEvent with explicit fixture writer provenance into a sealed durable fixture journal. It replays identity across retry/reopen and tested process crash windows. It does not register a production Observer writer. The reference projection binds source_key together with sequence_epoch; pre-existing candidate reference tables without epoch fail closed instead of migrating. See `bindings/observer-capture-admission.v0.2.candidate.json` and `docs/plans/2026-10-09-offline-capture-admission.md`.
+--- a/architecture.html
++++ b/architecture.html
+@@ -93,4 +93,6 @@
+ <section id="observer-input"><h2>Observer's read-only sight — explicit live capture candidate, not a continuous hook</h2><p>The retired <a href="../../observer-index-lab/build_index.py">Observer index lab</a> normalized several native streams into SQLite, but its rebuild script can delete/recreate its own database and references a discarded wiki path: do not run it against live state. MemoryD's separate <a href="../memoryd-harness/ayautc/src/schema.sql">Rust archive</a> already retains exact source positions, hashes and a read-only <code>observer_source_refs</code> projection, but its worktree and recurring jobs are paused/dirty. Leave both owners untouched.</p><p>The isolated <a href="observer-probe/">Rust Observer probe</a> accepts only an explicitly selected JSONL file of candidate <a href="../schema-observer-ingest-envelope-v0.json">ingest envelopes</a>. It checks profile, native producer/instance/stream/position, bounded length and the selected optional declarations (not full JSON Schema validation); malformed declared IDs fail rather than become absent, and a present source generation must match the schema's lowercase hex format. It copies only explicit native event/session/turn/trace/span IDs to a sanitized projection. It never copies payload text, infers IDs from tool arguments, assigns UUIDv7 to every span, asserts effect success, writes Redis/SQL, reads hidden session stores or invokes a model. Missing IDs remain missing. A bounded standard-library channel with up to 16 workers returns records in source order; Crossbeam is not present in the offline cache, and Rayon would be premature for this small parse/I-O slice. The JSONL projection was tested on synthetic data; it does not run as a deployed Observer hook.</p><p><strong>Milestone A — real source capture, not a lesson:</strong> the adjacent Rust adapter explicitly opens one named Hermes profile's <code>state.db</code> read-only and selects one exact native session. It emits the existing candidate envelope with empty <code>semantics</code> and <code>payload</code>, preserving SQLite <code>messages.id</code> as <code>native_event_id</code>/<code>source_position</code>, the recorded <code>session_id</code>, and a <code>platform_message_id</code> only when actually present. It does not invent <code>turn_id</code>, <code>trace_id</code> or <code>span_id</code> from temporal proximity. <code>source_generation_id</code> is a profile-local hash of the canonical SQLite path and file device/inode; <code>record_sha256</code> hashes the selected serialized SQLite row fields, and <code>captured_at</code> records first inspection time. Identity is profile + producer + generation + native session + stream + row position: appending rows does not rename old rows. A private atomic checkpoint maps that key to its envelope; replay checks every stored key against the source snapshot (including deletion masked by one or more appends), compares each selected row and preserves the original valid first-inspection time. Malformed persisted capture fields or live payload/semantics/evidence annotations are rejected, not silently reused. Scope lookup and message reads share one read transaction, so a concurrent profile change cannot label later rows with an earlier profile snapshot. These are bounded candidate tests, not crash recovery or hostile-file authentication. Replay never re-executes tools.</p><p><strong>Local evidence is not telemetry export:</strong> an authorized profile-local resolver reopens the exact SQLite row and validates its stored digest before returning the original message/tool content to its local caller. The capture CLI prints counts only; neither payload text, content hashes, native IDs nor source paths are automatically approved for Respan/Datadog export. A hash is integrity evidence for inspected bytes, not evidence that a claim is true. One non-sensitive one-shot Hermes turn with a read-only <code>read_file</code> call was captured and replayed from a second process with no duplicate accepted source keys; this proves only the bounded test run, not ongoing coverage or crash/retention behavior. No UUIDv7 occurrence or memory ID is minted for these raw rows.</p><p><strong>Milestone B — isolated fixture proof, not Hermes transport:</strong> the explicit test driver creates a disposable regular <code>workspace/target.txt</code>, freezes exact BEFORE/EXPECTED bytes and a logical-path target in <code>intent.json</code>, launches one separate writer process with no automatic retry, then acquires fresh readback in a separate reader process on the bound original target. The passive Rust <a href="observer-probe/src/effect.rs">effect verifier</a> reads retained run evidence only; it cannot dispatch the writer or inspect the live target. A tool's success text and exit code are stored apart from the same-target postcondition/change checks. Reported success without effect and a changed decoy fail; missing, stale/other-attempt or wrong-target-only evidence and changed frozen intent stay unknown. An already satisfied target has a verified postcondition but no new transition. Restoration and its readback are separate from the historical receipt; a failed cleanup is visible without rewriting a verified effect. The <a href="schemas/effect-receipt.v0.2.candidate.schema.json">manually authored candidate receipt schema</a> uses the candidate memory verification vocabulary without minting <code>memory_id</code> or promoting memory. A local digest seal anchors the saved receipt and evidence for passive historical replay, not tamperproof same-user authentication; replay neither invokes the writer nor reads today's target. This is a controlled single-writer fixture, not general causal attribution, a production Observer hook, a repaired episode, or a native Hermes write-path test. A future real Hermes transport qualification must link the genuine native dispatch and original-target readback separately. The order is native source available → capture references/integrity → identify a source-backed bounded event/episode → propose metadata/interpretation → appropriate independent checks/review → curated memory. Capture does not wait for Decide/Jev or a lesson selector. Future OTel and external-source adapters require their own permission, privacy, retention and correlation reviews; time adjacency alone is not causal evidence.</p></section>
+ <section id="source-intake"><h2>Source intake is not memory promotion — candidate design</h2><p><strong>Observer observes ingestion and use, not the entire outside world.</strong> Separate a source adapter that obtains data, staging that retains unreviewed captures, Observer records of actual system actions, and Brainstem's review/promotion decisions. A captured item is neither endorsed nor a durable memory. Every source occurrence keeps URL/native ID, producer/feed, published/fetched times when supplied, content hash, access/cleaning revision, privacy scope and source position; never call a fetch receipt an independently verified claim.</p><ul><li><strong>Event-driven runtime:</strong> instrument authorized agent/tool/OTel events as they happen, preserving native IDs, explicit correlation basis and outcome-unknown until a verifier observes the same target. Avoid duplicating one UUIDv7 occurrence per span.</li><li><strong>On-demand research:</strong> an explicitly requested Firecrawl/web fetch can be cleaned and hashed immediately; record fetch, selected section, actual use in a task, and eventual outcome separately. Retain the source snapshot in staging/cold storage if permitted; selection and use do not prove the page's claims.</li><li><strong>Scheduled external intake:</strong> RSS/news items enter a bounded, deduplicated staging queue with feed URL, published/fetched time, hash and retrieval status. The batch-run event and processed/selected items may have Observer receipts; mere appearance in a feed does not mint accepted occurrences or memories. Exact filters precede optional Decide metadata and BGE/GLiNER grouping; Brainstem reviews worthwhile clusters with an explicit backlog, false-negative sampling and privacy gate. Stronger reasoning proposes source-linked promotion only when needed.</li></ul><p>Long-term Basic Memory notes are deliberate, reviewed knowledge; Obsidian may be an optional cold human view, not a required machine store. Do not restart paused recurring jobs, assume continuous Basic Memory sync, or claim Firecrawl/RSS adapters are connected from this HTML. Retention, deletion and staged-source privacy policy need independent owner review before a live pipeline.</p></section>
+ <section id="gaps"><h2>Open gates</h2><p>The 30-minute reviewer maintains a linked, source-backed <a href="docs/reviews/memory-gaps.html">HTML gap/issue register</a> and <a href="docs/reviews/memory-gaps.v0.json">bounded JSON record</a>, not a second authority for memory semantics. Findings cite current code, this guide and JSON contracts; the development lane changes primary files and the reviewer checks evidence before closing an issue. This project-scoped pattern can be adapted by future builds after their owners review it.</p><ul><li>Review this human-readable HTML vocabulary and the manually authored candidate memory schema/fixture together; validate agreement and branch-specific preconditions. No compiler is required for comprehension, and this is not a production cutover.</li><li>Decide the first imported Jev contract and exact catalog owner/location. The current Brainstem catalog is not configured.</li><li>Benchmark candidate coverage, abstention, privacy, latency and cost on frozen fixtures. A three-case Decide smoke test is only liveness/plumbing evidence.</li><li>Decide which privacy-reviewed semantic span fields may leave the current metadata-only OTel route.</li></ul></section>
++<section id="reference-first-candidate-20261009"><h2>Reference-first candidate binding — 2026-10-09</h2><p>The additive <a href="memory_v0.py">candidate Python projection</a> consumes supplied Observer SourceEvent UUIDv7 event_id and keeps ArtifactRecord custody, immutable EvidenceEvent interpretations and existing candidate save/memory identity separate. A checkpoint adapter joins actual native generation/session/row references to supplied IDs; an AYA_UTC v0.1 adapter uses existing archive_key, source generation, byte coordinates and retained bytes. Neither issues a new occurrence ID or adopts historical index-lab projection IDs. Retry/reopen preserve occurrence identity; equal bytes do not merge distinct generations. Optional turn/trace/span links and superseding interpretations remain additive. Archive resolution verifies original native/message identity and retained bytes separately from missing, changed or unresolved current file generation/prefix evidence. UTC windows are half-open eligibility filters, not inferred causal joins. Unknown native session and unsupported source records stay unresolved. Candidate association never promotes a claim. No aya_event_id, default stream_seq, global sequence, service or PostgreSQL migration is added. This is offline candidate behavior, not canonical writer authority, accepted memory or production qualification. See <a href="docs/plans/2026-10-09-reference-first-slice.md">plan and boundaries</a>, <a href="tests/test_reference_admission.py">reference tests</a> and <a href="tests/test_capture_reference_wiring.py">capture/archive tests</a>.</p></section>
++<p>Offline fixture continuation: the existing Observer probe can accept and replay a canonical UUIDv7 SourceEvent with explicit fixture writer provenance in a sealed journal. Epoch is retained in the candidate reference projection. Production writer registration and Postgres durability remain future integration work.</p>
+ </body></html>
+--- /dev/null
++++ b/tests/test_reference_admission.py
+@@ -0,0 +1,233 @@
++"""Offline binding tests. Supplied IDs are synthetic Observer occurrences."""
++import copy
++import hashlib
++import json
++from pathlib import Path
++import sqlite3
++import subprocess
++import sys
++import tempfile
++import unittest
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++import memory_v0 as m
++from test_memory_v0 import checkpoint
++
++
++def uid(n):
++    return f'0199d6b4-9c00-7001-8000-{n:012x}'
++
++
++class ReferenceAdmissionTest(unittest.TestCase):
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.addCleanup(self.tmp.cleanup)
++        self.root = Path(self.tmp.name)
++        self.db = self.root / 'candidate.sqlite'
++        self.raw = b'{"role":"user","content":"synthetic amber"}'
++        self.digest = hashlib.sha256(self.raw).hexdigest()
++        self.cp = checkpoint(record_sha=self.digest)
++        m.ingest_capture(self.db, project_id='fixture', checkpoint=self.cp)
++        self.key = self.cp['records'][0]['source_key']
++        self.source = {
++            'event_id': uid(1), 'record_kind': 'SOURCE_EVENT', 'schema_version': '0.2',
++            'source': {'source_id': 'hermes', 'source_instance_id': self.cp['source_generation_id'],
++                       'source_stream_id': 'messages', 'sequence_epoch': 'epoch-A',
++                       'native_event_id': '1', 'source_position': {
++                           'position_kind': 'ROW_PRIMARY_KEY', 'row_primary_key': '1',
++                           'locator': '/fixture/state.db'}},
++            'correlation': {'session_id': 'turn-A'},
++            'time': {'occurred_at': '2026-10-09T00:00:00Z'},
++            'artifact_ids': [uid(2)]}
++        self.artifact = {
++            'artifact_id': uid(2), 'schema_version': '0.2',
++            'content_digest': {'algorithm': 'sha256', 'value': self.digest},
++            'size_bytes': len(self.raw), 'storage_object_ref': 'fixture:original-1',
++            'capture': {'source_event_id': uid(1)}}
++
++    def admit(self, source=None, artifact=None, key=None):
++        return m.admit_reference(self.db, project_id='fixture', profile_id='default',
++            source_key=key or self.key, source_event=source or self.source,
++            artifact_record=artifact or self.artifact, allow_content=True)
++
++    def evidence(self, n=3, previous=None, correlation=None):
++        e = {'event_id': uid(n), 'record_kind': 'EVIDENCE_EVENT', 'schema_version': '0.2',
++             'normalization': {'normalizer_id': 'fixture', 'normalizer_version': '1',
++                               'derived_from_event_ids': [uid(1)]},
++             'correlation': correlation or {}, 'payload': {'claim': 'amber' if n == 3 else 'violet'},
++             'artifact_ids': [uid(2)]}
++        return m.admit_interpretation(self.db, project_id='fixture', profile_id='default',
++            evidence_event=e, supersedes_event_id=previous, allow_content=True)
++
++    def resolve(self, raw=None, snapshot=None):
++        return m.resolve_reference(self.db, project_id='fixture', profile_id='default',
++            event_id=uid(1), artifact_reader=lambda ref: self.raw if snapshot is None else snapshot,
++            source_reader=lambda source: (self.cp['source_generation_id'], self.raw if raw is None else raw), allow_content=True)
++
++    def test_retry_and_fresh_process_reopen_preserve_supplied_occurrence(self):
++        self.assertEqual(self.admit()['state'], 'new')
++        self.assertEqual(self.admit()['state'], 'replayed')
++        code = "import memory_v0 as m,json,sys; print(json.dumps(m.reference_history(sys.argv[1],project_id='fixture',profile_id='default',event_id=sys.argv[2],allow_content=True)))"
++        run = subprocess.run([sys.executable, '-c', code, str(self.db), uid(1)],
++            cwd=Path(m.__file__).parent, capture_output=True, text=True, check=True)
++        result = json.loads(run.stdout)
++        self.assertEqual(result['source_event'], self.source)
++        self.assertEqual(result['artifact_record'], self.artifact)
++        self.assertEqual(self.resolve()['content'], self.raw)
++
++    def test_distinct_generations_and_equal_content_occurrences_remain_distinct(self):
++        self.admit()
++        for n, generation, position in [(10, 'b' * 64, '1'), (20, 'a' * 64, '2')]:
++            cp = checkpoint(record_sha=self.digest)
++            cp['source_generation_id'] = generation
++            rec = cp['records'][0]
++            rec['envelope']['source'].update(source_generation_id=generation,
++                source_position=position, native_event_id=position)
++            rec['source_key'] = f'default/hermes/{generation}/turn-A/messages/{position}'
++            if position == '2': cp['records'].insert(0, copy.deepcopy(self.cp['records'][0]))
++            m.ingest_capture(self.db, project_id='fixture', checkpoint=cp)
++            s, a = copy.deepcopy(self.source), copy.deepcopy(self.artifact)
++            s['event_id'], a['artifact_id'] = uid(n), uid(n + 1)
++            s['artifact_ids'] = [a['artifact_id']]
++            s['source']['source_instance_id'] = generation
++            s['source']['native_event_id'] = position
++            s['source']['source_position']['row_primary_key'] = position
++            a['capture']['source_event_id'] = s['event_id']
++            self.assertEqual(self.admit(s, a, rec['source_key'])['state'], 'new')
++        with sqlite3.connect(self.db) as con:
++            self.assertEqual(con.execute('SELECT count(*) FROM reference_sources').fetchone()[0], 3)
++
++    def test_changed_retry_and_alias_id_are_rejected_without_mutation(self):
++        self.admit()
++        for mutate in [lambda s: s.update(event_id=uid(50)),
++                       lambda s: s['time'].update(occurred_at='2026-10-10T00:00:00Z'),
++                       lambda s: s['source'].update(native_event_id='9')]:
++            s = copy.deepcopy(self.source)
++            mutate(s)
++            with self.assertRaises(ValueError): self.admit(s)
++        self.assertEqual(m.reference_history(self.db, project_id='fixture',
++            profile_id='default', event_id=uid(1), allow_content=True)['source_event'], self.source)
++
++    def test_immutable_snapshot_and_explicit_missing_changed_source_outcomes(self):
++        self.admit()
++        result = self.resolve(raw=b'changed')
++        self.assertEqual(result['source_state'], 'changed_source')
++        self.assertEqual(result['content'], self.raw)
++        def missing(_): raise FileNotFoundError()
++        result = m.resolve_reference(self.db, project_id='fixture', profile_id='default',
++            event_id=uid(1), artifact_reader=lambda _: self.raw, source_reader=missing,
++            allow_content=True)
++        self.assertEqual(result['source_state'], 'missing_source')
++        self.assertEqual(result['content'], self.raw)
++        result = self.resolve(snapshot=b'corrupt')
++        self.assertEqual(result['artifact_state'], 'changed_artifact')
++        self.assertNotIn('content', result)
++        result = m.resolve_reference(self.db, project_id='fixture', profile_id='default',
++            event_id=uid(1), artifact_reader=missing, source_reader=lambda _: (self.cp['source_generation_id'], self.raw),
++            allow_content=True)
++        self.assertEqual(result['artifact_state'], 'missing_artifact')
++
++    def test_late_native_links_and_corrections_are_additive(self):
++        self.admit()
++        self.evidence(correlation={'session_id': 'turn-A', 'turn_id': 'native-turn',
++                                  'trace_id': 'trace-1', 'span_id': 'span-1'})
++        self.evidence(n=4, previous=uid(3))
++        self.assertEqual(self.evidence(n=4, previous=uid(3))['state'], 'replayed')
++        history = m.reference_history(self.db, project_id='fixture', profile_id='default', event_id=uid(1), allow_content=True)
++        self.assertEqual(history['source_event'], self.source)
++        self.assertEqual(len(history['interpretations']), 2)
++        self.assertEqual(history['interpretations'][0]['evidence_event']['correlation']['turn_id'], 'native-turn')
++        self.assertEqual(history['interpretations'][1]['supersedes_event_id'], uid(3))
++        with self.assertRaises(ValueError): self.evidence(n=5, previous=uid(3))
++
++    def test_reference_association_reuses_existing_candidate_identity(self):
++        self.admit()
++        self.evidence()
++        # Existing fixture excerpt staging is exercised by the legacy Rust suite.
++        con = m._connect(self.db)
++        con.execute('CREATE TABLE source_excerpts(project_id,profile_id,session_id,source_key,record_sha256,status,content)')
++        con.execute('CREATE VIRTUAL TABLE source_excerpts_fts USING fts5(content)')
++        con.execute('INSERT INTO source_excerpts VALUES(?,?,?,?,?,?,?)',
++            ('fixture', 'default', 'turn-A', self.key, self.digest, 'candidate_source_excerpt', 'synthetic amber'))
++        con.commit(); con.close()
++        for revision, save, evidence in [(1, 30, 3), (2, 31, 4)]:
++            if revision == 2: self.evidence(n=4, previous=uid(3))
++            request = {'save_id': uid(save), 'memory_id': uid(40), 'memory_revision': revision,
++                'save_kind': 'create' if revision == 1 else 'revision', 'memory_kind': 'semantic',
++                'claim': 'amber' if revision == 1 else 'violet', 'source_key': self.key,
++                'created_at': f'2026-10-09T00:00:0{revision}Z', 'valid_from': '2026-10-09T00:00:00Z', 'valid_to': None}
++            if revision == 2: request['supersedes_revision'] = 1
++            path = self.root / 'save.json'; path.write_text(json.dumps(request)); path.chmod(0o600)
++            m.save_candidate(self.db, project_id='fixture', profile_id='default', input_path=path, allow_content=True)
++            args = dict(project_id='fixture', profile_id='default', save_id=uid(save), evidence_event_id=uid(evidence))
++            self.assertEqual(m.link_candidate_reference(self.db, **args)['state'], 'new')
++            self.assertEqual(m.link_candidate_reference(self.db, **args)['state'], 'replayed')
++        with sqlite3.connect(self.db) as con:
++            self.assertEqual(con.execute('SELECT count(*) FROM candidate_saves').fetchone()[0], 2)
++            self.assertEqual(con.execute('SELECT count(DISTINCT memory_id) FROM candidate_saves').fetchone()[0], 1)
++            self.assertEqual(con.execute('SELECT count(*) FROM reference_sources').fetchone()[0], 1)
++            self.assertEqual(con.execute('SELECT count(*) FROM candidate_reference_links').fetchone()[0], 2)
++
++    def test_changed_generation_with_same_bytes_and_reader_io_failures(self):
++        self.admit()
++        args = dict(project_id='fixture', profile_id='default', event_id=uid(1),
++                    artifact_reader=lambda _: self.raw, allow_content=True)
++        result = m.resolve_reference(self.db, **args,
++            source_reader=lambda _: ('b' * 64, self.raw))
++        self.assertEqual(result['source_state'], 'changed_source')
++        self.assertEqual(result['content'], self.raw)
++        def unavailable(_): raise PermissionError()
++        result = m.resolve_reference(self.db, **args, source_reader=unavailable)
++        self.assertEqual(result['source_state'], 'unavailable_source')
++        with self.assertRaises(TypeError):
++            m.resolve_reference(self.db, **args, source_reader=lambda _: self.raw)
++
++    def test_content_gate_and_wrong_scope_do_not_admit_or_resolve(self):
++        with self.assertRaisesRegex(ValueError, 'content_not_authorized'):
++            m.admit_reference(self.db, project_id='fixture', profile_id='default',
++                source_key=self.key, source_event=self.source, artifact_record=self.artifact)
++        self.admit()
++        with self.assertRaisesRegex(ValueError, 'reference_missing'):
++            m.reference_history(self.db, project_id='other', profile_id='default', event_id=uid(1), allow_content=True)
++        with self.assertRaisesRegex(ValueError, 'content_not_authorized'):
++            m.resolve_reference(self.db, project_id='fixture', profile_id='default',
++                event_id=uid(1), source_reader=lambda _: None, artifact_reader=lambda _: None)
++
++    def test_changed_interpretation_and_missing_predecessor_are_rejected(self):
++        self.admit()
++        self.evidence()
++        with self.assertRaisesRegex(ValueError, 'reference_interpretation_changed'):
++            self.evidence(correlation={'trace_id': 'different'})
++        with self.assertRaisesRegex(ValueError, 'reference_lineage_invalid'):
++            self.evidence(n=4, previous=uid(999))
++        history = m.reference_history(self.db, project_id='fixture', profile_id='default', event_id=uid(1), allow_content=True)
++        self.assertEqual(len(history['interpretations']), 1)
++
++    def test_history_requires_content_optin_and_empty_projection_is_explicit(self):
++        with self.assertRaisesRegex(ValueError, 'content_not_authorized'):
++            m.reference_history(self.db, project_id='fixture', profile_id='default', event_id=uid(1))
++        with self.assertRaisesRegex(ValueError, 'reference_missing'):
++            m.reference_history(self.db, project_id='fixture', profile_id='default',
++                event_id=uid(1), allow_content=True)
++        with self.assertRaisesRegex(ValueError, 'reference_link_mismatch'):
++            m.link_candidate_reference(self.db, project_id='fixture', profile_id='default',
++                save_id=uid(30), evidence_event_id=uid(3))
++
++    def test_native_time_and_aya_utc_coordinates_roundtrip_without_new_order(self):
++        source = copy.deepcopy(self.source)
++        source['time'].update(observed_at='2026-10-09T00:00:01Z',
++                              ingested_at='2026-10-09T00:00:02Z')
++        # Canonical source_position.components preserves adapter-owned coordinates.
++        # Names below come from AYA_UTC observer_source_refs; no resolver is implied.
++        coordinates = {'source_path': '/fixture/2026-10-09/session.jsonl',
++            'source_generation': 2, 'byte_offset': 123, 'byte_length': 80,
++            'line_number': 3, 'source_sha256': self.digest,
++            'timestamp': '2026-10-09T00:00:00Z', 'session_id': 'turn-A',
++            'turn_id': 'native-turn', 'trace_id': 'trace-1', 'span_id': 'span-1'}
++        source['source']['source_position']['components'] = coordinates
++        self.admit(source=source)
++        reopened = m.reference_history(self.db, project_id='fixture', profile_id='default',
++            event_id=uid(1), allow_content=True)['source_event']
++        self.assertEqual(reopened, source)
++        self.assertNotIn('stream_seq', reopened)
++        self.assertNotIn('aya_event_id', reopened)
+--- /dev/null
++++ b/tests/test_capture_reference_wiring.py
+@@ -0,0 +1,261 @@
++"""Offline native-schema fixtures; no live archive, recorder or invented correlation."""
++import copy
++import hashlib
++import json
++from pathlib import Path
++import sqlite3
++import subprocess
++import sys
++import tempfile
++import unittest
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++import memory_v0 as m
++from test_memory_v0 import checkpoint
++from test_reference_admission import uid
++
++
++class CaptureWiringTest(unittest.TestCase):
++    def setUp(self):
++        self.tmp = tempfile.TemporaryDirectory()
++        self.addCleanup(self.tmp.cleanup)
++        self.root = Path(self.tmp.name)
++        self.archive = self.root / 'archive.sqlite'
++        self.db = self.root / 'candidate.sqlite'
++        self.source_path = self.root / 'source.jsonl'
++        self.raw = (json.dumps({'type': 'response_item', 'timestamp': '2026-10-09T00:00:00Z',
++            'payload': {'type': 'message', 'id': 'native-message', 'role': 'user',
++                'trace_id': 'native-trace', 'span_id': 'native-span',
++                'content': [{'type': 'input_text', 'text': 'synthetic reference'}]}}) + '\n').encode()
++        self.source_path.write_bytes(self.raw)
++        self.digest = hashlib.sha256(self.raw).hexdigest()
++        schema = Path(m.__file__).parent / 'fixtures/aya-utc-schema.v0.1.sql'
++        with sqlite3.connect(self.archive) as con:
++            con.executescript(schema.read_text())
++            con.execute('INSERT INTO source_files VALUES(?,?,?,?,?,?,?,?,?)',
++                (str(self.source_path), 0, len(self.raw), self.digest, 1, '{}', '1000', len(self.raw), 0))
++            con.execute('''INSERT INTO source_lines(path,generation,byte_offset,byte_length,
++                line_number,sha256,raw_json,record_type,payload_type,timestamp,
++                session_id,turn_id,correlation_basis) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''',
++                (str(self.source_path),0,0,len(self.raw),1,self.digest,self.raw,'response_item',
++                 'message','2026-10-09T00:00:00Z','native-session','native-turn','exact'))
++            self.line = con.execute('SELECT id FROM source_lines').fetchone()[0]
++            # Existing AYA_UTC archive_key algorithm; test projection key, not event ID.
++            self.key = 'ayautc:' + hashlib.sha256(
++                f'v0.1\0{self.source_path}\0{0}\0{0}\0{self.digest}'.encode()).hexdigest()
++            columns = {r[1] for r in con.execute('PRAGMA table_info(messages)') if r[3]}
++            values = {k: '' for k in columns}
++            values.update(archive_key=self.key, source_line_id=self.line,
++                          native_message_id='native-message', session_id='native-session',
++                          turn_id='native-turn')
++            cols = ','.join(values)
++            con.execute(f'INSERT INTO messages({cols}) VALUES({",".join("?" for _ in values)})', list(values.values()))
++        self.archive.chmod(0o600)
++        self.coords = dict(source_path=str(self.source_path), source_generation=0,
++            byte_offset=0, byte_length=len(self.raw), line_number=1, source_sha256=self.digest)
++        self.source = {'event_id': uid(101), 'record_kind': 'SOURCE_EVENT', 'schema_version':'0.2',
++            'source': {'source_id': 'fixture.codex', 'source_instance_id':'0',
++                'source_stream_id':str(self.source_path), 'sequence_epoch':'fixture-epoch',
++                'native_event_id':'native-message', 'source_position': {
++                    'position_kind':'COMPOSITE', 'locator':str(self.source_path), 'components':self.coords}},
++            'correlation': {'session_id':'native-session', 'turn_id':'native-turn',
++                           'trace_id':'native-trace','span_id':'native-span'},
++            'time': {'occurred_at':'2026-10-09T00:00:00Z','observed_at':'2026-10-09T00:00:01Z'},
++            'artifact_ids':[uid(102)]}
++        self.artifact = {'artifact_id':uid(102), 'schema_version':'0.2',
++            'content_digest':{'algorithm':'sha256','value':self.digest}, 'size_bytes':len(self.raw),
++            'capture':{'source_event_id':uid(101)}, 'storage_object_ref':'fixture:retained-original'}
++
++    def admit(self, source=None):
++        return m.admit_aya_utc_reference(self.db, project_id='fixture', profile_id='default',
++            archive_path=self.archive, source_event=source or self.source,
++            artifact_record=self.artifact, allow_content=True)
++
++    def resolve(self, coords=None, **kwargs):
++        return m.resolve_aya_utc_source(self.archive, coords or self.coords, allow_content=True, **kwargs)
++
++    def test_aya_utc_admission_uses_existing_key_and_canonical_id_across_process_reopen(self):
++        self.assertEqual(self.admit()['state'],'new')
++        self.assertEqual(self.admit()['state'],'replayed')
++        code = "import memory_v0 as m,json,sys; print(json.dumps(m.reference_history(sys.argv[1],project_id='fixture',profile_id='default',event_id=sys.argv[2],allow_content=True)))"
++        run = subprocess.run([sys.executable,'-c',code,str(self.db),uid(101)],
++            cwd=Path(m.__file__).parent,capture_output=True,text=True,check=True)
++        history = json.loads(run.stdout)
++        self.assertEqual(history['source_key'],self.key)
++        self.assertEqual(history['source_event'],self.source)
++        self.assertEqual(self.resolve()['content'],self.raw)
++        with sqlite3.connect(self.db) as con:
++            self.assertEqual(con.execute('SELECT count(*) FROM source_events').fetchone()[0],1)
++            self.assertEqual(con.execute('SELECT count(*) FROM reference_sources').fetchone()[0],1)
++
++    def test_exact_bytes_survive_missing_changed_generation_and_truncated_native_source(self):
++        self.assertEqual(self.resolve()['source_state'],'verified')
++        self.source_path.unlink()
++        result = self.resolve()
++        self.assertEqual(result['source_state'],'missing_source')
++        self.assertEqual(result['content'],self.raw)
++        self.source_path.write_bytes(b'truncated')
++        self.assertEqual(self.resolve()['source_state'],'changed_source')
++        self.source_path.write_bytes(self.raw)
++        with sqlite3.connect(self.archive) as con:
++            con.execute('UPDATE source_files SET generation=1')
++        self.assertEqual(self.resolve()['source_state'],'changed_source')
++        self.assertEqual(self.resolve()['content'],self.raw)
++
++    def test_wrong_hash_coordinates_missing_row_and_missing_archive_are_explicit(self):
++        coords = dict(self.coords, byte_offset=999)
++        self.assertEqual(self.resolve(coords)['artifact_state'],'unresolved_artifact')
++        coords = dict(self.coords,source_sha256='f'*64)
++        self.assertEqual(self.resolve(coords)['artifact_state'],'changed_artifact')
++        with sqlite3.connect(self.archive) as con:
++            con.execute('UPDATE source_lines SET raw_json=?',(b'corrupt',))
++        self.assertEqual(self.resolve()['artifact_state'],'changed_artifact')
++        self.archive.unlink()
++        self.assertEqual(self.resolve()['artifact_state'],'missing_artifact')
++
++    def test_time_ranges_preserve_half_open_bounds_and_missing_time(self):
++        self.assertEqual(self.resolve(utc_start='2026-10-09T00:00:00Z',
++            utc_end='2026-10-09T00:00:01Z')['artifact_state'],'verified')
++        self.assertEqual(self.resolve(utc_end='2026-10-09T00:00:00Z')['artifact_state'],'outside_time_range')
++        with self.assertRaisesRegex(ValueError,'aya_utc_time_invalid'):
++            self.resolve(utc_start='2026-10-09T00:00:01Z',utc_end='2026-10-09T00:00:00Z')
++        with sqlite3.connect(self.archive) as con:
++            con.execute('UPDATE source_lines SET timestamp=NULL')
++        self.assertEqual(self.resolve(utc_start='2026-10-09T00:00:00Z')['artifact_state'],'unresolved_time')
++
++    def test_native_correlation_must_match_and_absent_session_is_unresolved(self):
++        source = copy.deepcopy(self.source)
++        source['correlation']['trace_id'] = 'fabricated'
++        with self.assertRaisesRegex(ValueError,'reference_source_mismatch'):self.admit(source)
++        with sqlite3.connect(self.archive) as con:
++            con.execute('UPDATE source_lines SET session_id=NULL')
++        with self.assertRaisesRegex(ValueError,'aya_utc_source_unresolved'):self.admit()
++        self.assertFalse(self.db.exists())
++        self.assertIsNone(self.resolve()['reference']['session_id'])
++
++    def test_rust_checkpoint_binding_matches_real_native_tuple_without_issuing_id(self):
++        cp = checkpoint(record_sha=self.digest)
++        source = copy.deepcopy(self.source)
++        source['source'].update(source_id='hermes', source_instance_id=cp['source_generation_id'],
++            source_stream_id='messages',native_event_id='1',source_position={
++                'position_kind':'ROW_PRIMARY_KEY','row_primary_key':'1','locator':'/fixture/state.db'})
++        source['correlation'] = {'session_id':'turn-A'}
++        args = dict(project_id='fixture',profile_id='default',checkpoint=cp,
++                    source_event=source,artifact_record=self.artifact,allow_content=True)
++        self.assertEqual(m.admit_capture_reference(self.db,**args)['state'],'new')
++        self.assertEqual(m.admit_capture_reference(self.db,**args)['state'],'replayed')
++        source['source']['native_event_id'] = 'not-a-native-row'
++        with self.assertRaisesRegex(ValueError,'reference_source_unresolved'):
++            m.admit_capture_reference(self.db,**args)
++
++    def test_actual_archive_correction_history_retains_one_occurrence(self):
++        self.admit()
++        for n,previous in [(103,None),(104,uid(103))]:
++            e = {'event_id':uid(n),'record_kind':'EVIDENCE_EVENT','schema_version':'0.2',
++                 'normalization':{'derived_from_event_ids':[uid(101)]},'artifact_ids':[uid(102)],
++                 'correlation':self.source['correlation'],'payload':{'claim':'amber' if n==103 else 'violet'}}
++            args = dict(project_id='fixture',profile_id='default',evidence_event=e,
++                        supersedes_event_id=previous,allow_content=True)
++            self.assertEqual(m.admit_interpretation(self.db,**args)['state'],'new')
++            self.assertEqual(m.admit_interpretation(self.db,**args)['state'],'replayed')
++        self.assertEqual(len(m.reference_history(self.db,project_id='fixture',profile_id='default',
++            event_id=uid(101),allow_content=True)['interpretations']),2)
++        self.assertEqual(self.admit()['state'],'replayed')
++
++    def test_same_content_in_new_archive_generation_is_a_distinct_occurrence(self):
++        self.admit()
++        with sqlite3.connect(self.archive) as con:
++            con.row_factory = sqlite3.Row
++            line = dict(con.execute('SELECT * FROM source_lines').fetchone())
++            line.pop('id'); line['generation'] = 1
++            con.execute('INSERT INTO source_lines(' + ','.join(line) + ') VALUES(' + ','.join('?' for _ in line) + ')',list(line.values()))
++            line_id = con.execute('SELECT max(id) FROM source_lines').fetchone()[0]
++            message = dict(con.execute('SELECT * FROM messages').fetchone())
++            message.pop('id'); message['source_line_id'] = line_id
++            message['archive_key'] = 'ayautc:' + hashlib.sha256(
++                f'v0.1\0{self.source_path}\0{1}\0{0}\0{self.digest}'.encode()).hexdigest()
++            con.execute('INSERT INTO messages(' + ','.join(message) + ') VALUES(' + ','.join('?' for _ in message) + ')',list(message.values()))
++            con.execute('UPDATE source_files SET generation=1')
++        source,artifact = copy.deepcopy(self.source),copy.deepcopy(self.artifact)
++        source['event_id'] = uid(201); source['artifact_ids'] = [uid(202)]
++        source['source']['source_instance_id'] = '1'
++        source['source']['source_position']['components']['source_generation'] = 1
++        artifact['artifact_id'] = uid(202); artifact['capture']['source_event_id'] = uid(201)
++        self.assertEqual(m.admit_aya_utc_reference(self.db,project_id='fixture',profile_id='default',
++            archive_path=self.archive,source_event=source,artifact_record=artifact,allow_content=True)['state'],'new')
++        with sqlite3.connect(self.db) as con:
++            self.assertEqual(con.execute('SELECT count(*) FROM reference_sources').fetchone()[0],2)
++            self.assertEqual(con.execute('SELECT count(DISTINCT source_key) FROM source_events').fetchone()[0],2)
++        self.assertEqual(self.resolve()['source_state'],'changed_source')
++
++    def test_empty_wrong_schema_and_content_gate_fail_without_archive_mutation(self):
++        before = self.archive.read_bytes()
++        with self.assertRaisesRegex(ValueError,'content_not_authorized'):
++            m.resolve_aya_utc_source(self.archive,self.coords)
++        self.resolve()
++        self.assertEqual(before,self.archive.read_bytes())
++        empty = self.root / 'empty.sqlite'
++        with sqlite3.connect(empty):pass
++        empty.chmod(0o600)
++        with self.assertRaisesRegex(ValueError,'aya_utc_schema_unbound'):
++            m.resolve_aya_utc_source(empty,self.coords,allow_content=True)
++
++    def test_bound_archive_resolution_roundtrips_in_fresh_process_and_retains_original(self):
++        self.admit()
++        code = "import memory_v0 as m,sys,hashlib,json; r=m.resolve_aya_utc_reference(sys.argv[1],project_id='fixture',profile_id='default',event_id=sys.argv[2],archive_path=sys.argv[3],allow_content=True); print(json.dumps([r['event_id'],r['source_state'],hashlib.sha256(r['content']).hexdigest()]))"
++        run = subprocess.run([sys.executable,'-c',code,str(self.db),uid(101),str(self.archive)],
++            cwd=Path(m.__file__).parent,capture_output=True,text=True,check=True)
++        self.assertEqual(json.loads(run.stdout),[uid(101),'verified',self.digest])
++        self.source_path.unlink()
++        result = m.resolve_aya_utc_reference(self.db,project_id='fixture',profile_id='default',
++            event_id=uid(101),archive_path=self.archive,allow_content=True)
++        self.assertEqual(result['source_state'],'missing_source')
++        self.assertEqual(result['content'],self.raw)
++        with sqlite3.connect(self.archive) as con:
++            con.execute("UPDATE source_lines SET turn_id='different-native-turn'")
++        result = m.resolve_aya_utc_reference(self.db,project_id='fixture',profile_id='default',
++            event_id=uid(101),archive_path=self.archive,allow_content=True)
++        self.assertEqual(result['artifact_state'],'changed_artifact')
++        self.assertNotIn('content',result)
++
++    def test_optional_native_links_can_arrive_late_without_rewriting_occurrence(self):
++        source = copy.deepcopy(self.source)
++        source['correlation'] = {'session_id':'native-session'}
++        self.assertEqual(self.admit(source)['state'],'new')
++        result = m.resolve_aya_utc_reference(self.db,project_id='fixture',profile_id='default',
++            event_id=uid(101),archive_path=self.archive,allow_content=True)
++        self.assertEqual(result['artifact_state'],'verified')
++        e = {'event_id':uid(103),'record_kind':'EVIDENCE_EVENT','schema_version':'0.2',
++            'normalization':{'derived_from_event_ids':[uid(101)]},'artifact_ids':[uid(102)],
++            'correlation':self.source['correlation'],'payload':{'claim':'late exact native correlation'}}
++        m.admit_interpretation(self.db,project_id='fixture',profile_id='default',
++            evidence_event=e,allow_content=True)
++        self.assertEqual(self.admit(source)['state'],'replayed')
++        history = m.reference_history(self.db,project_id='fixture',profile_id='default',
++            event_id=uid(101),allow_content=True)
++        self.assertEqual(history['source_event']['correlation'],{'session_id':'native-session'})
++        self.assertEqual(history['interpretations'][0]['evidence_event']['correlation'],self.source['correlation'])
++
++    def test_reopen_rejects_changed_or_missing_archive_native_identity(self):
++        self.admit()
++        for operation in ["UPDATE messages SET native_message_id='changed'",
++                          "UPDATE messages SET archive_key='changed'",'DELETE FROM messages']:
++            with self.subTest(operation=operation):
++                with sqlite3.connect(self.archive) as con:
++                    con.execute('SAVEPOINT fixture')
++                    con.execute(operation)
++                    con.commit()
++                result = m.resolve_aya_utc_reference(self.db,project_id='fixture',profile_id='default',
++                    event_id=uid(101),archive_path=self.archive,allow_content=True)
++                self.assertEqual(result['artifact_state'],'changed_artifact')
++                self.assertNotIn('content',result)
++                # Restore only the fixture projection for the next independent mutation.
++                with sqlite3.connect(self.archive) as con:
++                    if operation.startswith('DELETE'):
++                        columns = {r[1] for r in con.execute('PRAGMA table_info(messages)') if r[3]}
++                        values = {k:'' for k in columns}
++                        values.update(archive_key=self.key,source_line_id=self.line,
++                                      native_message_id='native-message',session_id='native-session',turn_id='native-turn')
++                        con.execute('INSERT INTO messages(' + ','.join(values) + ') VALUES(' + ','.join('?' for _ in values) + ')',list(values.values()))
++                    else:
++                        con.execute('UPDATE messages SET archive_key=?,native_message_id=?',(self.key,'native-message'))
+--- /dev/null
++++ b/fixtures/aya-utc-schema.v0.1.sql
+@@ -0,0 +1,60 @@
++PRAGMA foreign_keys=ON;
++CREATE TABLE IF NOT EXISTS archive_metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL);
++INSERT OR IGNORE INTO archive_metadata VALUES ('schema_version','ayautc.v0.1');
++INSERT OR IGNORE INTO archive_metadata VALUES ('classification','REBUILDABLE_EXACT_PROJECTION');
++CREATE TABLE IF NOT EXISTS source_files(
++ path TEXT PRIMARY KEY, generation INTEGER NOT NULL, committed_offset INTEGER NOT NULL,
++ prefix_sha256 TEXT NOT NULL, line_number INTEGER NOT NULL, context_json TEXT NOT NULL,
++ last_seen_at TEXT NOT NULL, snapshot_length INTEGER NOT NULL, pending_bytes INTEGER NOT NULL);
++CREATE TABLE IF NOT EXISTS source_lines(
++ id INTEGER PRIMARY KEY, path TEXT NOT NULL, generation INTEGER NOT NULL,
++ byte_offset INTEGER NOT NULL, byte_length INTEGER NOT NULL, line_number INTEGER NOT NULL,
++ sha256 TEXT NOT NULL, raw_json BLOB NOT NULL, record_type TEXT, payload_type TEXT,
++ timestamp TEXT, session_id TEXT, thread_id TEXT, turn_id TEXT,
++ correlation_basis TEXT NOT NULL, parse_error TEXT,
++ UNIQUE(path,generation,byte_offset));
++CREATE INDEX IF NOT EXISTS source_lines_turn ON source_lines(session_id,turn_id);
++-- Rebuildable Observer lookup over the SAME retained source rows. No transcript
++-- copy, session identity, causal link or missing provider ID is manufactured.
++-- IDs here are exact declared payload fields, not IDs parsed out of tool text.
++CREATE VIEW IF NOT EXISTS observer_source_refs AS
++WITH source AS (
++ SELECT *, CASE WHEN json_valid(CAST(raw_json AS TEXT))
++                THEN CAST(raw_json AS TEXT) ELSE '{}' END AS document
++ FROM source_lines
++)
++SELECT id AS source_line_id, path AS source_path, generation AS source_generation,
++ byte_offset, byte_length, line_number, sha256 AS source_sha256,
++ timestamp, record_type, payload_type, session_id, thread_id, turn_id,
++ correlation_basis, parse_error,
++ CASE WHEN json_type(document,'$.payload.prompt_id')='text'
++      THEN nullif(json_extract(document,'$.payload.prompt_id'),'') END AS prompt_id,
++ CASE WHEN json_type(document,'$.payload.trace_id')='text'
++      THEN nullif(json_extract(document,'$.payload.trace_id'),'') END AS trace_id,
++ CASE WHEN json_type(document,'$.payload.span_id')='text'
++      THEN nullif(json_extract(document,'$.payload.span_id'),'') END AS span_id,
++ CASE WHEN json_type(document,'$.payload.parent_span_id')='text'
++      THEN nullif(json_extract(document,'$.payload.parent_span_id'),'') END AS parent_span_id,
++ CASE WHEN payload_type IN ('function_call','function_call_output','custom_tool_call',
++                            'custom_tool_call_output','mcp_tool_call_end','web_search_end')
++           AND json_type(document,'$.payload.call_id')='text'
++      THEN nullif(json_extract(document,'$.payload.call_id'),'') END AS tool_call_id
++FROM source;
++CREATE TABLE IF NOT EXISTS messages(
++ id INTEGER PRIMARY KEY, archive_key TEXT UNIQUE NOT NULL,
++ session_id TEXT, thread_id TEXT, turn_id TEXT, native_message_id TEXT,
++ role TEXT NOT NULL, origin_type TEXT NOT NULL, origin_basis TEXT NOT NULL,
++ correlation_basis TEXT NOT NULL, timestamp TEXT, text TEXT NOT NULL,
++ text_parts_json TEXT NOT NULL, content_sha256 TEXT NOT NULL, phase TEXT,
++ content_item_kinds_json TEXT NOT NULL, classification_eligible INTEGER NOT NULL,
++ classification_text TEXT NOT NULL, organ_id TEXT NOT NULL, organ_basis TEXT NOT NULL,
++ source_cwd TEXT, session_source_json TEXT NOT NULL,
++ representation TEXT NOT NULL, source_line_id INTEGER NOT NULL REFERENCES source_lines(id),
++ duplicate_of INTEGER REFERENCES messages(id), duplicate_basis TEXT);
++CREATE INDEX IF NOT EXISTS messages_native ON messages(session_id,native_message_id);
++CREATE INDEX IF NOT EXISTS messages_turn ON messages(session_id,turn_id,role);
++CREATE VIEW IF NOT EXISTS canonical_messages AS SELECT * FROM messages WHERE duplicate_of IS NULL;
++CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(text);
++CREATE TABLE IF NOT EXISTS ingest_builds(
++ build_id TEXT PRIMARY KEY, started_at TEXT NOT NULL, completed_at TEXT NOT NULL,
++ manifest_json TEXT NOT NULL);
+--- /dev/null
++++ b/docs/plans/2026-10-09-reference-first-slice.md
+@@ -0,0 +1,48 @@
++# Reference-first candidate slice — 2026-10-09
++Owner: this delegated Codex task; isolated Brainstem candidate/observer-b-v0.2 copy.
++
++Source owners: memory_v0.py and observer-probe/src/live.rs; Observer Contract v0.2
++sections4/5/11/12; retained AYA catalog; memoryd-harness/ayautc/src/{lib.rs,schema.sql}.
++No live stores, installed runtime, postgres-m0, Paperclip helper or provider edits.
++
++Plan completed: reference regressions; additive candidate bindings; checkpoint
++join; exact AYA_UTC read-only source resolution; full tests and independent review.
++
++Local binding choices:
++- Hermes: actual source_generation/session/native row must select one checkpoint
++  record; supplied canonical SourceEvent/Artifact IDs are consumed unchanged.
++- AYA_UTC: canonical COMPOSITE source_position.components carries exact existing
++  observer_source_refs columns; source_stream_id is native source_path and
++  source_instance_id is that archive's source_generation rendered as text. This is
++  a local adapter binding, not a new canonical wire schema. It reuses messages'
++  existing archive_key; unknown native session/nonmessage selection is unresolved.
++- Native session must match; optional correlation absent in the supplied event
++  stays absent and can be added through a separate EvidenceEvent. Supplied known
++  native values must match the source view. Time-range selection never makes joins.
++- Frozen bytes come from archive source_lines; today's native file is checked
++  independently against archive generation and committed-prefix hash. Reopen also
++  checks original archive_key and native_message_id; a changed/deleted identity
++  cannot silently return a verified bound artifact.
++- Capture metadata import and reference admission are separate replayable steps;
++  a failed bind may leave candidate metadata but no admitted reference. No atomic
++  canonical journal acceptance or distributed exactly-once guarantee is claimed.
++- Existing candidate save/history identity is reused; no automatic promotion.
++
++Canonical producer decision still open: Brainstem live.rs checkpoint contains only
++source_key/envelope (no event_id). observer-index-lab/build_index.py has historical
++UUIDv7 element_id + observer-id-map projection/rebuild logic, not qualified canonical
++writer authority. AYA-Core's archived current Observer bootstrap document explicitly
++routes Observer-Core/OCP-0 creation to a separate implementation gate. No qualified
++canonical issuer was identified in inspected owners. Smallest choice: keep issuance
++with the actual Observer/OCP-0 owner and supply its retained SourceEvents to these
++bindings. Do not mint Brainstem IDs or adopt lab element_id as canonical by default.
++The required writer owner/provenance must be named before production wiring.
++
++Rollback: discard the isolated seven-file patch; original owners are untouched.
++Acceptance: source-bound retry/reopen, equal-byte distinct generations, retained
++artifact/current-source outcomes, additive native correlation and corrections,
++no duplicate candidate memory identity, final regression receipts and review.
++Production capture issuer, canonical writer verification, governed artifact custody,
++unknown-session/nonmessage admission, broad source coverage and PostgreSQL are gaps.
++
++Offline continuation: `observer-probe --admit-capture-fixture` now accepts one canonical UUIDv7 SourceEvent with explicit fixture writer provenance into a sealed durable fixture journal. It replays identity across retry/reopen and tested process crash windows. It does not register a production Observer writer. The reference projection binds source_key together with sequence_epoch; pre-existing candidate reference tables without epoch fail closed instead of migrating. See `bindings/observer-capture-admission.v0.2.candidate.json` and `docs/plans/2026-10-09-offline-capture-admission.md`.
+--- /dev/null
++++ b/observer-probe/src/admission.rs
+@@ -0,0 +1,350 @@
++//! Offline fixture-only SourceEvent acceptance. The journal is the recovery authority.
++//! No daemon, production authority registration, EvidenceEvent or memory promotion.
++use chrono::{DateTime, FixedOffset, SecondsFormat, Utc};
++use serde_json::{json, Value};
++use sha2::{Digest, Sha256};
++use std::{
++    collections::HashSet,
++    fs::{self, File, OpenOptions},
++    io::{Read, Seek, SeekFrom, Write},
++    os::{
++        fd::AsRawFd,
++        unix::fs::{MetadataExt, OpenOptionsExt},
++    },
++    path::Path,
++    time::{SystemTime, UNIX_EPOCH},
++};
++use uuid::Uuid;
++
++fn text<'a>(v: &'a Value, key: &str) -> Result<&'a str, String> {
++    v.get(key)
++        .and_then(Value::as_str)
++        .filter(|s| !s.is_empty() && s.len() <= 1024)
++        .ok_or_else(|| "admission_input_invalid".into())
++}
++fn digest(v: &Value) -> String {
++    format!("{:x}", Sha256::digest(serde_json::to_vec(v).unwrap()))
++}
++fn hex(v: &str) -> bool {
++    v.len() == 64
++        && v.bytes()
++            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
++}
++fn identity(v: &str) -> bool {
++    !v.is_empty()
++        && v.len() <= 128
++        && v.bytes()
++            .all(|b| b.is_ascii_alphanumeric() || b"_.:-".contains(&b))
++}
++
++fn validate(req: &Value) -> Result<Vec<String>, String> {
++    let object = req.as_object().ok_or("admission_input_invalid")?;
++    if object.len() != 4 || req["fixture_only"] != true {
++        return Err("fixture_scope_required".into());
++    }
++    let event = &req["source_event"];
++    let source = &event["source"];
++    let position = &source["source_position"];
++    let captured = &req["captured_record"];
++    let env = &captured["envelope"];
++    let native = &env["source"];
++    let generation = text(native, "source_generation_id")?;
++    let profile = text(env, "profile_id")?;
++    let session = text(native, "source_instance_id")?;
++    let row = text(native, "native_event_id")?;
++    let sha = text(&env["capture"], "record_sha256")?;
++    let path = text(req, "source_path")?;
++    if !hex(generation)
++        || !hex(sha)
++        || !identity(profile)
++        || !identity(session)
++        || row
++            .parse::<u64>()
++            .ok()
++            .filter(|n| *n > 0 && n.to_string() == row)
++            .is_none()
++        || !Path::new(path).is_absolute()
++        || native["producer_id"] != "hermes"
++        || native["source_stream_id"] != "messages"
++        || native["source_position"] != row
++        || env["correlation"] != json!({"session_id":session})
++        || env["payload"] != json!({})
++        || env["semantics"] != json!({})
++        || env["evidence_refs"] != json!([])
++        || env["capture"]["captured_at"]
++            .as_f64()
++            .filter(|t| t.is_finite() && *t >= 0.0)
++            .is_none()
++        || captured["source_key"]
++            != format!("{profile}/hermes/{generation}/{session}/messages/{row}")
++    {
++        return Err("capture_binding_invalid".into());
++    }
++    if event["record_kind"] != "SOURCE_EVENT"
++        || event["schema_version"] != "0.2"
++        || event["source_context_class"] != "PRE_OBSERVER_SOURCE_CONTEXT"
++        || event["capture_mode"] != "HISTORICAL_IMPORT"
++        || event.get("event_id").is_some()
++        || event["time"].get("ingested_at").is_some()
++        || event["observer"].get("observer_sequence").is_some()
++        || source["source_id"] != "hermes"
++        || source["source_kind"] != "HERMES"
++        || source["source_instance_id"] != generation
++        || source["source_stream_id"] != "messages"
++        || source["native_event_id"] != row
++        || position["position_kind"] != "ROW_PRIMARY_KEY"
++        || position["row_primary_key"] != row
++        || position["locator"] != path
++        || event["correlation"]["session_id"] != session
++        || event["correlation"]["runtime_profile_id"] != profile
++        || event["payload"]["record_sha256"] != sha
++        || event["capture"]
++            != json!({"capture_policy":"NORMAL","content_disposition":"METADATA_ONLY"})
++        || !event["artifact_ids"].is_array()
++        || !event["origin"].is_object()
++        || !event["coverage"]["gap_refs"].is_array()
++        || !event["coverage"]["limitations"].is_array()
++        || !matches!(
++            event["coverage"]["status"].as_str(),
++            Some("COMPLETE" | "PARTIAL" | "GAP_KNOWN" | "COVERAGE_UNKNOWN")
++        )
++    {
++        return Err("source_event_template_invalid".into());
++    }
++    for (v, k) in [
++        (event, "event_type"),
++        (source, "adapter_id"),
++        (source, "adapter_version"),
++        (&event["time"], "observed_at"),
++    ] {
++        text(v, k)?;
++    }
++    let observed = utc_time(text(&event["time"], "observed_at")?)?;
++    let captured_at = env["capture"]["captured_at"].as_f64().unwrap();
++    let observed_seconds =
++        observed.timestamp() as f64 + f64::from(observed.timestamp_subsec_nanos()) / 1e9;
++    if (observed_seconds - captured_at).abs() > 0.000001 {
++        return Err("capture_time_binding_invalid".into());
++    }
++    if let Some(occurred) = event["time"].get("occurred_at").filter(|v| !v.is_null()) {
++        utc_time(occurred.as_str().ok_or("source_time_invalid")?)?;
++    }
++    if event["payload"] != json!({"record_sha256": sha}) {
++        return Err("metadata_capture_policy_invalid".into());
++    }
++    let epoch = text(source, "sequence_epoch")?;
++    if !identity(epoch) {
++        return Err("source_epoch_invalid".into());
++    }
++    let writer = &event["observer"];
++    if !text(writer, "observer_instance_id")?.starts_with("fixture-")
++        || !text(writer, "writer_actor_id")?.starts_with("fixture-")
++        || !text(writer, "writer_authority_receipt_ref")?.starts_with("fixture:")
++        || event["correlation"].get("actor_id") == writer.get("writer_actor_id")
++    {
++        return Err("fixture_writer_provenance_invalid".into());
++    }
++    for id in event["artifact_ids"].as_array().unwrap() {
++        let id = Uuid::parse_str(id.as_str().ok_or("artifact_id_invalid")?)
++            .map_err(|_| "artifact_id_invalid")?;
++        if id.get_version_num() != 7 {
++            return Err("artifact_id_invalid".into());
++        }
++    }
++    Ok(vec![
++        "hermes".into(),
++        generation.into(),
++        "messages".into(),
++        epoch.into(),
++        row.into(),
++    ])
++}
++
++fn utc_time(value: &str) -> Result<DateTime<FixedOffset>, String> {
++    let parsed = DateTime::parse_from_rfc3339(value).map_err(|_| "source_time_invalid")?;
++    if parsed.offset().local_minus_utc() != 0 {
++        return Err("source_time_invalid".into());
++    }
++    Ok(parsed)
++}
++fn utc_now() -> Result<String, String> {
++    let now = SystemTime::now()
++        .duration_since(UNIX_EPOCH)
++        .map_err(|_| "clock_invalid")?;
++    let seconds = now.as_secs().try_into().map_err(|_| "clock_invalid")?;
++    let timestamp: DateTime<Utc> =
++        DateTime::from_timestamp(seconds, now.subsec_nanos()).ok_or("clock_invalid")?;
++    Ok(timestamp.to_rfc3339_opts(SecondsFormat::Nanos, true))
++}
++fn crash(stage: &str) {
++    // Only this explicit fixture admission API observes the failure-injection flag.
++    if std::env::var("BRAINSTEM_FIXTURE_CRASH").ok().as_deref() == Some(stage) {
++        std::process::exit(86);
++    }
++}
++struct Locked(File);
++impl Drop for Locked {
++    fn drop(&mut self) {
++        unsafe {
++            libc::flock(self.0.as_raw_fd(), libc::LOCK_UN);
++        }
++    }
++}
++fn open(path: &Path) -> Result<Locked, String> {
++    if !path.is_absolute()
++        || path
++            .components()
++            .any(|c| matches!(c, std::path::Component::ParentDir))
++        || path.ancestors().any(|p| p.is_symlink())
++    {
++        return Err("journal_path_invalid".into());
++    }
++    let file = OpenOptions::new()
++        .read(true)
++        .write(true)
++        .create(true)
++        .truncate(false)
++        .mode(0o600)
++        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
++        .open(path)
++        .map_err(|_| "journal_open_failed")?;
++    let meta = file.metadata().map_err(|_| "journal_open_failed")?;
++    if !meta.is_file() || meta.mode() & 0o077 != 0 {
++        return Err("journal_not_private_regular".into());
++    }
++    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
++        return Err("journal_locked".into());
++    }
++    let locked = Locked(file);
++    let named = fs::symlink_metadata(path).map_err(|_| "journal_path_changed")?;
++    if (named.dev(), named.ino()) != (meta.dev(), meta.ino()) {
++        return Err("journal_path_changed".into());
++    }
++    // Repeating this harmless directory sync also covers a creator crash before sync.
++    File::open(path.parent().ok_or("journal_path_invalid")?)
++        .and_then(|p| p.sync_all())
++        .map_err(|_| "journal_directory_sync_failed")?;
++    Ok(locked)
++}
++
++/// Admit only the fixture capture profile. Returns acknowledgment only after sync.
++/// Intact unacknowledged frames are recovered without assigning another event ID.
++pub fn accept_fixture(path: &Path, request: &Value) -> Result<Value, String> {
++    let tuple = validate(request)?;
++    let mut locked = open(path)?;
++    let journal = &mut locked.0;
++    let size = journal.metadata().map_err(|_| "journal_read_failed")?.len();
++    if size > 8 * 1024 * 1024 {
++        return Err("fixture_journal_limit".into());
++    }
++    let mut bytes = Vec::new();
++    journal
++        .read_to_end(&mut bytes)
++        .map_err(|_| "journal_read_failed")?;
++    let complete = bytes.iter().rposition(|b| *b == b'\n').map_or(0, |i| i + 1);
++    let mut count = 0u64;
++    let mut ids = HashSet::new();
++    let mut tuples = HashSet::new();
++    let mut replay = None;
++    let mut writer: Option<Value> = None;
++    for line in bytes[..complete].split_inclusive(|b| *b == b'\n') {
++        let mut frame: Value = serde_json::from_slice(line).map_err(|_| "journal_corrupt")?;
++        let seal = frame
++            .as_object_mut()
++            .ok_or("journal_corrupt")?
++            .remove("seal")
++            .ok_or("journal_corrupt")?;
++        if seal != digest(&frame) || frame["version"] != 1 || frame["fixture_only"] != true {
++            return Err("journal_corrupt".into());
++        }
++        let original = &frame["request"];
++        let native = validate(original).map_err(|_| "journal_corrupt")?;
++        let event = &frame["source_event"];
++        count += 1;
++        let event_id = Uuid::parse_str(text(event, "event_id").map_err(|_| "journal_corrupt")?)
++            .map_err(|_| "journal_corrupt")?;
++        if event_id.get_version_num() != 7
++            || !ids.insert(event_id)
++            || !tuples.insert(native.clone())
++            || event["observer"]["observer_sequence"] != count
++            || text(&event["time"], "ingested_at")
++                .and_then(utc_time)
++                .is_err()
++        {
++            return Err("journal_corrupt".into());
++        }
++        let mut template = event.clone();
++        template
++            .as_object_mut()
++            .ok_or("journal_corrupt")?
++            .remove("event_id");
++        template["time"]
++            .as_object_mut()
++            .ok_or("journal_corrupt")?
++            .remove("ingested_at");
++        template["observer"]
++            .as_object_mut()
++            .ok_or("journal_corrupt")?
++            .remove("observer_sequence");
++        if template != original["source_event"] {
++            return Err("journal_corrupt".into());
++        }
++        if let Some(ref w) = writer {
++            if w != &template["observer"] {
++                return Err("journal_corrupt".into());
++            }
++        } else {
++            writer = Some(template["observer"].clone());
++        }
++        if native == tuple {
++            if original != request {
++                return Err("occurrence_rebinding_rejected".into());
++            }
++            replay = Some(event.clone());
++        }
++    }
++    if writer
++        .as_ref()
++        .is_some_and(|w| w != &request["source_event"]["observer"])
++    {
++        return Err("journal_writer_rebinding_rejected".into());
++    }
++    // Validate every complete frame before repairing any unaccepted trailing write.
++    if complete < bytes.len() {
++        journal
++            .set_len(complete as u64)
++            .map_err(|_| "journal_recovery_failed")?;
++    }
++    journal.sync_all().map_err(|_| "journal_sync_failed")?;
++    if let Some(event) = replay {
++        return Ok(json!({"state":"replayed","fixture_only":true,"source_event":event}));
++    }
++    let mut event = request["source_event"].clone();
++    event["event_id"] = json!(Uuid::now_v7().to_string());
++    event["time"]["ingested_at"] = json!(utc_now()?);
++    event["observer"]["observer_sequence"] = json!(count + 1);
++    let mut frame = json!({"version":1,"fixture_only":true,"request":request,"source_event":event});
++    frame["seal"] = json!(digest(&frame));
++    let mut encoded = serde_json::to_vec(&frame).map_err(|_| "journal_encode_failed")?;
++    encoded.push(b'\n');
++    if complete + encoded.len() > 8 * 1024 * 1024 {
++        return Err("fixture_journal_limit".into());
++    }
++    journal
++        .seek(SeekFrom::End(0))
++        .map_err(|_| "journal_write_failed")?;
++    crash("before_append");
++    if std::env::var("BRAINSTEM_FIXTURE_CRASH").ok().as_deref() == Some("partial_frame") {
++        journal
++            .write_all(&encoded[..encoded.len() / 2])
++            .map_err(|_| "journal_write_failed")?;
++        crash("partial_frame");
++    }
++    journal
++        .write_all(&encoded)
++        .map_err(|_| "journal_write_failed")?;
++    crash("after_append");
++    journal.sync_all().map_err(|_| "journal_sync_failed")?;
++    crash("after_sync");
++    Ok(json!({"state":"new","fixture_only":true,"source_event":event}))
++}
+--- a/observer-probe/src/lib.rs
++++ b/observer-probe/src/lib.rs
+@@ -3,6 +3,7 @@
+ use std::sync::{mpsc, Arc, Mutex};
+ 
+ pub mod effect;
++pub mod admission;
+ mod live;
+ pub use live::{capture_session, resolve_local, CaptureReport, CapturedRecord, ResolvedRecord};
+ 
+--- a/observer-probe/src/main.rs
++++ b/observer-probe/src/main.rs
+@@ -3,10 +3,18 @@
+     effect::{replay_bundle, verify_bundle},
+     observe_lines, resolve_local,
+ };
+-use std::{env, fs, path::PathBuf};
++use std::{env, fs, path::PathBuf, io::{self, Read}};
+ 
+ fn run() -> Result<(), String> {
+     let args: Vec<String> = env::args().collect();
++    if args.len()==4 && args[1]=="--admit-capture-fixture" && args[2]=="--journal" {
++        let mut input=String::new();
++        io::stdin().take(65537).read_to_string(&mut input).map_err(|_|"admission_input_unreadable")?;
++        if input.len()>65536 { return Err("admission_input_too_large".into()); }
++        let request:serde_json::Value=serde_json::from_str(&input).map_err(|_|"admission_input_invalid")?;
++        println!("{}",brainstem_observer_probe::admission::accept_fixture(&PathBuf::from(&args[3]),&request)?);
++        return Ok(());
++    }
+     if args.len() == 3 && args[1] == "--effect-verify" {
+         println!("{}", verify_bundle(&PathBuf::from(&args[2]))?);
+         return Ok(());
+--- a/observer-probe/Cargo.toml
++++ b/observer-probe/Cargo.toml
+@@ -9,3 +9,5 @@
+ rusqlite = { version = "0.40.2", features = ["bundled"] }
+ libc = "0.2"
+ sha2 = "0.10.9"
++uuid = { version = "=1.26.1", features = ["v7"] }
++chrono = { version = "=0.4.45", default-features = false, features = ["std"] }
+--- a/observer-probe/Cargo.lock
++++ b/observer-probe/Cargo.lock
+@@ -3,6 +3,12 @@
+ version = 4
+ 
+ [[package]]
++name = "autocfg"
++version = "1.5.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
++
++[[package]]
+ name = "bitflags"
+ version = "2.13.2"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -21,11 +27,13 @@
+ name = "brainstem-observer-probe"
+ version = "0.2.0"
+ dependencies = [
++ "chrono",
+  "libc",
+  "rusqlite",
+  "serde",
+  "serde_json",
+  "sha2",
++ "uuid",
+ ]
+ 
+ [[package]]
+@@ -51,6 +59,15 @@
+ checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
+ 
+ [[package]]
++name = "chrono"
++version = "0.4.45"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
++dependencies = [
++ "num-traits",
++]
++
++[[package]]
+ name = "cpufeatures"
+ version = "0.2.17"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -104,6 +121,30 @@
+ checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
+ 
+ [[package]]
++name = "futures-core"
++version = "0.3.34"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "92d699e522242e69e3003b94ecc1f960f3a5e015aa7c5d7486e65ad01dd94f5e"
++
++[[package]]
++name = "futures-task"
++version = "0.3.34"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "cd417de3d1d015fc3bfd2b1ea46dfc7bab72ef86f1cc7cc9c78e728b34a6d1fd"
++
++[[package]]
++name = "futures-util"
++version = "0.3.34"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc"
++dependencies = [
++ "futures-core",
++ "futures-task",
++ "pin-project-lite",
++ "slab",
++]
++
++[[package]]
+ name = "generic-array"
+ version = "0.14.7"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -114,6 +155,17 @@
+ ]
+ 
+ [[package]]
++name = "getrandom"
++version = "0.4.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099"
++dependencies = [
++ "cfg-if",
++ "libc",
++ "r-efi",
++]
++
++[[package]]
+ name = "hashbrown"
+ version = "0.16.1"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -153,6 +205,7 @@
+ checksum = "ce57d20d1ea864ce2ac172ab472d409214f4fd359f0b2a2775abdf522e2af99e"
+ dependencies = [
+  "cfg-if",
++ "futures-util",
+  "wasm-bindgen",
+ ]
+ 
+@@ -180,12 +233,27 @@
+ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
+ 
+ [[package]]
++name = "num-traits"
++version = "0.2.19"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
++dependencies = [
++ "autocfg",
++]
++
++[[package]]
+ name = "once_cell"
+ version = "1.21.4"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+ 
+ [[package]]
++name = "pin-project-lite"
++version = "0.2.17"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
++
++[[package]]
+ name = "pkg-config"
+ version = "0.3.34"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -208,6 +276,12 @@
+ dependencies = [
+  "proc-macro2",
+ ]
++
++[[package]]
++name = "r-efi"
++version = "6.0.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
+ 
+ [[package]]
+ name = "rsqlite-vfs"
+@@ -301,6 +375,12 @@
+ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
+ 
+ [[package]]
++name = "slab"
++version = "0.4.12"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
++
++[[package]]
+ name = "smallvec"
+ version = "1.16.2"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -360,6 +440,17 @@
+ version = "1.0.26"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "d245f478577f809a851594d02313b640fb437e0bb33866753cff937863096954"
++
++[[package]]
++name = "uuid"
++version = "1.26.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "2ef6dac1e96601b4fb3acccccff2139741fcb757cb9a36089bf5be91cfb285ce"
++dependencies = [
++ "getrandom",
++ "js-sys",
++ "wasm-bindgen",
++]
+ 
+ [[package]]
+ name = "vcpkg"
+--- /dev/null
++++ b/observer-probe/tests/admission.rs
+@@ -0,0 +1,271 @@
++use brainstem_observer_probe::admission::accept_fixture;
++use serde_json::{json, Value};
++use std::{
++    fs,
++    io::Write,
++    path::PathBuf,
++    process::{Command, Stdio},
++};
++
++struct Fixture(PathBuf);
++impl Fixture {
++    fn new() -> Self {
++        let p = std::env::temp_dir().join(format!("brainstem-admission-{}", uuid::Uuid::now_v7()));
++        fs::create_dir(&p).unwrap();
++        Self(p)
++    }
++    fn journal(&self) -> PathBuf {
++        self.0.join("source.ndjson")
++    }
++}
++impl Drop for Fixture {
++    fn drop(&mut self) {
++        let _ = fs::remove_dir_all(&self.0);
++    }
++}
++fn request() -> Value {
++    let generation = "a".repeat(64);
++    json!({"fixture_only":true,"source_path":"/fixture/state.db",
++      "captured_record":{"source_key":format!("default/hermes/{generation}/session-A/messages/1"),
++        "envelope":{"profile_id":"default","source":{"producer_id":"hermes",
++         "source_generation_id":generation,"source_instance_id":"session-A",
++         "source_stream_id":"messages","source_position":"1","native_event_id":"1"},
++         "semantics":{},"payload":{},"evidence_refs":[],"correlation":{"session_id":"session-A"},
++         "capture":{"record_sha256":"b".repeat(64),"captured_at":100.0}}},
++      "source_event":{"record_kind":"SOURCE_EVENT","schema_version":"0.2",
++        "event_type":"fixture.hermes.message","source_context_class":"PRE_OBSERVER_SOURCE_CONTEXT",
++        "capture_mode":"HISTORICAL_IMPORT",
++        "source":{"source_id":"hermes","source_kind":"HERMES","source_instance_id":generation,
++          "source_stream_id":"messages","sequence_epoch":"fixture-epoch-A",
++          "native_event_id":"1","source_position":{"position_kind":"ROW_PRIMARY_KEY",
++            "row_primary_key":"1","locator":"/fixture/state.db"},
++          "adapter_id":"fixture-hermes","adapter_version":"0.1"},
++        "origin":{},"correlation":{"session_id":"session-A","runtime_profile_id":"default"},
++        "coverage":{"status":"PARTIAL","gap_refs":[],"limitations":["fixture-only selected metadata"]},
++        "time":{"observed_at":"1970-01-01T00:01:40Z"},
++        "capture":{"capture_policy":"NORMAL","content_disposition":"METADATA_ONLY"},
++        "artifact_ids":[],"payload":{"record_sha256":"b".repeat(64)},
++        "observer":{"observer_instance_id":"fixture-writer-generation-A",
++          "writer_actor_id":"fixture-service-actor","writer_authority_receipt_ref":"fixture:writer-authority"}}})
++}
++fn cli(journal: &std::path::Path, req: &Value, fault: Option<&str>) -> std::process::Output {
++    let mut cmd = Command::new(env!("CARGO_BIN_EXE_brainstem-observer-probe"));
++    cmd.args(["--admit-capture-fixture", "--journal"])
++        .arg(journal);
++    if let Some(f) = fault {
++        cmd.env("BRAINSTEM_FIXTURE_CRASH", f);
++    }
++    let mut child = cmd
++        .stdin(Stdio::piped())
++        .stdout(Stdio::piped())
++        .stderr(Stdio::piped())
++        .spawn()
++        .unwrap();
++    child
++        .stdin
++        .take()
++        .unwrap()
++        .write_all(req.to_string().as_bytes())
++        .unwrap();
++    child.wait_with_output().unwrap()
++}
++#[test]
++fn retry_reopen_retains_canonical_event_and_writer() {
++    let f = Fixture::new();
++    let req = request();
++    let first = accept_fixture(&f.journal(), &req).unwrap();
++    let replay = cli(&f.journal(), &req, None);
++    assert!(replay.status.success());
++    let replay: Value = serde_json::from_slice(&replay.stdout).unwrap();
++    assert_eq!(replay["state"], "replayed");
++    assert_eq!(first["source_event"], replay["source_event"]);
++    let event = &first["source_event"];
++    assert_eq!(
++        uuid::Uuid::parse_str(event["event_id"].as_str().unwrap())
++            .unwrap()
++            .get_version_num(),
++        7
++    );
++    assert_eq!(event["observer"]["observer_sequence"], 1);
++    assert_eq!(event["record_kind"], "SOURCE_EVENT");
++    assert_eq!(fs::read_to_string(f.journal()).unwrap().lines().count(), 1);
++}
++#[test]
++fn generation_epoch_and_equal_content_occurrences_are_distinct() {
++    let f = Fixture::new();
++    let req = request();
++    let a = accept_fixture(&f.journal(), &req).unwrap();
++    let mut epoch = req.clone();
++    epoch["source_event"]["source"]["sequence_epoch"] = json!("fixture-epoch-B");
++    let b = accept_fixture(&f.journal(), &epoch).unwrap();
++    let mut generation = req.clone();
++    let gen = "c".repeat(64);
++    generation["source_event"]["source"]["source_instance_id"] = json!(gen);
++    generation["captured_record"]["envelope"]["source"]["source_generation_id"] = json!(gen);
++    generation["captured_record"]["source_key"] =
++        json!(format!("default/hermes/{gen}/session-A/messages/1"));
++    let c = accept_fixture(&f.journal(), &generation).unwrap();
++    let mut row = req.clone();
++    row["source_event"]["source"]["native_event_id"] = json!("2");
++    row["source_event"]["source"]["source_position"]["row_primary_key"] = json!("2");
++    row["captured_record"]["envelope"]["source"]["native_event_id"] = json!("2");
++    row["captured_record"]["envelope"]["source"]["source_position"] = json!("2");
++    row["captured_record"]["source_key"] = json!(format!(
++        "default/hermes/{}/session-A/messages/2",
++        "a".repeat(64)
++    ));
++    let d = accept_fixture(&f.journal(), &row).unwrap();
++    let ids = [a, b, c, d].map(|x| x["source_event"]["event_id"].as_str().unwrap().to_owned());
++    assert_eq!(
++        ids.iter().collect::<std::collections::HashSet<_>>().len(),
++        4
++    );
++}
++#[test]
++fn incompatible_rebinding_is_rejected_without_new_frame() {
++    let f = Fixture::new();
++    let req = request();
++    accept_fixture(&f.journal(), &req).unwrap();
++    let before = fs::read(f.journal()).unwrap();
++    for changed in ["payload", "locator", "writer", "correlation"] {
++        let mut r = req.clone();
++        match changed {
++            "payload" => {
++                r["source_event"]["payload"]["record_sha256"] = json!("c".repeat(64));
++                r["captured_record"]["envelope"]["capture"]["record_sha256"] =
++                    json!("c".repeat(64));
++            }
++            "locator" => {
++                r["source_event"]["source"]["source_position"]["locator"] =
++                    json!("/fixture/changed.db");
++                r["source_path"] = json!("/fixture/changed.db");
++            }
++            "writer" => {
++                r["source_event"]["observer"]["writer_authority_receipt_ref"] =
++                    json!("fixture:different-authority")
++            }
++            _ => r["source_event"]["correlation"]["trace_id"] = json!("different-trace"),
++        }
++        assert!(accept_fixture(&f.journal(), &r).is_err(), "{changed}");
++        assert_eq!(before, fs::read(f.journal()).unwrap());
++    }
++}
++#[test]
++fn crash_windows_never_duplicate_an_accepted_occurrence() {
++    for stage in [
++        "before_append",
++        "partial_frame",
++        "after_append",
++        "after_sync",
++    ] {
++        let f = Fixture::new();
++        let req = request();
++        let crashed = cli(&f.journal(), &req, Some(stage));
++        assert_eq!(crashed.status.code(), Some(86));
++        let saved = fs::read(f.journal()).unwrap();
++        let prior: Option<Value> = if saved.last() == Some(&b'\n') {
++            Some(serde_json::from_slice::<Value>(&saved).unwrap()["source_event"].clone())
++        } else {
++            None
++        };
++        let recovered = accept_fixture(&f.journal(), &req).unwrap();
++        if let Some(prior) = prior {
++            assert_eq!(recovered["source_event"], prior);
++        }
++        assert_eq!(
++            accept_fixture(&f.journal(), &req).unwrap()["state"],
++            "replayed"
++        );
++        assert_eq!(fs::read_to_string(f.journal()).unwrap().lines().count(), 1);
++    }
++}
++#[test]
++fn incomplete_tail_is_recovered_but_corrupt_complete_frame_is_not_rewritten() {
++    let f = Fixture::new();
++    let req = request();
++    let first = accept_fixture(&f.journal(), &req).unwrap();
++    let mut file = fs::OpenOptions::new()
++        .append(true)
++        .open(f.journal())
++        .unwrap();
++    file.write_all(b"{partial").unwrap();
++    drop(file);
++    assert_eq!(
++        accept_fixture(&f.journal(), &req).unwrap()["source_event"],
++        first["source_event"]
++    );
++    let mut file = fs::OpenOptions::new()
++        .append(true)
++        .open(f.journal())
++        .unwrap();
++    file.write_all(b"{invalid}\n").unwrap();
++    drop(file);
++    let before = fs::read(f.journal()).unwrap();
++    assert!(accept_fixture(&f.journal(), &req).is_err());
++    assert_eq!(before, fs::read(f.journal()).unwrap());
++}
++#[test]
++fn input_must_bind_native_coordinates_and_distinct_fixture_writer_provenance() {
++    let f = Fixture::new();
++    for mode in ["fixture", "generation", "actor", "sequence", "id"] {
++        let mut req = request();
++        match mode {
++            "fixture" => req["fixture_only"] = json!(false),
++            "generation" => req["source_event"]["source"]["source_instance_id"] = json!("wrong"),
++            "actor" => {
++                req["source_event"]["correlation"]["actor_id"] = json!("fixture-service-actor")
++            }
++            "sequence" => req["source_event"]["observer"]["observer_sequence"] = json!(999),
++            _ => req["source_event"]["event_id"] = json!("caller-id"),
++        }
++        assert!(accept_fixture(&f.journal(), &req).is_err());
++        assert!(!f.journal().exists());
++    }
++}
++#[test]
++fn concurrent_callers_either_replay_or_retry_the_same_accepted_id() {
++    let f = Fixture::new();
++    let req = request();
++    let path = f.journal();
++    let left = path.clone();
++    let a = req.clone();
++    let thread = std::thread::spawn(move || cli(&left, &a, None));
++    let right = cli(&path, &req, None);
++    let left = thread.join().unwrap();
++    let durable = accept_fixture(&path, &req).unwrap();
++    for output in [left, right] {
++        if output.status.success() {
++            let receipt: Value = serde_json::from_slice(&output.stdout).unwrap();
++            assert_eq!(receipt["source_event"], durable["source_event"]);
++        } else {
++            assert_eq!(
++                String::from_utf8(output.stderr).unwrap().trim(),
++                "journal_locked"
++            );
++        }
++    }
++    assert_eq!(fs::read_to_string(path).unwrap().lines().count(), 1);
++}
++#[test]
++fn a_changed_sealed_frame_rejects_without_repair_or_id_reissue() {
++    let f = Fixture::new();
++    let req = request();
++    accept_fixture(&f.journal(), &req).unwrap();
++    let mut frame: Value = serde_json::from_slice(&fs::read(f.journal()).unwrap()).unwrap();
++    frame["source_event"]["payload"]["record_sha256"] = json!("c".repeat(64));
++    let mut bytes = serde_json::to_vec(&frame).unwrap();
++    bytes.push(b'\n');
++    fs::write(f.journal(), &bytes).unwrap();
++    assert!(accept_fixture(&f.journal(), &req).is_err());
++    assert_eq!(fs::read(f.journal()).unwrap(), bytes);
++}
++
++#[test]
++fn native_row_aliases_fail_before_acceptance() {
++    let f = Fixture::new();
++    let mut req = request();
++    req["captured_record"]["envelope"]["source"]["native_event_id"] = json!("01");
++    req["captured_record"]["envelope"]["source"]["source_position"] = json!("01");
++    assert!(accept_fixture(&f.journal(), &req).is_err());
++    assert!(!f.journal().exists());
++}
+--- a/observer-probe/README.md
++++ b/observer-probe/README.md
+@@ -1,6 +1,6 @@
+ # Observer probe — isolated candidate with explicit Hermes capture
+ 
+-This is **not** a running Observer service, a Brainstem hook, a MemoryD restart, or a memory writer. The original JSONL projection still accepts explicitly selected candidate envelopes, omits payload text, and never infers IDs from payloads. A new **explicit** Rust adapter reads one named Hermes session from its own profile's SQLite `state.db` in read-only mode. It does not subscribe to every turn, execute/replay tools, mint occurrence IDs, label lessons, or assert effects.
++This is **not** a running Observer service, a Brainstem hook, a MemoryD restart, or a memory writer. The original JSONL projection still accepts explicitly selected candidate envelopes, omits payload text, and never infers IDs from payloads. A new **explicit** Rust adapter reads one named Hermes session from its own profile's SQLite `state.db` in read-only mode. It does not subscribe to every turn, execute/replay tools, mint occurrence IDs in capture mode, label lessons, or assert effects.
+ 
+ ## Exercise the synthetic projection and adapter tests
+ 
+@@ -78,3 +78,11 @@
+ The CLI prints bounded state/expected disposable text, not the private root, session ID, call ID or digest. The test-only reader/restorer receive coordinates over a bounded stdin pipe instead of process arguments; the legacy Rust fixture driver still uses its own test CLI. Do not pass private values as positional arguments or export these JSON files. There is no sealed passive replay for this host binding: the snapshot constrains finalization against the current working tree, and later SQLite compaction may prevent fresh resolution of the recorded row positions.
+ 
+ The synthetic SQLite negative tests are not native action evidence. The local run normally retains native IDs, hashes, target path and literal disposable bytes under its `0700` root; keep it local. This is not same-UID process isolation: post-open rename of pinned directories/files can redirect a write, and a later rename can invalidate a retained reference. The candidate is not security-approved against that concurrent mutation; its pre-receipt attempt recheck detects only an already missing/mismatched reference. The result's `verified` flag is only tool acknowledgment and is not a process exit code. `repair` remains `not_applicable` without source-linked original failure provenance. A `verified` receipt is bounded to the observed original-target transition after that native result, not proof that no concurrent writer participated. This is not a background feed, replayed action, memory promotion, or installed-plugin effect tool. The one-action [local qualification report](../docs/reports/native-hermes-one-effect-report.md) distinguishes the exercised live revision from later synthetic-only hardening.
++
++## Offline durable acceptance fixture
++
++`--admit-capture-fixture --journal /absolute/private/fixture.ndjson` reads one bounded JSON request from stdin. It is an opt-in offline test seam; default capture does not invoke it. The request contains `fixture_only: true`, an absolute `source_path`, a captured record and a canonical v0.2 SourceEvent template. Writer labels and authority receipt must explicitly identify fixtures. No production registration or authority is asserted. See `tests/admission.rs` for the executable request contract.
++
++The existing probe journals one UUIDv7 SourceEvent per native producer/generation/stream/epoch/row tuple. A synced sealed journal is the sole acceptance authority: retry and process reopen replay the accepted ID; incompatible rebinding and corrupt complete frames fail closed. An incomplete final frame is unaccepted and can be removed during recovery. The local sequence records journal acceptance order only. No global sequence or separate aya_event_id is introduced. These process-crash tests do not prove filesystem power-loss durability.
++
++The Python reference projection preserves sequence epoch separately from its native metadata key. Older candidate reference tables without that column reject with `reference_schema_unbound`; this slice performs no migration. Artifact custody and interpretation history remain separate from this metadata-only acceptance journal.
+--- /dev/null
++++ b/docs/plans/2026-10-09-offline-capture-admission.md
+@@ -0,0 +1,31 @@
++# Offline capture acceptance — bounded continuation, 2026-10-09
++
++Implement in existing observer-probe; no new engine, runtime, listeners or owner.
++Consume captured native Hermes metadata and caller-authored SourceEvent template.
++For fixture-only PRE_OBSERVER_SOURCE_CONTEXT / HISTORICAL_IMPORT capture, bind the
++source tuple (source_id, source_instance_id/generation, source_stream_id,
++sequence_epoch, native_event_id and structured position) durably to event_id UUIDv7.
++Verify template generation/session/row/locator/hash against captured metadata.
++Require separate fixture SERVICE_ACTOR writer provenance; never infer it from
++correlated actor or source reporter. No EvidenceEvent is emitted by acceptance.
++
++Primary recovery authority: locked append-only SHA256-sealed NDJSON journal,
++not a second ID map/index. Append/fdatasync before acknowledgment; fsync the new
++journal directory entry. Scan and verify accepted records on reopen; dedupe exact
++native occurrence tuple, reject changed request or writer rebinding. Incomplete
++last frame is an unaccepted tail and may be truncated; malformed complete frames
++fail closed. Recover/sync an intact unacknowledged frame before replay acknowledgment.
++Local observer_sequence satisfies journal writer provenance only, not global order.
++
++Inject process-exit points before write, midway through frame, after complete
++write/before sync and after sync/before reply. Check only accepted records, not
++whether a UUID was allocated in a failed attempt. Run serial and concurrent retry,
++reopen, distinct generation/epoch/equal bytes, changed source and corrupted journal
++regressions. Connect actual accepted source JSON to the existing Python reference
++roundtrip with artifact custody and additive correction. Preserve old checkpoints.
++
++No live writer authority is created. Fixture actor/receipt requirements are input
++provenance tests, not production authorization. Exact journal encoding is open in
++Observer v0.2 section8; this uses that permitted seam. Canonical full production
++validation/authority, artifact capture, source coverage, OS power-loss/platform
++qualification and PostgreSQL deployment remain separate gaps.
+--- /dev/null
++++ b/tests/test_durable_capture_roundtrip.py
+@@ -0,0 +1,91 @@
++"""Actual Rust fixture acceptance → existing Brainstem candidate reference APIs."""
++import copy
++import hashlib
++import json
++from pathlib import Path
++import sqlite3
++import subprocess
++import sys
++import tempfile
++import unittest
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++import memory_v0 as m
++from test_memory_v0 import checkpoint
++from test_reference_admission import uid
++
++ROOT=Path(m.__file__).parent
++class DurableCaptureRoundtripTest(unittest.TestCase):
++    def test_accepted_id_retry_process_reopen_original_evidence_and_correction(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            root=Path(tmp); raw=b'{"synthetic":"original evidence"}'
++            digest=hashlib.sha256(raw).hexdigest(); cp=checkpoint(record_sha=digest)
++            def request(epoch='fixture-epoch-A',artifact_id=uid(502)):
++                return {'fixture_only':True,'source_path':cp['source_path'],
++                    'captured_record':cp['records'][0], 'source_event':{
++                    'record_kind':'SOURCE_EVENT','schema_version':'0.2','event_type':'fixture.hermes.message',
++                    'source_context_class':'PRE_OBSERVER_SOURCE_CONTEXT','capture_mode':'HISTORICAL_IMPORT',
++                    'source':{'source_id':'hermes','source_kind':'HERMES',
++                        'source_instance_id':cp['source_generation_id'],'source_stream_id':'messages',
++                        'sequence_epoch':epoch,'native_event_id':'1',
++                        'source_position':{'position_kind':'ROW_PRIMARY_KEY','row_primary_key':'1','locator':cp['source_path']},
++                        'adapter_id':'fixture-hermes','adapter_version':'0.1'},
++                    'origin':{},'correlation':{'session_id':'turn-A','runtime_profile_id':'default'},
++                    'coverage':{'status':'PARTIAL','gap_refs':[],'limitations':['synthetic fixture only']},
++                    'time':{'observed_at':'1970-01-01T00:01:40Z'},
++                    'capture':{'capture_policy':'NORMAL','content_disposition':'METADATA_ONLY'},
++                    'artifact_ids':[artifact_id],'payload':{'record_sha256':digest},
++                    'observer':{'observer_instance_id':'fixture-writer-generation-A',
++                        'writer_actor_id':'fixture-service-actor','writer_authority_receipt_ref':'fixture:writer-authority'}}}
++            journal=root/'accepted.ndjson'; db=root/'candidate.sqlite'
++            def accept(req):
++                run=subprocess.run(['cargo','run','--offline','--locked','--quiet','--manifest-path',
++                    str(ROOT/'observer-probe/Cargo.toml'),'--','--admit-capture-fixture','--journal',str(journal)],
++                    input=json.dumps(req),text=True,capture_output=True,timeout=120,check=True)
++                return json.loads(run.stdout)
++            first=accept(request()); event=first['source_event']; event_id=event['event_id']
++            self.assertEqual(accept(request())['source_event'],event)
++            artifact={'artifact_id':uid(502),'schema_version':'0.2',
++                'content_digest':{'algorithm':'sha256','value':digest},'size_bytes':len(raw),
++                'storage_object_ref':'fixture:original','capture':{'source_event_id':event_id}}
++            args=dict(project_id='fixture',profile_id='default',checkpoint=cp,
++                source_event=event,artifact_record=artifact,allow_content=True)
++            self.assertEqual(m.admit_capture_reference(db,**args)['state'],'new')
++            self.assertEqual(m.admit_capture_reference(db,**args)['state'],'replayed')
++            resolved=m.resolve_reference(db,project_id='fixture',profile_id='default',event_id=event_id,
++                artifact_reader=lambda _:raw,source_reader=lambda _:(cp['source_generation_id'],raw),allow_content=True)
++            self.assertEqual(resolved['content'],raw)
++            self.assertEqual(resolved['source_state'],'verified')
++            for n,prior in [(503,None),(504,uid(503))]:
++                evidence={'event_id':uid(n),'record_kind':'EVIDENCE_EVENT','schema_version':'0.2',
++                    'normalization':{'derived_from_event_ids':[event_id]},'artifact_ids':[uid(502)],
++                    'correlation':{'session_id':'turn-A','turn_id':'fixture-native-turn'},
++                    'payload':{'claim':'amber' if prior is None else 'violet'}}
++                kwargs=dict(project_id='fixture',profile_id='default',evidence_event=evidence,
++                    supersedes_event_id=prior,allow_content=True)
++                m.admit_interpretation(db,**kwargs);m.admit_interpretation(db,**kwargs)
++            history=m.reference_history(db,project_id='fixture',profile_id='default',event_id=event_id,allow_content=True)
++            self.assertEqual(history['source_event'],event)
++            self.assertEqual(len(history['interpretations']),2)
++            self.assertEqual(journal.read_text().count('\n'),1)
++            # The same native checkpoint in a distinct declared source epoch is a
++            # distinct canonical fixture occurrence, not a duplicate alias ID.
++            second=accept(request('fixture-epoch-B',uid(505)))['source_event']
++            second_artifact=copy.deepcopy(artifact);second_artifact['artifact_id']=uid(505)
++            second_artifact['capture']['source_event_id']=second['event_id']
++            self.assertNotEqual(event_id,second['event_id'])
++            m.admit_capture_reference(db,project_id='fixture',profile_id='default',checkpoint=cp,
++                source_event=second,artifact_record=second_artifact,allow_content=True)
++            with sqlite3.connect(db) as con:
++                self.assertEqual(con.execute('SELECT count(*) FROM reference_sources').fetchone()[0],2)
++                self.assertEqual(con.execute('SELECT count(*) FROM source_events').fetchone()[0],1)
++            self.assertEqual(journal.read_text().count('\n'),2)
++
++    def test_pre_epoch_projection_is_not_migrated_silently(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            db=Path(tmp)/'legacy.sqlite';con=m._connect(db)
++            con.execute('''CREATE TABLE reference_sources(project_id,profile_id,event_id,
++                source_key,source_json,artifact_json)''');con.commit();before=list(con.iterdump())
++            with self.assertRaisesRegex(ValueError,'reference_schema_unbound'):
++                m._reference_tables(con)
++            self.assertEqual(list(con.iterdump()),before);con.close()
+--- /dev/null
++++ b/bindings/observer-capture-admission.v0.2.candidate.json
+@@ -0,0 +1,15 @@
++{
++  "status": "OFFLINE_FIXTURE_CANDIDATE",
++  "schema_version": "0.2",
++  "owner": "Brainstem observer-probe",
++  "identity": ["source_id", "source_instance_id", "source_stream_id", "sequence_epoch", "native_event_id"],
++  "native_binding": "Hermes generation SHA-256, messages stream, positive canonical decimal row ID",
++  "event_id": "canonical SourceEvent UUIDv7 assigned once by fixture journal acceptance",
++  "observer_sequence": "journal-local acceptance order only",
++  "ack": "append sealed complete frame and sync_all before acknowledgment",
++  "recovery": "validate complete frames; replay intact acceptance; truncate only incomplete final tail",
++  "writer": "explicit fixture observer and authority receipt; no production provenance claim",
++  "reference_projection": "source_key plus sequence_epoch; legacy candidate table rejects without migration",
++  "custody": "ArtifactRecord bytes external; EvidenceEvent versions immutable and separate",
++  "limits": ["Linux private regular journal", "8 MiB fixture journal", "Hermes subset only", "no production grant, migration, service, or Postgres implementation"]
++}

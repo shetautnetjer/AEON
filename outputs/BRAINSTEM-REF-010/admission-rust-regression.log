@@ -1,0 +1,194 @@
+   Compiling brainstem-observer-probe v0.2.0 (/home/aya-hmw/Documents/Codex/2026-10-08/task/brainstem-slice/observer-probe)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.60s
+     Running unittests src/lib.rs (brainstem-slice/observer-probe/target/debug/deps/brainstem_observer_probe-c8fa22e7df3dcb01)
+
+running 3 tests
+test live::snapshot_tests::pinned_reader_sees_uncheckpointed_wal_on_uri_reserved_home_path ... ok
+test live::snapshot_tests::transient_source_swap_during_connect_cannot_substitute_native_rows ... ok
+test live::snapshot_tests::scope_read_and_capture_rows_share_one_wal_snapshot ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (brainstem-slice/observer-probe/target/debug/deps/brainstem_observer_probe-4a14ea64b9b7f37c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/admission.rs (brainstem-slice/observer-probe/target/debug/deps/admission-02dba43b8ecd9856)
+
+running 6 tests
+test input_must_bind_native_coordinates_and_distinct_fixture_writer_provenance ... ok
+test incomplete_tail_is_recovered_but_corrupt_complete_frame_is_not_rewritten ... ok
+test incompatible_rebinding_is_rejected_without_new_frame ... ok
+test retry_reopen_retains_canonical_event_and_writer ... ok
+test generation_epoch_and_equal_content_occurrences_are_distinct ... ok
+test crash_windows_never_duplicate_an_accepted_occurrence ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/cli.rs (brainstem-slice/observer-probe/target/debug/deps/cli-e7c33a4e68e33673)
+
+running 1 test
+test cli_reads_only_explicit_file_and_emits_sanitized_json ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/effect_verification.rs (brainstem-slice/observer-probe/target/debug/deps/effect_verification-42df0730fc8996f7)
+
+running 25 tests
+test fixture_io_rejects_symlink_target_without_reading_or_writing_outside ... FAILED
+test empty_effect_bundle_is_input_error_not_a_dangling_receipt ... ok
+test partial_effect_bundle_is_input_error_not_a_receipt ... ok
+test replay_incomplete_bundle_is_input_error_not_a_dangling_receipt ... ok
+test present_but_empty_verification_context_is_input_error ... ok
+test present_but_empty_replay_context_is_input_error ... ok
+test malformed_required_context_records_reject_without_receipt ... FAILED
+test b04_missing_readback ... FAILED
+test frozen_intent_without_original_target_is_input_error ... FAILED
+test missing_expected_bytes_rejects_before_outcome ... FAILED
+test b07_observed_absence ... FAILED
+test b05_already_satisfied ... FAILED
+test b11_changed_frozen_intent ... FAILED
+test replay_rejects_sealed_receipt_without_named_checks ... FAILED
+test b06_replay_is_passive_and_historical ... FAILED
+test malformed_later_attempt_stage_is_input_error ... FAILED
+test b02_success_ack_without_effect ... FAILED
+test b10_failed_ack_real_effect ... FAILED
+test altered_binding_metadata_is_not_a_qualified_receipt ... FAILED
+test b03_wrong_target_change ... FAILED
+test missing_expected_integrity_fields_reject_before_outcome ... FAILED
+test b01_real_success ... FAILED
+test b08_stale_readback ... FAILED
+test b09_wrong_target_evidence_only ... FAILED
+test b12_restoration_failure_is_separate ... FAILED
+
+failures:
+
+---- fixture_io_rejects_symlink_target_without_reading_or_writing_outside stdout ----
+
+thread 'fixture_io_rejects_symlink_target_without_reading_or_writing_outside' (565) panicked at tests/effect_verification.rs:514:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- malformed_required_context_records_reject_without_receipt stdout ----
+
+thread 'malformed_required_context_records_reject_without_receipt' (568) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b04_missing_readback stdout ----
+
+thread 'b04_missing_readback' (555) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- frozen_intent_without_original_target_is_input_error stdout ----
+
+thread 'frozen_intent_without_original_target_is_input_error' (566) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- missing_expected_bytes_rejects_before_outcome stdout ----
+
+thread 'missing_expected_bytes_rejects_before_outcome' (570) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b07_observed_absence stdout ----
+
+thread 'b07_observed_absence' (558) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b05_already_satisfied stdout ----
+
+thread 'b05_already_satisfied' (556) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b11_changed_frozen_intent stdout ----
+
+thread 'b11_changed_frozen_intent' (562) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- replay_rejects_sealed_receipt_without_named_checks stdout ----
+
+thread 'replay_rejects_sealed_receipt_without_named_checks' (576) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b06_replay_is_passive_and_historical stdout ----
+
+thread 'b06_replay_is_passive_and_historical' (557) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- malformed_later_attempt_stage_is_input_error stdout ----
+
+thread 'malformed_later_attempt_stage_is_input_error' (567) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b02_success_ack_without_effect stdout ----
+
+thread 'b02_success_ack_without_effect' (553) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b10_failed_ack_real_effect stdout ----
+
+thread 'b10_failed_ack_real_effect' (561) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- altered_binding_metadata_is_not_a_qualified_receipt stdout ----
+
+thread 'altered_binding_metadata_is_not_a_qualified_receipt' (551) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b03_wrong_target_change stdout ----
+
+thread 'b03_wrong_target_change' (554) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- missing_expected_integrity_fields_reject_before_outcome stdout ----
+
+thread 'missing_expected_integrity_fields_reject_before_outcome' (571) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b01_real_success stdout ----
+
+thread 'b01_real_success' (552) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b08_stale_readback stdout ----
+
+thread 'b08_stale_readback' (559) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b09_wrong_target_evidence_only stdout ----
+
+thread 'b09_wrong_target_evidence_only' (560) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+---- b12_restoration_failure_is_separate stdout ----
+
+thread 'b12_restoration_failure_is_separate' (563) panicked at tests/effect_verification.rs:56:10:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+
+
+failures:
+    altered_binding_metadata_is_not_a_qualified_receipt
+    b01_real_success
+    b02_success_ack_without_effect
+    b03_wrong_target_change
+    b04_missing_readback
+    b05_already_satisfied
+    b06_replay_is_passive_and_historical
+    b07_observed_absence
+    b08_stale_readback
+    b09_wrong_target_evidence_only
+    b10_failed_ack_real_effect
+    b11_changed_frozen_intent
+    b12_restoration_failure_is_separate
+    fixture_io_rejects_symlink_target_without_reading_or_writing_outside
+    frozen_intent_without_original_target_is_input_error
+    malformed_later_attempt_stage_is_input_error
+    malformed_required_context_records_reject_without_receipt
+    missing_expected_bytes_rejects_before_outcome
+    missing_expected_integrity_fields_reject_before_outcome
+    replay_rejects_sealed_receipt_without_named_checks
+
+test result: FAILED. 5 passed; 20 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `--test effect_verification`

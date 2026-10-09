@@ -29,3 +29,5 @@ For later event handling, identify task+attempt+event before dispatch, check cur
 ## Task progress and handoff fields
 
 Each dated task file under `work/` names the producer owner and reviewer separately, the objective/approved scope/source revision, a small plan and done criteria, completed and unfinished checks, failures, current gate and next action. Use exact references to the existing source, resources and output owners; do not duplicate their HLD/code/contracts/raw logs. Root `STATUS.md` points to this owner and the latest actual receipt. Reviewer acceptance stays reviewer-authored; custodian navigation does not substitute for it. Keep changes scoped and preserve failed/not-run evidence when an attempt closes.
+
+| BRAINSTEM-REF-010 | reviewed offline; private delivery / delegated Codex, independent reviews retained | [Task owner](active/BRAINSTEM-REF-010.md); [shared start](../docs/shared-agent-start.md); no live integration |

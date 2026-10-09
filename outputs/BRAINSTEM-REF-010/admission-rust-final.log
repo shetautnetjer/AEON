@@ -1,0 +1,106 @@
+   Compiling brainstem-observer-probe v0.2.0 (/home/aya-hmw/Documents/Codex/2026-10-08/task/brainstem-slice/observer-probe)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.72s
+     Running unittests src/lib.rs (brainstem-slice/observer-probe/target/debug/deps/brainstem_observer_probe-ef7a531a67ec14ca)
+
+running 3 tests
+test live::snapshot_tests::pinned_reader_sees_uncheckpointed_wal_on_uri_reserved_home_path ... ok
+test live::snapshot_tests::transient_source_swap_during_connect_cannot_substitute_native_rows ... ok
+test live::snapshot_tests::scope_read_and_capture_rows_share_one_wal_snapshot ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (brainstem-slice/observer-probe/target/debug/deps/brainstem_observer_probe-f9d6511998cc98fb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/admission.rs (brainstem-slice/observer-probe/target/debug/deps/admission-7d315c30c7ca45bb)
+
+running 9 tests
+test native_row_aliases_fail_before_acceptance ... ok
+test input_must_bind_native_coordinates_and_distinct_fixture_writer_provenance ... ok
+test a_changed_sealed_frame_rejects_without_repair_or_id_reissue ... ok
+test incompatible_rebinding_is_rejected_without_new_frame ... ok
+test incomplete_tail_is_recovered_but_corrupt_complete_frame_is_not_rewritten ... ok
+test concurrent_callers_either_replay_or_retry_the_same_accepted_id ... ok
+test retry_reopen_retains_canonical_event_and_writer ... ok
+test generation_epoch_and_equal_content_occurrences_are_distinct ... ok
+test crash_windows_never_duplicate_an_accepted_occurrence ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/cli.rs (brainstem-slice/observer-probe/target/debug/deps/cli-70b74a16bc1fa730)
+
+running 1 test
+test cli_reads_only_explicit_file_and_emits_sanitized_json ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/effect_verification.rs (brainstem-slice/observer-probe/target/debug/deps/effect_verification-7defd2d984461eff)
+
+running 25 tests
+test present_but_empty_verification_context_is_input_error ... ok
+test partial_effect_bundle_is_input_error_not_a_receipt ... ok
+test replay_incomplete_bundle_is_input_error_not_a_dangling_receipt ... ok
+test present_but_empty_replay_context_is_input_error ... ok
+test empty_effect_bundle_is_input_error_not_a_dangling_receipt ... ok
+test b04_missing_readback ... ok
+test b11_changed_frozen_intent ... ok
+test b09_wrong_target_evidence_only ... ok
+test malformed_later_attempt_stage_is_input_error ... ok
+test b05_already_satisfied ... ok
+test b07_observed_absence ... ok
+test b10_failed_ack_real_effect ... ok
+test b01_real_success ... ok
+test b12_restoration_failure_is_separate ... ok
+test b08_stale_readback ... ok
+test fixture_io_rejects_symlink_target_without_reading_or_writing_outside ... ok
+test malformed_required_context_records_reject_without_receipt ... ok
+test b02_success_ack_without_effect ... ok
+test replay_rejects_sealed_receipt_without_named_checks ... ok
+test missing_expected_bytes_rejects_before_outcome ... ok
+test altered_binding_metadata_is_not_a_qualified_receipt ... ok
+test frozen_intent_without_original_target_is_input_error ... ok
+test b03_wrong_target_change ... ok
+restored
+test b06_replay_is_passive_and_historical ... ok
+test missing_expected_integrity_fields_reject_before_outcome ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/live_capture.rs (brainstem-slice/observer-probe/target/debug/deps/live_capture-4791f7265fc2db06)
+
+running 11 tests
+test out_of_profile_checkpoint_is_rejected_without_creating_directories ... ok
+test resolver_rejects_checkpoint_copied_outside_its_designated_directory ... ok
+test tool_report_is_only_a_source_record_not_a_verified_effect ... ok
+test deleted_source_row_fails_replay_and_local_resolution ... ok
+test changed_original_fails_without_rewriting_checkpoint ... ok
+test cli_reopens_exact_source_without_printing_content ... ok
+test replaced_source_and_wrong_profile_are_not_replays ... ok
+test cli_capture_is_explicit_and_emits_metadata_only ... ok
+test append_and_restart_replay_preserve_original_identity_and_inspection_time ... ok
+test invalid_persisted_live_envelope_is_never_reused ... ok
+test deletion_cannot_be_masked_by_new_rows ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/observe.rs (brainstem-slice/observer-probe/target/debug/deps/observe-d3db3995e059f76a)
+
+running 6 tests
+test explicit_coordinates_only_and_no_payload_in_output ... ok
+test missing_source_coordinates_fail_closed ... ok
+test profile_boundary_changes_source_key ... ok
+test missing_null_and_valid_string_correlations_retain_their_meaning ... ok
+test malformed_optional_declarations_are_not_silently_omitted ... ok
+test bounded_workers_preserve_order_and_replay_identity ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests brainstem_observer_probe
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

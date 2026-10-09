@@ -1,0 +1,21 @@
+     Locking 8 packages to latest compatible versions
+      Adding futures-core v0.3.34
+      Adding futures-task v0.3.34
+      Adding futures-util v0.3.34
+      Adding getrandom v0.4.3
+      Adding pin-project-lite v0.2.17
+      Adding r-efi v6.0.0
+      Adding slab v0.4.12
+      Adding uuid v1.26.1
+   Compiling getrandom v0.4.3
+   Compiling uuid v1.26.1
+   Compiling brainstem-observer-probe v0.2.0 (/home/aya-hmw/Documents/Codex/2026-10-08/task/brainstem-slice/observer-probe)
+error[E0432]: unresolved import `brainstem_observer_probe::admission`
+ --> tests/admission.rs:3:31
+  |
+3 | use brainstem_observer_probe::admission::accept_fixture;
+  |                               ^^^^^^^^^ could not find `admission` in `brainstem_observer_probe`
+
+For more information about this error, try `rustc --explain E0432`.
+error: could not compile `brainstem-observer-probe` (test "admission") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...

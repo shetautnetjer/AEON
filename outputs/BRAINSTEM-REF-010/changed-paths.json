@@ -1,0 +1,70 @@
+[
+  {
+    "path": "memory_v0.py",
+    "sha256": "7485ddb78e77a252a91e96a798d23261ea0e40044ed7cde2646c1fdd697756fa"
+  },
+  {
+    "path": "README.md",
+    "sha256": "17329e57d67688e7448f857dabd1bd0f88f48f4967fa7de92ca55ff2499917cc"
+  },
+  {
+    "path": "architecture.html",
+    "sha256": "21f9e3b5287c8c9c8bd525064d25a9ea6be0f2bb97d61515ddcffcbcb0d5ca3a"
+  },
+  {
+    "path": "tests/test_reference_admission.py",
+    "sha256": "51069611a6fad702d498c11aaf3ac963e5bd0fe1ecafd77ffe3d77bcc482f276"
+  },
+  {
+    "path": "tests/test_capture_reference_wiring.py",
+    "sha256": "9bf48749b734b4871f188755aeb0699c99d24a8ac6b37da4a10b70841b96eb29"
+  },
+  {
+    "path": "fixtures/aya-utc-schema.v0.1.sql",
+    "sha256": "075b6c765808ab328c456c6ec2d92345d7902c7ed21bdf3f83292af7c3f3906d"
+  },
+  {
+    "path": "docs/plans/2026-10-09-reference-first-slice.md",
+    "sha256": "fe0da5295390103f877d6b41b011b201f8e55523fb8068b0bb2194c178db9db8"
+  },
+  {
+    "path": "observer-probe/src/admission.rs",
+    "sha256": "744a0e2c5705c077d5f4b69202d41f2b83e7395ad6f13837a372c68db5e4d2bd"
+  },
+  {
+    "path": "observer-probe/src/lib.rs",
+    "sha256": "a24750b60ae5b953a4df90cc9d1ccf2fac32eca0c69153a10ce8932663bd04c7"
+  },
+  {
+    "path": "observer-probe/src/main.rs",
+    "sha256": "bf8616d7388ebdb1b79e1efb452b989c6305395913e700dc7ba22ed1919ab0a5"
+  },
+  {
+    "path": "observer-probe/Cargo.toml",
+    "sha256": "1ea1930a25be53e2f86f2eac4bb39b6d01a06ec80efec49be752ccbd2691200a"
+  },
+  {
+    "path": "observer-probe/Cargo.lock",
+    "sha256": "12b88119ada9d45e14168d1fdf1e17773a8393c746b7490a097d1d090d962c0a"
+  },
+  {
+    "path": "observer-probe/tests/admission.rs",
+    "sha256": "cb76ec3be3b9d3705290a40230fa235997eccc31ed6f003453f601efce2cc1fd"
+  },
+  {
+    "path": "observer-probe/README.md",
+    "sha256": "ab16efa6a0c49bf0f02c73a14c17a401d3e4d6a9b7c8d071ad3db18d38d8c3ac"
+  },
+  {
+    "path": "docs/plans/2026-10-09-offline-capture-admission.md",
+    "sha256": "f788ea2d33c61490be9d6862d2778879c851ce2ec2258aed2296ed3bb7eb2a84"
+  },
+  {
+    "path": "tests/test_durable_capture_roundtrip.py",
+    "sha256": "61cc7d969bc85f46cc6af1176aedc50663e536d096215f4a000a8e5446c890d7"
+  },
+  {
+    "path": "bindings/observer-capture-admission.v0.2.candidate.json",
+    "sha256": "1cdca6f68b6d992a8645f96c2adf3999613d4fef94cc25c09b2d8e3d32b5e162"
+  }
+]
