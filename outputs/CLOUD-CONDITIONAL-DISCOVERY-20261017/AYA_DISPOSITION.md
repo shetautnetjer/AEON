@@ -1,6 +1,16 @@
 # AYA disposition — protected Cloud update discovery
 
-## Current / decision — 2026-10-17
+## Current — authorized two-note canary passed, 2026-10-17
+Khamani explicitly selected **“Authorize the two-note test only”** in this turn. AYA executed that exact scope through the already-authenticated hosted MCP, using two uniquely named synthetic notes in Aya Working and no existing note as a mutation target.
+
+- **Sequential stale case passed:** a current-checksum edit succeeded; an edit carrying the earlier revision returned `NOTE_REVISION_CONFLICT`; the entire subsequent note payload equalled revision B. The error's `currentChecksum` matched B and `fileCreated` was false.
+- **Concurrent case passed:** two separate sessions submitted edits using the same A checksum, with 2.603775524 seconds of measured client-request overlap. Exactly one succeeded and one returned `NOTE_REVISION_CONFLICT`. Final content equalled the winning edit exactly, and the conflict named that final checksum.
+- **Cleanup passed:** both created notes were identity-checked, deleted individually, and exact absence was read back. No directory deletion, production-note mutation, client upgrade or connector change occurred. The request journal reconciles 17 note calls: two creates, four edit attempts, two deletes and nine reads. All targets belong to those two fixtures; all calls name the intended project UUID.
+- **Custody:** canary `2207b60f956c411499d3c5b8748ddc86`, 2026-10-17T22:27:33.248014Z–22:28:27.854118Z. Detailed synthetic snapshots/calls and summary are below the private proof owner's `canary-2207b60f956c411499d3c5b8748ddc86/`; independent receipt reduction is `canary-controller-verification.json` and `canary-conflict-verification.json`. Probe SHA-256 `551b5c6e4215347c2313f6bb9a9c2a582599da56ceef2f6eb8802851bc2030c4`; journal SHA-256 `ea6dcdc89322e8c95834d79bf0a998bad85604f33fb6d302ab02b0af1f67eef6`. All 17 original source/capture pins still match.
+
+**Accepted scope:** the tested hosted route passed one sequential stale-revision case and one overlapping two-writer case, including positive control and cleanup. This is real account-route evidence, not a universal proof of every race, a permanent Hermes-tool installation, or evidence of worker adoption. The technical checksum-route blocker is resolved within this tested scope. Existing task `aeon/t_d1739707` remains open/blocked because actual stale-pointer reconciliation is unfinished. AYA's next separate disposition is a narrowly scoped production-writer release under applicable authority, not another broad discovery or a duplicate canary. **No production-writer release or existing-note edit was made under this test-only approval.**
+
+## Read-only acceptance — before the canary
 Accept knowledge-writer run26 on existing `aeon/t_d1739707` **as the delivered read-only discovery subunit**, with the chronology and live-route supplement below. The original protected-write qualification and pointer reconciliation remain unfinished. Do not complete, re-block, auto-retry or decompose the parent from this result.
 
 **New controller finding:** a usable authenticated hosted MCP route already exists at `https://cloud.basicmemory.com/mcp`, through the existing native Basic Memory credential helper. A fresh hosted `tools/list` exposes `expected_checksum` for edit/write; an exact Aya Working read returns `revision_checksum`. No client upgrade, permanent MCP registration, new credential, note mutation or production-pointer edit was needed for this discovery. This supersedes “no available checksum-carrying route” as a current blocker, but does not yet prove stale/concurrent writes are rejected.
@@ -24,17 +34,17 @@ Do not treat the September ordinary-note bug description as evidence that today'
 
 The direct hosted endpoint is documented by the vendor; the vendor also documents bearer-token access for programmatic clients.[7][8] AYA reused the existing credential via the native helper in process only; no token was printed, placed in argv, copied to a new file or introduced into this report.
 
-## Next / explicit decision boundary
-The next useful unit is **one bounded synthetic qualification on two temporary notes**, not another broad source audit or an upgrade. Proposed owner: AYA on this same existing parent, with no competing worker; project Aya Working (`be29331d-c6a0-4d7b-bfcb-911c67925cb6`), temporary directory `qualification/cloud-conditional-t_d1739707`, unique per-attempt note names and `overwrite=false` on creation.
+## Original discovery plan — completed by the authorized canary above
+At the discovery handoff, the proposed next unit was **one bounded synthetic qualification on two temporary notes**, not another broad source audit or an upgrade. Proposed owner: AYA on this same existing parent, with no competing worker; project Aya Working (`be29331d-c6a0-4d7b-bfcb-911c67925cb6`), temporary directory `qualification/cloud-conditional-t_d1739707`, unique per-attempt note names and `overwrite=false` on creation.
 
 1. Sequential case: create synthetic A, read its returned revision, make a valid checksum-guarded edit to B, attempt an edit using stale A, require an explicit conflict and exact unchanged B readback.
 2. Separate concurrent case: create/read A, send two distinct conditional edits based on A, require one success and one conflict and final content exactly matching the winner.
 3. Verify identities and delete only these two created notes, with exact absence readback. If an operation has unknown outcome, reconcile its exact target before any retry. Preserve failed behavior and all receipts; do not interpret an error as proof no mutation occurred.
 
-**These mutations and cleanup are proposed, not yet authorized or performed.** No existing owner note is a test target. Do not ask to weaken the checksum requirement. A successful canary would permit AYA to consider the separately held production-writer release and compact dated supersessions; it would not silently authorize that release, a client upgrade or global connector replacement.
+**At that handoff, mutations and cleanup were proposed, not yet authorized or performed.** The later explicit approval and actual result are recorded in Current above; the original plan is retained for comparison, not a fresh request to run it again. No existing owner note was a test target. Passing the canary permits AYA to consider the separately held production-writer release and compact dated supersessions; it does not silently authorize that release, a client upgrade or global connector replacement.
 
-## Probe corrections / limits
-The first parent probe failed before network access because it used the MCP1 transport name. The next authenticated attempt reached tool discovery but hit a local camelCase-versus-snake_case projection error. Inspecting the installed MCP2 signatures/model fields and reducing `model_dump(by_alias=True)` resolved these local integration mistakes; they were not Cloud authentication failures. The preserved error receipt and subsequent success are distinct. No mutation/concurrency test, whole-phase completion, production reconciliation or general race-free guarantee is claimed.
+## Read-only probe corrections / original limits
+The first parent probe failed before network access because it used the MCP1 transport name. The next authenticated attempt reached tool discovery but hit a local camelCase-versus-snake_case projection error. Inspecting the installed MCP2 signatures/model fields and reducing `model_dump(by_alias=True)` resolved these local integration mistakes; they were not Cloud authentication failures. The preserved error receipt and subsequent success are distinct. Those read-only probes did not qualify mutations. The later canary has the separate bounded acceptance above; whole-phase completion, production reconciliation and a general race-free guarantee remain unclaimed.
 
 ## Sources
 
