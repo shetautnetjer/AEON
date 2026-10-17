@@ -1,6 +1,11 @@
 # Protected Cloud updates — bounded read-only discovery
 
-## Current / authority / exact owner
+## Current — discovery accepted; hosted route identified
+Knowledge-writer run26 delivered the bounded source report and required first blocked return. AYA verified all17 source/capture pins and accepted the discovery with [a parent supplement](../../outputs/CLOUD-CONDITIONAL-DISCOVERY-20261017/AYA_DISPOSITION.md). The installed0.23.2/Hermes-exposed route lacks the field, but an **already-authenticated direct hosted MCP route** now exposes `expected_checksum` and returned the exact Working note plus `revision_checksum`. No upgrade, registration change or note mutation was needed. Do not repeat the completed source audit or interpret this as a current service crash.
+
+The remaining next unit is the proposed two-disposable-note stale/concurrent-write qualification in the disposition, which still requires explicit authority. That write/cleanup decision is pending; all production pointer reconciliation remains held. Keep the original parent blocked without cycling its block counter, completing the full outcome or creating another graph. Native comments and the private acceptance receipt own controller readback; the scheduled supervisor checkpoint remains its own writer's record.
+
+## Original first release / authority / exact owner
 AYA supervisor disposition, 2026-10-17; existing `aeon/t_d1739707`, manager `knowledge-writer`, controller/acceptance owner AYA/default. This is the first released discovery subunit of the existing protected-update qualification/reconciliation outcome, not a new card or permission to complete that whole outcome. The task-intake handoff identified controller framing as missing; the supervisor's general routine technical-diagnosis authority permits this finite read-only unit without another creator acknowledgment.
 
 The original task body and full acceptance remain in force except its blanket no-dispatch instruction is superseded **only for this discovery**. Disposable-note creation/mutation, stale/conflicting-write experiments, production note updates, client upgrades, credentials, connector installation, identity/provider/settings changes and other held work remain unreleased. AEON AGENTS.md's older local-only prohibition does not prohibit this explicitly controller-supplied scoped Cloud-read evidence; this packet grants no worker Cloud/account access. Read only the supplied local captures and public documentation/source.

@@ -1,0 +1,146 @@
+{
+  "schema_version": "aeon.cloud-conditional-discovery-source-pins/v1",
+  "task_id": "aeon/t_d1739707",
+  "prepared_at_utc": "2026-10-17T22:11:58Z",
+  "scope": "One AYA-released read-only source/documentation discovery; no Cloud account access or note mutation.",
+  "installed_distribution": {
+    "name": "basic-memory",
+    "version": "0.23.2",
+    "distribution_metadata_path": "/home/aya-hmw/.local/share/uv/tools/basic-memory/lib/python3.12/site-packages/basic_memory-0.23.2.dist-info/METADATA",
+    "distribution_metadata_sha256": "c32d216de8555e4f31170bd7bddaaffa8ab39263bc2b211b5b382a6d9bcff8fb",
+    "version_command": "env -u PYTHONPATH -u PYTHONHOME /home/aya-hmw/.local/share/uv/tools/basic-memory/bin/bm --version",
+    "version_command_result": "Basic Memory version: 0.23.2"
+  },
+  "installed_files": [
+    {
+      "path": "/home/aya-hmw/.local/share/uv/tools/basic-memory/lib/python3.12/site-packages/basic_memory/mcp/tools/edit_note.py",
+      "sha256": "a306e73e79dc5bffced1c040474b1970ba37edbe2d4c5b45b4d61ab535618860",
+      "use": "MCP signature, edit payload construction, PATCH call"
+    },
+    {
+      "path": "/home/aya-hmw/.local/share/uv/tools/basic-memory/lib/python3.12/site-packages/basic_memory/mcp/tools/read_note.py",
+      "sha256": "052e343c13921f07fb2d875f64ad4e88d86c26f39271c7a7dd5f35511e801bfd",
+      "use": "MCP read signature and output routing"
+    },
+    {
+      "path": "/home/aya-hmw/.local/share/uv/tools/basic-memory/lib/python3.12/site-packages/basic_memory/mcp/tools/write_note.py",
+      "sha256": "85bb213dbe7d6cac35fc9a1326d3a0265d77c086e15daf34c70367d0bbb2ab6a",
+      "use": "MCP write signature; overwrite without caller checksum"
+    },
+    {
+      "path": "/home/aya-hmw/.local/share/uv/tools/basic-memory/lib/python3.12/site-packages/basic_memory/cli/commands/tool.py",
+      "sha256": "e2af9698253a49fb53dc9fc39051fef9d38b6268825ddf24d3f9fe3a1ad104dc",
+      "use": "CLI read/write/edit wrappers and forwarded arguments"
+    },
+    {
+      "path": "/home/aya-hmw/.local/share/uv/tools/basic-memory/lib/python3.12/site-packages/basic_memory/mcp/clients/knowledge.py",
+      "sha256": "0ed12c024a82b5915cfaff77288b8fc8e14244b15b6ce4063ea130392309cadc",
+      "use": "KnowledgeClient PATCH JSON transport"
+    },
+    {
+      "path": "/home/aya-hmw/.local/share/uv/tools/basic-memory/lib/python3.12/site-packages/basic_memory/services/note_content_writes.py",
+      "sha256": "c2a9cf9da50823693fc654c160c640565adcef3197d773377a5df7e05eb3ea16",
+      "use": "Installed Core accepted-note service path; not Cloud backend source"
+    },
+    {
+      "path": "/home/aya-hmw/.local/share/uv/tools/basic-memory/lib/python3.12/site-packages/basic_memory/markdown/markdown_processor.py",
+      "sha256": "60af0a17c358d0df6740cdc8ffc3dcc726dfe523ce3e720be64ce6141141971d",
+      "use": "Local-file expected-checksum dirty check before file replacement"
+    },
+    {
+      "path": "/home/aya-hmw/.local/share/uv/tools/basic-memory/lib/python3.12/site-packages/basic_memory/index/local_notes.py",
+      "sha256": "af6a1e96feef366c804bfbd80ff0f94c5f4712b53e298b765c58b6ca69518f81",
+      "use": "Local file delete-if-unchanged check; distinct from Cloud revision CAS"
+    }
+  ],
+  "authorized_private_inputs": [
+    {
+      "capture": "/home/aya-hmw/.local/state/aya-task-supervisor/sweep-20261017T215941Z/working-cloud.json",
+      "sha256": "c3d5ffeb15815b38184e072947e8425ad5f6dc7b01fcb12e28f2ee6b24bd2da7",
+      "project_id": "be29331d-c6a0-4d7b-bfcb-911c67925cb6",
+      "note_path": "working/AYA Working — Current Operating Context.md",
+      "handling": "Selected metadata and narrowly relevant excerpts only; body not copied to outputs."
+    },
+    {
+      "capture": "/home/aya-hmw/.local/state/aya-task-supervisor/sweep-20261017T215941Z/development-start.json",
+      "sha256": "d9282a6ff0ca03582b9afc5e444a15256b6bf3685b22c0859236d8ac96b8d560",
+      "project_id": "9469cb90-4139-4c2c-b863-2714dd42a4cb",
+      "note_path": "Guides/AYA Development Wiki — Start Here.md",
+      "handling": "Authorized input; body not copied to outputs."
+    },
+    {
+      "capture": "/home/aya-hmw/.local/state/aya-task-supervisor/sweep-20261017T215941Z/development-source-map.json",
+      "sha256": "14a354750a92f566d5183cb8892b42fa5b275c6d804296a2318c70a129e98b17",
+      "project_id": "9469cb90-4139-4c2c-b863-2714dd42a4cb",
+      "note_path": "Guides/Source Map.md",
+      "handling": "Authorized input; body not copied to outputs."
+    }
+  ],
+  "public_references": [
+    {
+      "id": 1,
+      "url": "https://docs.basicmemory.com/reference/mcp-tools-reference",
+      "retrieved_at_utc": "2026-10-17T22:11:58Z",
+      "http_status": 200,
+      "response_bytes": 494795,
+      "response_body_sha256": "5dd177ad009aa3080de01aab3374d2fc0fa98424eadbac5209e7bb6d62234578",
+      "finding_scope": "Live public documentation page; review/checksum language only. Not deployment evidence."
+    },
+    {
+      "id": 2,
+      "url": "https://github.com/basicmachines-co/basic-memory/issues/1536",
+      "retrieved_at_utc": "2026-10-17T22:11:58Z",
+      "http_status": 200,
+      "response_bytes": 8261,
+      "response_body_sha256": "d0c650cd532ed84fcd9b6b7489983ad94924c3d3e796f97af33e279b220db3b0",
+      "finding_scope": "Public issue record of sequential stale-checksum acceptance on an ordinary Cloud note; no simultaneous-writer test."
+    },
+    {
+      "id": 3,
+      "url": "https://github.com/basicmachines-co/basic-memory-cloud/pull/2071",
+      "retrieved_at_utc": "2026-10-17T22:11:58Z",
+      "http_status": 404,
+      "response_bytes": 120,
+      "response_body_sha256": "7fe148a00b708ac81b9b6182eb8d263af7730beb8ed1cc56c08698ebaed076a6",
+      "finding_scope": "Public API returned not found; contents, status, merge, and deployment cannot be inferred."
+    },
+    {
+      "id": 4,
+      "url": "https://github.com/basicmachines-co/basic-memory/issues/1552",
+      "retrieved_at_utc": "2026-10-17T22:11:58Z",
+      "http_status": 200,
+      "response_bytes": 8450,
+      "response_body_sha256": "e7aaa15b64abbe934ddadc54fb8905ac49cdeecfd753433e6361fff65cf5721c",
+      "finding_scope": "Public Core issue distinguishes the Cloud ordinary-note bug from Core MCP checksum plumbing."
+    },
+    {
+      "id": 5,
+      "url": "https://github.com/basicmachines-co/basic-memory/commit/62c76d28b1087f287aeb671b211dc516b683e3be",
+      "retrieved_at_utc": "2026-10-17T22:11:58Z",
+      "http_status": 200,
+      "response_bytes": 57345,
+      "response_body_sha256": "7f4f458cac850c9d5eaf507efdfbec47e595007edf37f75c2018e6aaa2217049",
+      "finding_scope": "Public Core source commit adding expected_checksum to write_note overwrite; not evidence this package or Cloud account is deployed."
+    }
+  ],
+  "inherited_observations": [
+    {
+      "source": "AYA-supplied discovery packet, 2026-10-17, § mandatory orientation item 5",
+      "status": "inherited, not independently live-probed",
+      "statement": "The currently exposed MCP edit_note/write_note schemas omit expected_checksum; the packet's exact field lists are retained in the task source, not restated as a live tools/list measurement here."
+    }
+  ],
+  "read_only_commands": [
+    "env -u PYTHONPATH -u PYTHONHOME /home/aya-hmw/.local/share/uv/tools/basic-memory/bin/bm --version",
+    "env -u PYTHONPATH -u PYTHONHOME .../bm tool edit-note --help",
+    "env -u PYTHONPATH -u PYTHONHOME .../bm tool read-note --help",
+    "env -u PYTHONPATH -u PYTHONHOME .../bm tool write-note --help",
+    "sha256sum on the listed local source and authorized capture files"
+  ],
+  "limitations": [
+    "No connected Cloud account route or hosted Cloud source was used.",
+    "PR 2071 was unavailable over public GitHub API and the browser page was not found.",
+    "No note mutation, concurrency experiment, deployment check, or production reconciliation was performed.",
+    "Public raw response hashes are digests of unauthenticated GET response bodies; local private HTTP captures are stored only under this output directory's private/ and are not listed here as shareable pins."
+  ]
+}
