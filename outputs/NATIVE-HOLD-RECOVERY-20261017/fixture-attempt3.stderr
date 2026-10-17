@@ -1,0 +1,14 @@
+test_completed_unit_is_terminal_and_acceptance_is_separate (test_handoff_contract.HandoffTests.test_completed_unit_is_terminal_and_acceptance_is_separate) ... ok
+test_completion_releases_todo_but_not_explicit_block (test_handoff_contract.HandoffTests.test_completion_releases_todo_but_not_explicit_block) ... kanban: scratch workspaces are ephemeral — they're deleted when the task completes. Use --workspace worktree: (git worktree) or --workspace dir:/abs/path (existing dir) to preserve worker output. (task t_009ba5a4)
+ok
+test_notices_deduplicate_cursor_and_stale_events_do_not_authorize (test_handoff_contract.HandoffTests.test_notices_deduplicate_cursor_and_stale_events_do_not_authorize) ... ok
+test_repeated_needs_input_and_capability_reach_triage_despite_prose (test_handoff_contract.HandoffTests.test_repeated_needs_input_and_capability_reach_triage_despite_prose) ... kanban: scratch workspaces are ephemeral — they're deleted when the task completes. Use --workspace worktree: (git worktree) or --workspace dir:/abs/path (existing dir) to preserve worker output. (task t_d933c2fe)
+ok
+test_review_dispatch_is_active_positive_authorized_control (test_handoff_contract.HandoffTests.test_review_dispatch_is_active_positive_authorized_control) ... kanban: scratch workspaces are ephemeral — they're deleted when the task completes. Use --workspace worktree: (git worktree) or --workspace dir:/abs/path (existing dir) to preserve worker output. (task t_62314b35)
+ok
+test_unfinished_full_phase_and_bra_stay_held (test_handoff_contract.HandoffTests.test_unfinished_full_phase_and_bra_stay_held) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 1.745s
+
+OK

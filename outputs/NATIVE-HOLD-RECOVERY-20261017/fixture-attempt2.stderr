@@ -1,0 +1,401 @@
+test_completed_unit_is_terminal_and_acceptance_is_separate (test_handoff_contract.HandoffTests.test_completed_unit_is_terminal_and_acceptance_is_separate) ... Failed to load bundled provider plugin fireworks: Fixture forbids external effect: subprocess.Popen
+Failed to load bundled provider plugin gmi: Fixture forbids external effect: subprocess.Popen
+Failed to load bundled provider plugin kimi-coding: Fixture forbids external effect: subprocess.Popen
+Failed to load bundled provider plugin opencode-zen: Fixture forbids external effect: subprocess.Popen
+Failed to load bundled provider plugin router: Fixture forbids external effect: subprocess.Popen
+Failed to load bundled provider plugin xai: Fixture forbids external effect: subprocess.Popen
+ERROR
+test_completion_releases_todo_but_not_explicit_block (test_handoff_contract.HandoffTests.test_completion_releases_todo_but_not_explicit_block) ... ERROR
+test_notices_deduplicate_cursor_and_stale_events_do_not_authorize (test_handoff_contract.HandoffTests.test_notices_deduplicate_cursor_and_stale_events_do_not_authorize) ... ERROR
+test_repeated_needs_input_and_capability_reach_triage_despite_prose (test_handoff_contract.HandoffTests.test_repeated_needs_input_and_capability_reach_triage_despite_prose) ... ERROR
+test_review_dispatch_is_active_positive_authorized_control (test_handoff_contract.HandoffTests.test_review_dispatch_is_active_positive_authorized_control) ... ERROR
+test_unfinished_full_phase_and_bra_stay_held (test_handoff_contract.HandoffTests.test_unfinished_full_phase_and_bra_stay_held) ... ERROR
+
+======================================================================
+ERROR: test_completed_unit_is_terminal_and_acceptance_is_separate (test_handoff_contract.HandoffTests.test_completed_unit_is_terminal_and_acceptance_is_separate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 110, in setUp
+    self.conn = kbc.connect()
+                ~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_connect.py", line 767, in connect
+    from hermes_state import preflight_db_writability
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state.py", line 30, in <module>
+    from hermes_state_common import (
+    ...<4 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state_common.py", line 16, in <module>
+    from agent.context_compressor import (LEGACY_SUMMARY_PREFIX, SUMMARY_PREFIX, _MERGED_PRIOR_CONTEXT_HEADER,
+        _MERGED_SUMMARY_DELIMITER, _SUMMARY_END_MARKER)
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/context_compressor.py", line 23, in <module>
+    from agent.auxiliary_client import (
+    ...<8 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/auxiliary_client.py", line 122, in <module>
+    from agent.credential_pool import load_pool
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool.py", line 25, in <module>
+    from agent.credential_pool_plugin import apply_plugin_refresh_result, plugin_row_is_expiring, recover_failed_plugin_refresh
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool_plugin.py", line 28, in <module>
+    from hermes_cli.auth import _OAUTH_GRANT_DEAD_CODES
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth.py", line 36, in <module>
+    from hermes_cli.auth_zai_kimi import (
+        KIMI_CODE_BASE_URL, ZAI_ENDPOINTS, _normalize_lmstudio_runtime_base_url, _resolve_kimi_base_url,
+        _resolve_zai_base_url, detect_zai_endpoint)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_zai_kimi.py", line 13, in <module>
+    from hermes_cli.auth_constants import httpx
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_constants.py", line 95, in <module>
+    CODEX_OAUTH_USER_AGENT = f"hermes-cli/{get_version_info().base_version}"
+                                           ~~~~~~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 298, in get_version_info
+    info = _git_version_info(repo_dir)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 209, in _git_version_info
+    commit = _run_git(repo_dir, "rev-parse", "HEAD")
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 63, in _run_git
+    result = subprocess.run(
+        ["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3, cwd=str(repo_dir),
+        check=False,
+    )
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 555, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1858, in _execute_child
+    sys.audit("subprocess.Popen", executable, args, cwd, env)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 28, in audit
+    raise RuntimeError('Fixture forbids external effect: ' + event)
+RuntimeError: Fixture forbids external effect: subprocess.Popen
+
+======================================================================
+ERROR: test_completion_releases_todo_but_not_explicit_block (test_handoff_contract.HandoffTests.test_completion_releases_todo_but_not_explicit_block)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 110, in setUp
+    self.conn = kbc.connect()
+                ~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_connect.py", line 767, in connect
+    from hermes_state import preflight_db_writability
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state.py", line 30, in <module>
+    from hermes_state_common import (
+    ...<4 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state_common.py", line 16, in <module>
+    from agent.context_compressor import (LEGACY_SUMMARY_PREFIX, SUMMARY_PREFIX, _MERGED_PRIOR_CONTEXT_HEADER,
+        _MERGED_SUMMARY_DELIMITER, _SUMMARY_END_MARKER)
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/context_compressor.py", line 23, in <module>
+    from agent.auxiliary_client import (
+    ...<8 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/auxiliary_client.py", line 122, in <module>
+    from agent.credential_pool import load_pool
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool.py", line 25, in <module>
+    from agent.credential_pool_plugin import apply_plugin_refresh_result, plugin_row_is_expiring, recover_failed_plugin_refresh
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool_plugin.py", line 28, in <module>
+    from hermes_cli.auth import _OAUTH_GRANT_DEAD_CODES
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth.py", line 36, in <module>
+    from hermes_cli.auth_zai_kimi import (
+        KIMI_CODE_BASE_URL, ZAI_ENDPOINTS, _normalize_lmstudio_runtime_base_url, _resolve_kimi_base_url,
+        _resolve_zai_base_url, detect_zai_endpoint)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_zai_kimi.py", line 13, in <module>
+    from hermes_cli.auth_constants import httpx
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_constants.py", line 95, in <module>
+    CODEX_OAUTH_USER_AGENT = f"hermes-cli/{get_version_info().base_version}"
+                                           ~~~~~~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 298, in get_version_info
+    info = _git_version_info(repo_dir)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 209, in _git_version_info
+    commit = _run_git(repo_dir, "rev-parse", "HEAD")
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 63, in _run_git
+    result = subprocess.run(
+        ["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3, cwd=str(repo_dir),
+        check=False,
+    )
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 555, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1858, in _execute_child
+    sys.audit("subprocess.Popen", executable, args, cwd, env)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 28, in audit
+    raise RuntimeError('Fixture forbids external effect: ' + event)
+RuntimeError: Fixture forbids external effect: subprocess.Popen
+
+======================================================================
+ERROR: test_notices_deduplicate_cursor_and_stale_events_do_not_authorize (test_handoff_contract.HandoffTests.test_notices_deduplicate_cursor_and_stale_events_do_not_authorize)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 110, in setUp
+    self.conn = kbc.connect()
+                ~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_connect.py", line 767, in connect
+    from hermes_state import preflight_db_writability
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state.py", line 30, in <module>
+    from hermes_state_common import (
+    ...<4 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state_common.py", line 16, in <module>
+    from agent.context_compressor import (LEGACY_SUMMARY_PREFIX, SUMMARY_PREFIX, _MERGED_PRIOR_CONTEXT_HEADER,
+        _MERGED_SUMMARY_DELIMITER, _SUMMARY_END_MARKER)
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/context_compressor.py", line 23, in <module>
+    from agent.auxiliary_client import (
+    ...<8 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/auxiliary_client.py", line 122, in <module>
+    from agent.credential_pool import load_pool
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool.py", line 25, in <module>
+    from agent.credential_pool_plugin import apply_plugin_refresh_result, plugin_row_is_expiring, recover_failed_plugin_refresh
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool_plugin.py", line 28, in <module>
+    from hermes_cli.auth import _OAUTH_GRANT_DEAD_CODES
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth.py", line 36, in <module>
+    from hermes_cli.auth_zai_kimi import (
+        KIMI_CODE_BASE_URL, ZAI_ENDPOINTS, _normalize_lmstudio_runtime_base_url, _resolve_kimi_base_url,
+        _resolve_zai_base_url, detect_zai_endpoint)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_zai_kimi.py", line 13, in <module>
+    from hermes_cli.auth_constants import httpx
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_constants.py", line 95, in <module>
+    CODEX_OAUTH_USER_AGENT = f"hermes-cli/{get_version_info().base_version}"
+                                           ~~~~~~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 298, in get_version_info
+    info = _git_version_info(repo_dir)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 209, in _git_version_info
+    commit = _run_git(repo_dir, "rev-parse", "HEAD")
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 63, in _run_git
+    result = subprocess.run(
+        ["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3, cwd=str(repo_dir),
+        check=False,
+    )
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 555, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1858, in _execute_child
+    sys.audit("subprocess.Popen", executable, args, cwd, env)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 28, in audit
+    raise RuntimeError('Fixture forbids external effect: ' + event)
+RuntimeError: Fixture forbids external effect: subprocess.Popen
+
+======================================================================
+ERROR: test_repeated_needs_input_and_capability_reach_triage_despite_prose (test_handoff_contract.HandoffTests.test_repeated_needs_input_and_capability_reach_triage_despite_prose)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 110, in setUp
+    self.conn = kbc.connect()
+                ~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_connect.py", line 767, in connect
+    from hermes_state import preflight_db_writability
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state.py", line 30, in <module>
+    from hermes_state_common import (
+    ...<4 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state_common.py", line 16, in <module>
+    from agent.context_compressor import (LEGACY_SUMMARY_PREFIX, SUMMARY_PREFIX, _MERGED_PRIOR_CONTEXT_HEADER,
+        _MERGED_SUMMARY_DELIMITER, _SUMMARY_END_MARKER)
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/context_compressor.py", line 23, in <module>
+    from agent.auxiliary_client import (
+    ...<8 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/auxiliary_client.py", line 122, in <module>
+    from agent.credential_pool import load_pool
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool.py", line 25, in <module>
+    from agent.credential_pool_plugin import apply_plugin_refresh_result, plugin_row_is_expiring, recover_failed_plugin_refresh
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool_plugin.py", line 28, in <module>
+    from hermes_cli.auth import _OAUTH_GRANT_DEAD_CODES
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth.py", line 36, in <module>
+    from hermes_cli.auth_zai_kimi import (
+        KIMI_CODE_BASE_URL, ZAI_ENDPOINTS, _normalize_lmstudio_runtime_base_url, _resolve_kimi_base_url,
+        _resolve_zai_base_url, detect_zai_endpoint)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_zai_kimi.py", line 13, in <module>
+    from hermes_cli.auth_constants import httpx
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_constants.py", line 95, in <module>
+    CODEX_OAUTH_USER_AGENT = f"hermes-cli/{get_version_info().base_version}"
+                                           ~~~~~~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 298, in get_version_info
+    info = _git_version_info(repo_dir)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 209, in _git_version_info
+    commit = _run_git(repo_dir, "rev-parse", "HEAD")
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 63, in _run_git
+    result = subprocess.run(
+        ["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3, cwd=str(repo_dir),
+        check=False,
+    )
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 555, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1858, in _execute_child
+    sys.audit("subprocess.Popen", executable, args, cwd, env)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 28, in audit
+    raise RuntimeError('Fixture forbids external effect: ' + event)
+RuntimeError: Fixture forbids external effect: subprocess.Popen
+
+======================================================================
+ERROR: test_review_dispatch_is_active_positive_authorized_control (test_handoff_contract.HandoffTests.test_review_dispatch_is_active_positive_authorized_control)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 110, in setUp
+    self.conn = kbc.connect()
+                ~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_connect.py", line 767, in connect
+    from hermes_state import preflight_db_writability
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state.py", line 30, in <module>
+    from hermes_state_common import (
+    ...<4 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state_common.py", line 16, in <module>
+    from agent.context_compressor import (LEGACY_SUMMARY_PREFIX, SUMMARY_PREFIX, _MERGED_PRIOR_CONTEXT_HEADER,
+        _MERGED_SUMMARY_DELIMITER, _SUMMARY_END_MARKER)
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/context_compressor.py", line 23, in <module>
+    from agent.auxiliary_client import (
+    ...<8 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/auxiliary_client.py", line 122, in <module>
+    from agent.credential_pool import load_pool
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool.py", line 25, in <module>
+    from agent.credential_pool_plugin import apply_plugin_refresh_result, plugin_row_is_expiring, recover_failed_plugin_refresh
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool_plugin.py", line 28, in <module>
+    from hermes_cli.auth import _OAUTH_GRANT_DEAD_CODES
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth.py", line 36, in <module>
+    from hermes_cli.auth_zai_kimi import (
+        KIMI_CODE_BASE_URL, ZAI_ENDPOINTS, _normalize_lmstudio_runtime_base_url, _resolve_kimi_base_url,
+        _resolve_zai_base_url, detect_zai_endpoint)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_zai_kimi.py", line 13, in <module>
+    from hermes_cli.auth_constants import httpx
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_constants.py", line 95, in <module>
+    CODEX_OAUTH_USER_AGENT = f"hermes-cli/{get_version_info().base_version}"
+                                           ~~~~~~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 298, in get_version_info
+    info = _git_version_info(repo_dir)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 209, in _git_version_info
+    commit = _run_git(repo_dir, "rev-parse", "HEAD")
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 63, in _run_git
+    result = subprocess.run(
+        ["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3, cwd=str(repo_dir),
+        check=False,
+    )
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 555, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1858, in _execute_child
+    sys.audit("subprocess.Popen", executable, args, cwd, env)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 28, in audit
+    raise RuntimeError('Fixture forbids external effect: ' + event)
+RuntimeError: Fixture forbids external effect: subprocess.Popen
+
+======================================================================
+ERROR: test_unfinished_full_phase_and_bra_stay_held (test_handoff_contract.HandoffTests.test_unfinished_full_phase_and_bra_stay_held)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 110, in setUp
+    self.conn = kbc.connect()
+                ~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_connect.py", line 767, in connect
+    from hermes_state import preflight_db_writability
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state.py", line 30, in <module>
+    from hermes_state_common import (
+    ...<4 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_state_common.py", line 16, in <module>
+    from agent.context_compressor import (LEGACY_SUMMARY_PREFIX, SUMMARY_PREFIX, _MERGED_PRIOR_CONTEXT_HEADER,
+        _MERGED_SUMMARY_DELIMITER, _SUMMARY_END_MARKER)
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/context_compressor.py", line 23, in <module>
+    from agent.auxiliary_client import (
+    ...<8 lines>...
+    )
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/auxiliary_client.py", line 122, in <module>
+    from agent.credential_pool import load_pool
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool.py", line 25, in <module>
+    from agent.credential_pool_plugin import apply_plugin_refresh_result, plugin_row_is_expiring, recover_failed_plugin_refresh
+  File "/home/aya-hmw/.hermes/hermes-agent/agent/credential_pool_plugin.py", line 28, in <module>
+    from hermes_cli.auth import _OAUTH_GRANT_DEAD_CODES
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth.py", line 36, in <module>
+    from hermes_cli.auth_zai_kimi import (
+        KIMI_CODE_BASE_URL, ZAI_ENDPOINTS, _normalize_lmstudio_runtime_base_url, _resolve_kimi_base_url,
+        _resolve_zai_base_url, detect_zai_endpoint)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_zai_kimi.py", line 13, in <module>
+    from hermes_cli.auth_constants import httpx
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/auth_constants.py", line 95, in <module>
+    CODEX_OAUTH_USER_AGENT = f"hermes-cli/{get_version_info().base_version}"
+                                           ~~~~~~~~~~~~~~~~^^
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 298, in get_version_info
+    info = _git_version_info(repo_dir)
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 209, in _git_version_info
+    commit = _run_git(repo_dir, "rev-parse", "HEAD")
+  File "/home/aya-hmw/.hermes/hermes-agent/hermes_cli/version_info.py", line 63, in _run_git
+    result = subprocess.run(
+        ["git", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3, cwd=str(repo_dir),
+        check=False,
+    )
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 555, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/.hermes/tools/python-3.14.7+20260901-linux-x64/lib/python3.14/subprocess.py", line 1858, in _execute_child
+    sys.audit("subprocess.Popen", executable, args, cwd, env)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aya-hmw/Documents/ChatGPT/AEON/outputs/NATIVE-HOLD-RECOVERY-20261017/test_handoff_contract.py", line 28, in audit
+    raise RuntimeError('Fixture forbids external effect: ' + event)
+RuntimeError: Fixture forbids external effect: subprocess.Popen
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.204s
+
+FAILED (errors=6)

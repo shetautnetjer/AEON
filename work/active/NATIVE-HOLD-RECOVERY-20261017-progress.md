@@ -1,0 +1,11 @@
+# t_25397a23 progress
+
+Authority: NATIVE-HOLD-RECOVERY-20261017.md; diagnostic only, not Finance release.
+
+Manager explicitly read own HERMES.md, AEON AGENTS/PROJECT/STATUS/DECISIONS, source root AGENTS, shared Codex skill and Hermes skill. Source HEAD verified a1f2370dd579dc72d27737bc3c3448fc8d7596b3; git status --short empty. AEON has pre-existing dirty root/navigation files; untouched.
+
+One manager combined mkdir/python -c baseline collection command was denied by automatic approval guard (script execution via -e/-c, headless cannot approve). Preserved; not retried via wrapper. No baseline collection result credited. Output directory created through allowed write_file.
+
+Single authorized Codex CLI invocation launched with timeout 420s+5s TERM grace, --ignore-user-config --ephemeral --sandbox workspace-write, model gpt-6-astra, effort xhigh. CLI 0.163.0; ChatGPT login status verified. Header confirms selected model/effort, approval never, workspace-write. Header is local invocation evidence, not server billing attestation. Despite --ignore-user-config, startup stderr contains tldraw/higgsfield MCP AuthRequired errors: no connector success or isolation claimed. No fallback/retry/config alteration authorized.
+
+Output owner: outputs/NATIVE-HOLD-RECOVERY-20261017/. Coder writes runnable fixtures/report/raw receipts; manager independently inspects and reruns deterministic tests. Live source, Finance cards, schedules and gates remain unchanged. Coder exited 0 within the single 420-second envelope. Manager inspected fixture/report and independently ran python -B -m unittest -v test_handoff_contract: exit 0, Ran 7 tests, OK (raw manager-fixture.stdout/stderr). Source HEAD remains a1f2370dd579dc72d27737bc3c3448fc8d7596b3, git status --short empty; manager sha256sum -c source-pins.sha256 returned eight OK, exit 0. Earlier fixture import/setup failures remain preserved. No production patch proposed. Existing upstream suite not run; real notification transport, durable acceptance/authentication, concurrent controllers and cron/live Finance migration remain unqualified. Successful bounded diagnostic delivery only; not deployed; AYA acceptance pending. Current full-phase M must stay blocked; native completion is for genuinely finished pre-narrowed units only. REPORT.md records exact recommendation and next controller-only state readback.

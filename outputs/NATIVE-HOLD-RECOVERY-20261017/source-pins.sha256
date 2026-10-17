@@ -1,0 +1,8 @@
+5f704a0395290a4c8983f0249c6a275f6560f5ae9623d53c08086a862373bc54  /home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db.py
+5c60aa69a63357cde6991ad5b651179e835a7f2d6ad746c0e2450aeafb188559  /home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_connect.py
+e03f12eed7aa398a2fc40209ce0e616609e81e89609f791e5d340d21088988ab  /home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_dispatch.py
+693961036217b865d7b5ccc2d183668c65a9d521ca8d6b95109ae18acbec3353  /home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_notify.py
+a6e538e6d26ef0e87860c01bdb6bed5ecb42a00ed2af60967a25d40e567acbfd  /home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_decompose.py
+dfa9da24d2e632eef4863206a1eed530f7c09078ddb69eeea27715ecbbf4cf21  /home/aya-hmw/.hermes/hermes-agent/gateway/kanban_watchers_dispatcher.py
+a2f2f04c5d517ae737be61c16a319470edae4216f719da59527d542dea0e91ed  /home/aya-hmw/.hermes/hermes-agent/gateway/kanban_watchers_notifier.py
+d9f68abd336cf02796107927fa53e368a49fd8e89f72224e176e43793f918a5d  /home/aya-hmw/aya/projects/finance/docs/quant-v3-1/evidence/NEXT01_M_RUN11_DISPOSITION_20261017.md

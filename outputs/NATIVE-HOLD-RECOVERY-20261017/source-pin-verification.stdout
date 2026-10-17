@@ -1,0 +1,8 @@
+/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db.py: OK
+/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_connect.py: OK
+/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_dispatch.py: OK
+/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_db_notify.py: OK
+/home/aya-hmw/.hermes/hermes-agent/hermes_cli/kanban_decompose.py: OK
+/home/aya-hmw/.hermes/hermes-agent/gateway/kanban_watchers_dispatcher.py: OK
+/home/aya-hmw/.hermes/hermes-agent/gateway/kanban_watchers_notifier.py: OK
+/home/aya-hmw/aya/projects/finance/docs/quant-v3-1/evidence/NEXT01_M_RUN11_DISPOSITION_20261017.md: OK
