@@ -1,6 +1,9 @@
 # Cloud pointer reconciliation — AYA controller release
 
-## Current / authority
+## Current — run27 capability handoff verified, 2026-10-18 UTC
+Run27 reached a real single-query script-execution refusal before any live target read/update; all three targets remain unperformed in that attempt. AYA verified the original 20 source pins and native tool results. [Controller disposition](../../outputs/CLOUD-POINTER-RECONCILIATION-20261017/AYA_DISPOSITION.md) owns the exact evidence and proposed next step: explicitly authorized native hosted-MCP setup for the same knowledge-writer, not a rewritten shell script or weaker checksum route. No such profile change or new run is released here. Preserve the existing blocked task, completed canary and original scope below; do not cycle block state or repeat discovery. The profile-connection decision is separate from ordinary documentation-update authority.
+
+## Original production-pointer release / authority — retained
 2026-10-17 UTC; supervisor execution `6ba4f0d55ee24ab09a327bfded1b54a9`, existing board `aeon`, existing task `t_d1739707`, sole named worker `knowledge-writer`. AYA selects and releases the original card's remaining compact pointer-reconciliation outcome after the separately qualified conditional route. Authority is the creator's standing deliberate subject-note reconciliation policy and this supervisor's expressly assigned ordinary technical release/acceptance role, plus the original exact-target task. **The two-note test-only approval is NOT the authority for production writes.** No new graph, connector, schedule, install, budget, provider, service, finance measurement or publication is released.
 
 This supersedes the discovery-only header on this exact task and AEON AGENTS.md's older local-only prohibition ONLY for the three Cloud targets below and the existing native Basic Memory account route. Preserve all other scopes, historical records and unrelated dirty files. This is a documentation correction, not an architecture/build plan; do not begin a new PRD/HLD/SDD ceremony.
