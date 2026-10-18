@@ -1,5 +1,9 @@
 # AEON current evidence
 
+## Hermes prerequisite for Brainstem trial revision 2 — 2026-10-18
+
+Codex completed and verified the isolated receipt/outcome producer branch at `dd32866789d6b1a639281a0c6956c91a662a196f`. [Task handoff](work/active/hermes-brainstem-trial-outcomes-20261018.md) links the source owner, fresh tests and Cloud continuation. Brainstem recovery/grant integration and reviewed deployment remain pending; running Hermes was not switched.
+
 ## Current Cloud-pointer documentation outcome — 2026-10-18 UTC
 
 Existing `aeon/t_d1739707` is done after AYA independently verified all three exact conditional edits/readbacks, complete surrounding-history preservation,19 source pins and13 selected config/SOUL endpoint pins. [Disposition](outputs/CLOUD-POINTER-RECONCILIATION-20261018-NATIVE/AYA_DISPOSITION.md) records the sole managed updated_by delta and failed procedure: writer run28 exhausted30 iterations before lifecycle completion, and both parsing-script routes were refused. Administrative completion run29 is not another model session. Accepted documentation only; no repeated Cloud write, new worker, Finance measurement/activation, design release or paused workload resumption. [Existing task owner](work/active/CLOUD-POINTER-RECONCILIATION-20261017.md) retains setup/discovery history; native Kanban owns current lifecycle state. Vela safe-return framing remains unresolved AYA technical coordination; Finance awaits its separately explained measurement decision/runtime route.
