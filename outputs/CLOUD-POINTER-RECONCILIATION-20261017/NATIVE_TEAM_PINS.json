@@ -1,0 +1,93 @@
+{
+  "evidence_root": "/home/aya-hmw/.local/state/aya-task-supervisor/cloud-team-access-8pv3_4uc",
+  "configuration_receipts": {
+    "default": {
+      "before_sha256": "1400f72b735a88a6eba026f518eb5abbd16229503976f2063e5947f646acd8c3",
+      "after_sha256": "1f6a1777c132fcab905c0521ab28a4d253d9c6e9d6b62c68e90f697df461c846"
+    },
+    "aeon-implementer": {
+      "before_sha256": "f985a89ba5b7e993928b869a2bdd6bde941f91bd4c55f12cca142cd8749627a5",
+      "after_sha256": "b5f35970e04c85f1c0031be925972a79931c25bcd93b6783d9d1eedf04275c77"
+    },
+    "aeon-reviewer": {
+      "before_sha256": "1d4eaf66f7550f35cb171397de51f9d216776b47da85c026fecc4bfebfdc97b8",
+      "after_sha256": "c43c68ae0ead75e97b3c7376978c40d8a7725e82dc39e561991b46675ad1da8a"
+    },
+    "finance-analyst": {
+      "before_sha256": "248365b6a5d640e52b197eed653e9aa13fa50c17156854a7622db30bbfd91ae1",
+      "after_sha256": "ae13925c19f2776a8b71ddd5236bd597ef1906663871576e0bd43ce5607f4d4a"
+    },
+    "finance-lead": {
+      "before_sha256": "8bc0738e306e9800578efd746f838fa235c55f60cbfc61a0dfa87ad0162a816c",
+      "after_sha256": "800b8a17dcec26c60b929a70b9edcdb3d0b20498288eb21dc543c6a6566be2ce"
+    },
+    "finance-risk": {
+      "before_sha256": "33ad30f8b85bc181ad4da766e2e4d00680401f912afc8bab192756ccbe6d1921",
+      "after_sha256": "c598901bcd4682b620aeb5d246e69e43b1063a26de99560897fccc9824418bbf"
+    },
+    "knowledge-writer": {
+      "before_sha256": "8efa74fa9b0b68ae70b72ecec53c88e5a61fb86e0844bd89e9a5c49fc3e7cda1",
+      "after_sha256": "a15faaf56253ae8ef1c658f9e9f71427c39e215d1e2f865c306a251c8d092757"
+    },
+    "memoryd": {
+      "before_sha256": "efff10f328e82044697ffc530ce2bc09e19d5260864711fe0a0a3a11193c1fb5",
+      "after_sha256": "e1e5cba3ee0943bf827246a277946d76cdfe5d78c37dcf82b595e7898bcdb980"
+    },
+    "mercury": {
+      "before_sha256": "93cba2d6de439405ca581dac6d8ae77995ed24633b68e7e7c5bd7da32b70a226",
+      "after_sha256": "b38e0f0703b64531422b58f77fa77d00264c10300145a09c7c0a3f70a64caa6b"
+    },
+    "research-scout": {
+      "before_sha256": "0e12438f26dae2281788dbe17ab2952a34b3432fcff1e36e88636817dbc7f84c",
+      "after_sha256": "2817e76a51889423c4669ce4fa84d60575686c25e4ef98859ddaa094984ffd86"
+    },
+    "source-analyst": {
+      "before_sha256": "64a7929731004353131d65d285c2054ce1a3d5d56701a7f42a3d2cc913b7420f",
+      "after_sha256": "cd90ad1f444ce333ce2f34143e65ee97068a5b77e954748b2d96c1a42566056a"
+    }
+  },
+  "guide_changes": {
+    "aeon-implementer": {
+      "before_sha256": "c5880a485f84e7713f907d7ed5b9ad2d06dbebc0be73f240fdab52cf35bd0b21",
+      "after_sha256": "650181c94ad4cd703acf269a73db2d20fabf37aa88bd3ac36836e434eaa32efc"
+    },
+    "aeon-reviewer": {
+      "before_sha256": "2673f22f440c685ad8a63eacf7e38ab953faf9ed9b1fc3ecd6fbc5d3d0f20451",
+      "after_sha256": "4dcdb94a359c3b78212ce6c98a58806ad4d5db56a4ecfbffb70e4fe0bb902318"
+    },
+    "finance-analyst": {
+      "before_sha256": "e61b87dcce9ad295b3e91f5eea1c2222ca9a8df4c970d99e4063c68dbbb1b908",
+      "after_sha256": "6ee725c138782a50cbd71d5554408a29539e46ec4ac539d75c8f2673c1b3f32f"
+    },
+    "finance-lead": {
+      "before_sha256": "bf456f153c77e0c17def6d2c2637feb1dd0a7aa419b24a58fe42a35efdfad405",
+      "after_sha256": "cb861e286545b4e76161afe40264f76823f0a05b51b4144087f11f1efbca8e08"
+    },
+    "finance-risk": {
+      "before_sha256": "2ae448c7e95230a2ee9c0512e6ee1a6bd8e893f4867fe4efeb7aebdfb5c2434c",
+      "after_sha256": "cb3bfc8a8d4c8323513706ea6cdbbda1f63c52cb42eb9ee6040a8fa058b5bae7"
+    },
+    "knowledge-writer": {
+      "before_sha256": "c3345aaa9019056f9a9ef19d8201c175f1705df502262b197bb06018224a82d1",
+      "after_sha256": "2d68f1e413ec63bd1153aec0be4a17842e43575294963b22303ece3f0ae9778c"
+    },
+    "memoryd": {
+      "before_sha256": "84af9345835ba114004f308d61f295c248418ca6220f83ab5a41d6efab7cf3b8",
+      "after_sha256": "afefbdcb9305edc4f290d617ba24a7ff17098439039f99abb330bd1791e1d422"
+    },
+    "mercury": {
+      "before_sha256": "fedf0b87a1f9c2faa2b87956a172bc1ad5bb87ca6594b27e853f190af7be5906",
+      "after_sha256": "59a9f182b4038450c376453084532aed4ec9ee2a73d1229656f0c2071be06092"
+    },
+    "research-scout": {
+      "before_sha256": "4fbfb10fca33f89b5080b3a41d2f029044c639c13fe605246268e30549902e9e",
+      "after_sha256": "2714d0d657f105bc56109e76d8ef164dd08adc3b6e040acbde2ad4dcad744c09"
+    },
+    "source-analyst": {
+      "before_sha256": "83e2b90bf4848ac8ef22b3234296bf9dafcfb1aef504a3bbbc9b4b07f5b05df6",
+      "after_sha256": "669de83cd8e720d92f24fe5cbd853aaf97af37eaec7d3537c63c2abb80d697be"
+    }
+  },
+  "verified_profile_count": 11,
+  "guide_change_count": 10
+}
