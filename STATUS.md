@@ -1,5 +1,9 @@
 # AEON current evidence
 
+## Current Cloud-pointer documentation outcome — 2026-10-18 UTC
+
+Existing `aeon/t_d1739707` is done after AYA independently verified all three exact conditional edits/readbacks, complete surrounding-history preservation,19 source pins and13 selected config/SOUL endpoint pins. [Disposition](outputs/CLOUD-POINTER-RECONCILIATION-20261018-NATIVE/AYA_DISPOSITION.md) records the sole managed updated_by delta and failed procedure: writer run28 exhausted30 iterations before lifecycle completion, and both parsing-script routes were refused. Administrative completion run29 is not another model session. Accepted documentation only; no repeated Cloud write, new worker, Finance measurement/activation, design release or paused workload resumption. [Existing task owner](work/active/CLOUD-POINTER-RECONCILIATION-20261017.md) retains setup/discovery history; native Kanban owns current lifecycle state. Vela safe-return framing remains unresolved AYA technical coordination; Finance awaits its separately explained measurement decision/runtime route.
+
 Verified documentation checkpoint: `2026-10-01T03:27:31.610775+00:00`. This summarizes dated local source/receipts; it is not a fresh host-wide service or database inspection.
 
 | Lane | Last verified result / remaining gate |

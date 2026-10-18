@@ -1,0 +1,46 @@
+{
+  "task_id": "t_d1739707",
+  "captured_at": "2026-10-18 UTC",
+  "cloud_targets": [
+    {
+      "project_id": "be29331d-c6a0-4d7b-bfcb-911c67925cb6",
+      "identifier": "working/AYA Working — Current Operating Context.md",
+      "read_revision_checksum": "7203292ddf1f3aa2ab7d7c471c3d1260e6301d65d2d35288d138419924f2a23b",
+      "readback_revision_checksum": "cc7c0fa8ef09f7c6d706a39aa02f8e007aad785b6679b37a9692c6a8b2843d05"
+    },
+    {
+      "project_id": "be29331d-c6a0-4d7b-bfcb-911c67925cb6",
+      "identifier": "projects/Finance workspace and market-data integrations — 2026-09-27.md",
+      "read_revision_checksum": "0eb93a951c464fb5eaec8cf360e814fec41d36c2f4ae0f3fdfc8c49c92d05ccf",
+      "readback_revision_checksum": "8d03a0cf87e6c3bf724b7ab03909772099b056a9249b0843d378cb3186b630eb"
+    },
+    {
+      "project_id": "87122653-206f-40cd-8de0-ece7a27a7f7c",
+      "identifier": "Research/Governance/Finance Hub — Research Governance and Delegated Authority.md",
+      "read_revision_checksum": "a169ed8785cf870a78b36f8541d5e20dcb1082657b4b6d3ba20987611c3d7438",
+      "readback_revision_checksum": "fdf5f6505cd3088f9c93fcd62feaae7375ad96a20c507a97fd4a5944c10f7662"
+    }
+  ],
+  "local_sources": [
+    {"path":"/home/aya-hmw/.hermes/profiles/knowledge-writer/HERMES.md","sha256":"2d68f1e413ec63bd1153aec0be4a17842e43575294963b22303ece3f0ae9778c"},
+    {"path":"/home/aya-hmw/Documents/ChatGPT/AEON/AGENTS.md","sha256":"b4a04958b72f72c5fda6b3c914998679211a9ee1ff83225f713c2112d1dff4c2"},
+    {"path":"/home/aya-hmw/Documents/ChatGPT/AEON/PROJECT.md","sha256":"85ad847b6cfa071a47dd059d840adaf139ae1719337f2ce3256ee707ea6d81bd"},
+    {"path":"/home/aya-hmw/Documents/ChatGPT/AEON/STATUS.md","sha256":"aea670da71796b473470ef20f12d5efaf1d9a9242905ae10615bf6277d0c0ec6"},
+    {"path":"/home/aya-hmw/Documents/ChatGPT/AEON/DECISIONS.md","sha256":"f69dfa504bdf6223973b16e5bfcb65b09d84e7cac2d54bc5600d8885b6111092"},
+    {"path":"/home/aya-hmw/Documents/ChatGPT/AEON/work/active/CLOUD-POINTER-RECONCILIATION-20261017.md","sha256":"187f4dbe96531e0c18a19025581dd7ee8942c204808ce541ad71b7364f416dc3"},
+    {"path":"/home/aya-hmw/Documents/ChatGPT/AEON/outputs/CLOUD-CONDITIONAL-DISCOVERY-20261017/AYA_DISPOSITION.md","sha256":"678ba1c7aa793ae616b47500f63e789dc0c8995fea63a0f0a7f79a1cfe9fadee"},
+    {"path":"/home/aya-hmw/.hermes/skills/productivity/layered-agent-memory/references/basic-memory-conditional-writes.md","sha256":"285e00e58572cdd973850bbaea4dbe63de64a253ec2c9d379fb83960d18d9411"},
+    {"path":"/home/aya-hmw/aya/projects/finance/docs/quant-v3-1/STATUS.md","sha256":"ae6a72db700ea48b4fc51b1439dc0f97e06b3f33aa2a6c82cdec77faca8d2cbc"},
+    {"path":"/home/aya-hmw/aya/projects/finance/docs/quant-v3-1/evidence/NEXT01_M_RUN10_DISPOSITION_20261017.md","sha256":"37c6c293334b11317a18ab205fc2f5a3eb545785859ee093bd915f800a89e443"},
+    {"path":"/home/aya-hmw/aya/projects/finance/docs/quant-v3-1/evidence/NEXT01_M_RUN11_DISPOSITION_20261017.md","sha256":"d9f68abd336cf02796107927fa53e368a49fd8e89f72224e176e43793f918a5d"},
+    {"path":"/home/aya-hmw/aya/projects/finance/docs/quant-v3-1/evidence/NEXT01_R_RUN16_DISPOSITION_20261017.md","sha256":"dd381411dcb1b54c0fbf7633ce3357cfc13d4bb1dd58648ac8a63250ed26163d"},
+    {"path":"/home/aya-hmw/aya/projects/finance/docs/quant-v3-1/evidence/NEXT01_B_RUN17_DISPOSITION_20261017.md","sha256":"2e14adeea0315e19940d88a5c4f14a3c37d5047161cb23db25c36ec3f5950d98"},
+    {"path":"/home/aya-hmw/Documents/ChatGPT/AEON/work/active/AYA-TASK-SUPERVISOR-20261017.md","sha256":"4aa80cb6948c0b577c1168b65f931cf7b2a2f72952c063470ad366ec43278b83"},
+    {"path":"/home/aya-hmw/Documents/ChatGPT/AEON/work/active/AYA-AUTOMATION-ROUTINES-20261017.md","sha256":"54cfa2ad06951792d280413e57111b413c27b4bfe461de1f6964c7b352846e7b"},
+    {"path":"/home/aya-hmw/aya/projects/hindsight-memory-pilot/outputs/restoration-20261016/RUN24-DISPOSITION.md","sha256":"d66a943cf52e524a88a81eb0fcffd816c756c08ef4da4590787c572a7909433a"},
+    {"path":"/home/aya-hmw/aya/projects/hindsight-memory-pilot/outputs/restoration-20261016/parent-activation/AYA-DISPOSITION.md","sha256":"c9b6f7157353c5f7e95907f8d97207b3d6554552959d067ab6caeb318ea9db26"},
+    {"path":"/home/aya-hmw/Documents/ChatGPT/AEON/outputs/CLOUD-POINTER-RECONCILIATION-20261017/NATIVE_SETUP.md","sha256":"6ab6a689e35357211525220a5f08a0a9d3888a35d50f3bff2ba1976f25581277"},
+    {"path":"/home/aya-hmw/Documents/ChatGPT/AEON/outputs/CLOUD-POINTER-RECONCILIATION-20261017/NATIVE_TEAM_ACCESS.md","sha256":"db1b99fc561018a4a29ca90ad2080dcc7d5ccae2eea90048638a5891e22fe402"}
+  ],
+  "notes": ["Cloud revision values are server-provided read/edit tokens, not hashes recomputed from note bodies.", "Source pins cover the exact local policy, authority, operational, Finance and dated-memory inputs read for this continuation."]
+}

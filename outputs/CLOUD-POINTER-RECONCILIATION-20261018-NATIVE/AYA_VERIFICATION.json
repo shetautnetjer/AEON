@@ -1,0 +1,72 @@
+{
+  "observed_at": "2026-10-18T02:05:38.037248+00:00",
+  "task": "aeon/t_d1739707",
+  "run": 28,
+  "model_session": "20261017_184204_3b052c",
+  "read_calls": 6,
+  "edit_calls": 3,
+  "targets": [
+    {
+      "project_id": "be29331d-c6a0-4d7b-bfcb-911c67925cb6",
+      "identifier": "working/AYA Working — Current Operating Context.md",
+      "before_revision": "7203292ddf1f3aa2ab7d7c471c3d1260e6301d65d2d35288d138419924f2a23b",
+      "after_revision": "cc7c0fa8ef09f7c6d706a39aa02f8e007aad785b6679b37a9692c6a8b2843d05",
+      "conditional_token_matched": true,
+      "one_edit_one_initial_read_one_readback": true,
+      "insertion_exact": true,
+      "all_surrounding_history_byte_equal": true,
+      "managed_metadata_delta": "updated_by: khamani conklin -> khamani conklin via Randw",
+      "before_sha256": "7203292ddf1f3aa2ab7d7c471c3d1260e6301d65d2d35288d138419924f2a23b",
+      "after_sha256": "cc7c0fa8ef09f7c6d706a39aa02f8e007aad785b6679b37a9692c6a8b2843d05",
+      "fresh_parent_readback": true,
+      "parent_readback_provenance": "Native read_note current-turn result; matching revision and visible body, full exact history independently recovered from worker readback"
+    },
+    {
+      "project_id": "be29331d-c6a0-4d7b-bfcb-911c67925cb6",
+      "identifier": "projects/Finance workspace and market-data integrations — 2026-09-27.md",
+      "before_revision": "0eb93a951c464fb5eaec8cf360e814fec41d36c2f4ae0f3fdfc8c49c92d05ccf",
+      "after_revision": "8d03a0cf87e6c3bf724b7ab03909772099b056a9249b0843d378cb3186b630eb",
+      "conditional_token_matched": true,
+      "one_edit_one_initial_read_one_readback": true,
+      "insertion_exact": true,
+      "all_surrounding_history_byte_equal": true,
+      "managed_metadata_delta": "updated_by: khamani conklin -> khamani conklin via Randw",
+      "before_sha256": "0eb93a951c464fb5eaec8cf360e814fec41d36c2f4ae0f3fdfc8c49c92d05ccf",
+      "after_sha256": "8d03a0cf87e6c3bf724b7ab03909772099b056a9249b0843d378cb3186b630eb",
+      "fresh_parent_readback": true,
+      "parent_readback_provenance": "/home/aya-hmw/.hermes/cache/spillover/call_19ce3ba44c04.txt"
+    },
+    {
+      "project_id": "87122653-206f-40cd-8de0-ece7a27a7f7c",
+      "identifier": "Research/Governance/Finance Hub — Research Governance and Delegated Authority.md",
+      "before_revision": "a169ed8785cf870a78b36f8541d5e20dcb1082657b4b6d3ba20987611c3d7438",
+      "after_revision": "fdf5f6505cd3088f9c93fcd62feaae7375ad96a20c507a97fd4a5944c10f7662",
+      "conditional_token_matched": true,
+      "one_edit_one_initial_read_one_readback": true,
+      "insertion_exact": true,
+      "all_surrounding_history_byte_equal": true,
+      "managed_metadata_delta": "updated_by: khamani conklin -> khamani conklin via Randw",
+      "before_sha256": "a169ed8785cf870a78b36f8541d5e20dcb1082657b4b6d3ba20987611c3d7438",
+      "after_sha256": "fdf5f6505cd3088f9c93fcd62feaae7375ad96a20c507a97fd4a5944c10f7662",
+      "fresh_parent_readback": true,
+      "parent_readback_provenance": "/home/aya-hmw/.hermes/cache/spillover/call_84b9c22bfc60.txt"
+    }
+  ],
+  "limits": [
+    "No mutation repeated; this is independent retained-call/history verification plus fresh exact native reads.",
+    "Original worker run exhausted30 iterations before lifecycle completion; no success status inferred.",
+    "Target1 fresh parent revision/body observed directly; automated full-history comparison uses retained worker response at that revision."
+  ],
+  "pin_verification": {
+    "declared": 19,
+    "matched": 19,
+    "source": "pin-check.json in private capture"
+  },
+  "protected_endpoint_verification": {
+    "declared": 13,
+    "matched": 13,
+    "limit": "Endpoint comparison only"
+  },
+  "original_worker_outcome": "gave_up: Iteration budget exhausted30/30 before lifecycle completion",
+  "procedural_exception": "Refused python3 -c followed by refused execute_code parsing attempt; both blocked before execution. Not accepted as clean procedure."
+}
