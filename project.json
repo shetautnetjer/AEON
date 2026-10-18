@@ -1,0 +1,10 @@
+{
+  "schema": "aeon.project-identity.v0",
+  "project_id": "01a14eb2-1faa-7241-bfd9-cc0791cc4865",
+  "name": "AEON",
+  "git_root": "/home/aya-hmw/Documents/ChatGPT/AEON",
+  "knowledge_scope_root_commit": "ec51a5751dd9e704d80bbb3b243f8d21b542ba0a",
+  "created": "2026-10-18",
+  "owner": "this repository",
+  "notes": "Stable engineering project identity used by Brainstem's project scope and the Knowledge Scope project_id. It is not the Basic Memory project UUID. Approved in the Brainstem first-trial package (revision 4), 2026-10-18."
+}
