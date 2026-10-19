@@ -1,0 +1,30 @@
+# ACP P-A/P-B review disposition and D-PB diagnostic — 2026-10-19
+
+## Current / decision before execution
+AYA/default, supervisor e07ffb34ba62 execution b8ff51d4f84d4bb6b93c200508a1dadc. Same full outcome `aeon/t_21bfa045`; no new card, manager, coder or implementation release. Contract c1e1e88; current review brief cf93ee7. This is the controller's disposition, not a replacement reviewer receipt.
+
+Consume `aeon/t_f00b871c/run45` as **ACCEPT_DIRECTION_WITH_CONDITIONS**, static diagnostic direction only. Independently recomputed both native output digests and all14 frozen input hashes. Exported exact worker session `20261019_092330_bb7c4d`:29 emitted calls,6 terminal calls,2 nonliteral prebrief read-only composites as disclosed;16 read_file,3 write_file,one each kanban_show/heartbeat/search_files/complete. Review directory mode is separately observed in the private verification receipt. These procedural deviations remain; no clean-conduct or full-client acceptance. Client model-read coverage is partial, as the reviewer reported. No unchanged source suite/example rerun.
+
+Review: `~/.local/state/aya-task-supervisor/devin-acp-policy-client-01/pab-decision-review-07/{ASSESSMENT.md,RECEIPT.json,SHA256SUMS.txt}`. Parent verification: `~/.local/state/aya-task-supervisor/sweep-20261019T164244Z/review45-verification.json`.
+
+**P-A:** accept only the narrow negative: no Normal-equivalent **configOptions** value was exposed. Inspector did not retain legacy modes/current_mode_update payload; effective internal consumption of DEVIN_PERMISSION_MODE and stderr remain unknown. No advertised mode is admitted. Both live prompting/launch allowlists remain empty. No blind launch permutations or generation.
+
+**P-B:** adopt Mercury's C1–C6 as conditions for the following metadata-only diagnostic, not as a product gate amendment. Repo forbiddenPlugins wildcard documents skills suppression only, with higher-authority required plugins overriding it. Missing commands cannot prove absence of hooks/rules/MCP/subagents. The existing zero-command baseline cannot be silently broadened to accept builtins. Any actual code/baseline change requires explicit AYA reviewed direction, original-author RED/GREEN, and non-author check.
+
+## D-PB preregistered contract (before any vendor execution)
+Resolver/owner AYA. One new standalone synthetic Git fixture below the current private sweep. Copy only the prior metadata fixture's inspected tracked non-secret content, not its Git metadata. Add exactly `.devin/config.json` bytes `{"forbiddenPlugins":["*"]}` and the byte-identical existing17-name disabled `mcp_config.local.json`. Pin regular files, links, file set and hashes before launch. Keep controlled user config, binary, inspector and environment-name set identical to P-A, including child DEVIN_PERMISSION_MODE=auto. No real project rules suppressed.
+
+Allowed diagnostic effects: new private fixture/metadata captures, normal native metadata startup/account/cache/network effects already acknowledged in the prior metadata lane. No prompt, selector change, permission callback admission, plugin install/remove/update, account/global/org config mutation, alternate home/user, credential copying/reading, source edits, Finance activity or gate release. Native list/info may internally consume credentials; AYA never opens connection/auth/.env/token/balance files. Raw output stays private; share names/hashes or necessary non-secret classifications only. Do not run the product inventory collector (forbidden connection-file read).
+
+1. From this fixture, use exact pinned native binary with controlled --config for plugins list/help/info, skills list, mcp list, rules list; bound each call and capture privately. Inspect installed help before unfamiliar info flags.
+2. If the census already establishes a preregistered negative, stop without a session: there is no value in starting ACP after the diagnostic direction is falsified. Otherwise one unchanged metadata-only inspector initialize/session-new, no --set flags. This early negative stop is a controller refinement preserving all positive acceptance, not an acceptance waiver.
+3. Repeat plugin list (after session if one was permitted), rehash fixture/control/binary/helper, and preserve all observations. If governance status is absent, do not infer blocked/required levels from absence.
+
+**Positive — every condition required:** zero higher-authority-required plugins; every installed plugin explicitly blocked naming this fixture as forbidder; census or vendor evidence establishes no effective hooks/rules/AGENTS/MCP/subagents; no namespaced commands; every command drop attributable to a blocked skill/disabled MCP; before/after readbacks identical; pinned bytes unchanged; zero generation/selection. This keeps the direction viable only: P-A still blocks L1.
+
+**Negative — any sufficient:** unblocked/higher-authority-required plugin; blocked non-skill components without suppression evidence; namespaced command persistence; missing/unparseable governance evidence; before/after drift; changed overlay; generation/selection. Missing status is an evidence failure, not proof of active hooks. On a negative, reject this overlay direction for clean startup; do not proceed to a prompted canary or write product code around it.
+
+**Next after negative:** source-/vendor-supported host/session control suppressing all plugin components with native readback. Investigate exact native supported controls first; account-authority alternatives require their own scope and independent review. Do not ask Khamani to arbitrate a technical question. No new approval card, recurring job, saved permission changes, live grant, account lockdown or paused-work resumption.
+
+## Remaining original acceptance
+Full owner remains blocked/unfulfilled;76-test synthetic committed-only result at7da9f584 is retained, not rerun. P-A/P-B/P2 and L1–L4, whole-process/OS boundary, real-secret/Finance use and full R1–R5 acceptance remain unperformed/unaccepted. Historical failed attempts, partial coverage and conduct limitations remain with their original receipts.
