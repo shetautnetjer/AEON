@@ -87,7 +87,7 @@ AYA independently verified22 instruction byte pins through actual ELF PT_LOAD ma
 
 **Next exact seam:** constructor/parser populating S+0x08/+0x10 before0x396d620. Helper-confirmed wrappers0x3c3b25e and0x429ada2 pass the object onward; on the latter path the unresolved fields correspond to outer-object+0x28/+0x30. That upstream wrapper interpretation is helper evidence, with fresh parent disassembly retained, not original Rust type recovery. No binding from the actual underscored wire request to this object has been proved. Full list-handler effects, all-component suppression and P-A precedence remain UNKNOWN. No target/RPC/session/generation, product change, unchanged suite rerun or lifecycle/Finance/allowlist release. A narrower investigation target is not a startup repair or full acceptance.
 
-## Constructor continuation — 2026-10-20 03:01 UTC
+## Constructor continuation — 2026-10-20 03:00 UTC
 
 Same full owner; bounded analytical helper only. No underscore-removal edge recovered. Concrete constructors `0x4408fa0` and `0x442fed0` copy existing input cells, not a recovered wire parser. Fresh parent disassembly and tool-computed offset composition verify input+0x08 maps to allocated-object+0x48 on both paths; operations-table relocations lead through `0x403be40` / `0x403c7f0` to the previously retained wrapper. These are analytical descriptions, not recovered Rust types or observed request execution.
 
