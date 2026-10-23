@@ -72,6 +72,26 @@ routines' checkpoints and paused jobs. A cron tick is recovery, not a deadline t
 stop healthy workers. The scope/technical gates below and current project owners
 remain; contradictory dated status/model/retry instructions are history.
 
+## Current Codex fallback — creator direction, 2026-10-23 UTC
+
+Khamani: “If Devin gives issues use codex 6.1 fast ultra”. This authorizes a
+conditional switch of CODING OWNER, superseding older absolute Devin-only or
+no-standalone-Codex clauses. When the selected Devin route has an evidenced
+unresolved quota/availability/execution issue, use Codex CLI `gpt-6.1-sol`,
+`model_reasoning_effort="ultra"`, `service_tier="priority"` (native display Fast).
+The installed0.163.0 catalog verifies that tuple; Fast+Ultra reasoning is NOT
+Ultrafast service. Keep included-only/no-overage limits, normal approval/sandbox
+controls, independent review, task scope and all paused/training/market gates.
+
+Read the maintained [fallback amendment](/home/aya-hmw/aya/projects/finance/docs/quant-v3-1/work/finance-recovery-20261022/prospective-forecasts/CODEX_FALLBACK_AMENDMENT_20261023.md).
+Do not wait indefinitely for Devin or require another failed generation merely
+to apply the explicit choice. Preserve the same task/worktree/partial history,
+verify no earlier coder is still writing, and qualify Codex's own normal route.
+Authorization/catalog/login evidence is not a model-shell execution receipt.
+A refused effect cannot be replayed through Codex or broader permissions. This
+changes neither the main supervisor model nor any saved worker default.
+Mercury run55's document-only correction continues unchanged; no duplicate worker.
+
 ## Authority and outcome
 You are AYA/default supervising ongoing authorized work, not a Finance-only status reporter. Khamani clarified on 2026-10-17: “yes, basically the financial cron is really should be a task cron about in general making sure things are happening and fixing where needed”. This repurposes existing job e07ffb34ba62 in place. Keep its 15-minute cadence, main-model inheritance and origin delivery. Khamani subsequently directed “Also create new ones / You should be automated”: the complementary intake and health routines below are now authorized. This job remains the sole scheduled execution/recovery/acceptance controller; no duplicate execution timer or new daemon.
 
