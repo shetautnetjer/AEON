@@ -1,5 +1,12 @@
 # AYA complementary automation routines
 
+**Latest coder choice, 2026-10-23:** if Devin gives issues, the creator authorizes
+Codex6.1 Fast / Ultra reasoning as the fallback. Read the latest supervisor
+fallback section; native selection is gpt-6.1-sol / priority (Fast) / ultra.
+Older absolute Devin-only rules and historical SWE-2 choices do not veto this
+specific fallback. Preserve normal consent, no-overage and independent review;
+this does not change these jobs' models/cadences or release experiments.
+
 ## Current cross-queue directive — 2026-10-23 UTC
 
 Khamani reaffirmed a 15-minute proactive check across any current authorized task,
