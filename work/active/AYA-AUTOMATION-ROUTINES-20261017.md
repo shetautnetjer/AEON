@@ -1,5 +1,27 @@
 # AYA complementary automation routines
 
+## Current cross-queue directive — 2026-10-23 UTC
+
+Khamani reaffirmed a 15-minute proactive check across any current authorized task,
+with Finance first, and self-evaluation of queues, heartbeats and crons (Telegram
+message5513 and clarification). Existing supervisor `e07ffb34ba62` performs that
+cross-queue check; do not duplicate its timer or controller. Intake120m and health60m
+retain their distinct deeper sweeps and their own checkpoints. Read the latest
+`proactive-all-queues-20261023` section of the supervisor contract before applying
+historical status/model statements below. Model/cadence/paused-state controls of
+other jobs are unchanged. The currently selected Finance coder is Devin Fusion
+Astra Max + GPT-5.6 Sol High, not the retained historical SWE-2 pairing.
+
+Absence of a notification does not mean work is done. Health distinguishes no run,
+active work, terminal-but-unconsumed output, intentionally suppressed delivery and
+failed/unknown delivery from exact native evidence. Intake distinguishes an
+already-owned but unreleased correction from a missing task: hand off the eligible
+same-card next step, not another graph. A healthy timer plus repeated
+`waiting_on_team` is not enough: identify actual active custody, the unresolved
+criterion and an executable next action. Do not modify the other routines'
+checkpoints or bypass genuine quota, permission, review, training or paused-work
+gates. Current project owners and later task-specific releases govern actual work.
+
 ## Current / authority
 Khamani directed in Telegram session `20261009_130319_a23158`, 2026-10-17: “Also create new ones / You should be automated.” This supersedes the earlier choice to add no complementary timers. It authorizes the task-intake and automation-health routines described here alongside the existing execution supervisor; it does not authorize duplicate implementations, finance measurement/trading, paused-project resumption, new model/billing routes or permission bypasses.
 
