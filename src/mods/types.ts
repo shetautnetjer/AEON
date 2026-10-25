@@ -576,6 +576,32 @@ export type ModSecretResolver = (
   options?: { envFallback?: boolean },
 ) => Promise<string | null>;
 
+export interface ModToolCallResult {
+  status: "success" | "error";
+  output: string;
+}
+
+export interface ModToolInfo {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+/**
+ * Runs other harness tools from inside a mod tool. Calls go through the same
+ * permission checks as model-issued calls; anything that would need
+ * interactive approval returns an error result instead of prompting.
+ */
+export interface ModToolsHandle {
+  run: (
+    name: string,
+    args: Record<string, unknown>,
+    options?: { signal?: AbortSignal },
+  ) => Promise<ModToolCallResult>;
+  /** Tools this mod tool may attempt to run (permission is checked per call). */
+  list: () => Promise<ModToolInfo[]>;
+}
+
 export interface ModToolRunContext extends ModInvocationContext {
   args: Record<string, unknown>;
   toolCallId: string | null;
@@ -583,6 +609,7 @@ export interface ModToolRunContext extends ModInvocationContext {
   secret: ModSecretResolver;
   onOutput?: (chunk: string, stream: "stdout" | "stderr") => void;
   conversation: ModConversationHandle;
+  tools?: ModToolsHandle;
 }
 
 export type ToolApprovalPolicy = "auto" | "ask" | "alwaysAsk";

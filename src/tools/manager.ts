@@ -69,6 +69,7 @@ export type {
 
 import { waitForToolCheckouts } from "@/utils/checkout-readiness";
 import { debugLog } from "@/utils/debug";
+import { createLinkedAbortSignal } from "@/utils/linked-abort-signal";
 import { refreshAndListSecrets } from "@/utils/secrets-store";
 import { readSubagentDepth } from "@/utils/subagent-depth-env";
 import { isRecord } from "@/utils/type-guards";
@@ -84,6 +85,7 @@ import {
   collectPostToolHookFeedback,
 } from "./hook-feedback";
 import { clampToolReturnContent } from "./impl/tool-return-clamp";
+import { createModToolsHandle } from "./mod-tool-runner";
 import type { JsonSchema, ModelFacingToolForm } from "./model-facing-tool";
 import {
   getEffectivePermissionModeState,
@@ -732,6 +734,13 @@ export function getClientToolsFromRegistry(): ClientTool[] {
     ),
     getAvailableModToolsRegistry(),
   );
+}
+
+function listToolsForContext(contextId?: string): ClientTool[] {
+  const c = contextId ? getExecutionContextById(contextId) : undefined;
+  return c
+    ? buildClientToolsFromSnapshot(c.toolRegistry, c.externalTools, c.modTools)
+    : getClientToolsFromRegistry();
 }
 
 function buildClientToolsFromSnapshot(
@@ -1599,40 +1608,6 @@ function flattenToolResponse(result: unknown): ToolReturnContent {
   return JSON.stringify(result);
 }
 
-function createLinkedAbortSignal(signals: Array<AbortSignal | undefined>): {
-  cleanup: () => void;
-  signal: AbortSignal;
-} {
-  const activeSignals = signals.filter(
-    (signal): signal is AbortSignal => signal !== undefined,
-  );
-  const controller = new AbortController();
-  const cleanupFns: Array<() => void> = [];
-  const abort = () => {
-    if (!controller.signal.aborted) {
-      controller.abort();
-    }
-  };
-
-  for (const signal of activeSignals) {
-    if (signal.aborted) {
-      abort();
-      break;
-    }
-    signal.addEventListener("abort", abort, { once: true });
-    cleanupFns.push(() => signal.removeEventListener("abort", abort));
-  }
-
-  return {
-    cleanup: () => {
-      for (const cleanup of cleanupFns) {
-        cleanup();
-      }
-    },
-    signal: controller.signal,
-  };
-}
-
 function getModToolStatus(result: unknown): "success" | "error" {
   if (!isRecord(result)) return "success";
   if (result.status === "error" || result.isError === true) return "error";
@@ -1745,6 +1720,7 @@ async function executeModTool(
     workingDirectory: string;
     scopedAgentId?: string;
     modContext?: ModContext;
+    toolContextId?: string;
   },
 ): Promise<ToolExecutionResult> {
   const startTime = Date.now();
@@ -1823,6 +1799,27 @@ async function executeModTool(
             );
           },
           workingDirectory: options.workingDirectory,
+        }),
+        tools: createModToolsHandle({
+          callerToolName: toolName,
+          signal,
+          listTools: () => listToolsForContext(options.toolContextId),
+          // Same approval-phase check a model-issued call gets; executeTool
+          // then applies execution-phase overlays and PreToolUse hooks.
+          checkPermission: (name, toolArgs) =>
+            checkToolPermission(
+              name,
+              toolArgs,
+              options.workingDirectory,
+              undefined,
+              options.scopedAgentId,
+              options.toolContextId,
+            ),
+          execute: (name, toolArgs, toolSignal) =>
+            executeTool(name, toolArgs, {
+              signal: toolSignal,
+              toolContextId: options.toolContextId,
+            }),
         }),
       };
       const result = await runModTool(
@@ -2093,6 +2090,7 @@ async function executeToolInner(
       workingDirectory,
       scopedAgentId,
       modContext,
+      toolContextId: options?.toolContextId,
     });
   }
   // Check if this is an external tool (SDK-executed)
