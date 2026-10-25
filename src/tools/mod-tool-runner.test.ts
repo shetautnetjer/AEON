@@ -97,6 +97,22 @@ describe("createModToolsHandle", () => {
     expect(executed).toEqual(["Read"]);
   });
 
+  test("refuses agent-spawning and orchestration tools", async () => {
+    const { base, executed } = deps();
+    const handle = createModToolsHandle(base);
+    for (const name of [
+      "Agent",
+      "Task",
+      "SendAgentMessage",
+      "Workflow",
+      "CodeMode",
+    ]) {
+      const result = await handle.run(name, {});
+      expect(result.status).toBe("error");
+    }
+    expect(executed).toEqual([]);
+  });
+
   test("list hides the caller and interactive tools", async () => {
     const { base } = deps();
     const names = (await createModToolsHandle(base).list()).map((t) => t.name);

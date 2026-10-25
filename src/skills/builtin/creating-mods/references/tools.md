@@ -163,5 +163,5 @@ async run(ctx) {
 
 - Every call gets the same permission check as a model-issued call (deny rules, permission mode, mod permission overlays, PermissionRequest hooks), then the normal execution path (execution-phase overlays, PreToolUse/PostToolUse hooks, `tool_start`/`tool_end` events).
 - A call that would need interactive approval is not prompted or auto-approved; it returns `status: "error"`. Add an allow rule or let the model call that tool directly.
-- A mod tool cannot run itself or any mod tool already running in its call chain, and nested chains stop after 3 levels. `AskUserQuestion` is not runnable.
+- A mod tool cannot run itself or any mod tool already running in its call chain, and nested chains stop after 3 levels. `AskUserQuestion`, `Agent`, `Task`, `SendAgentMessage`, `Workflow` and `CodeMode` are not runnable, matching the Workflow tool's script scope.
 - Calls never throw for tool failures; aborting `ctx.signal` or `options.signal` resolves with an error result.

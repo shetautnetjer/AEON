@@ -14,9 +14,17 @@ import { getServerToolName } from "./tool-name-mapping";
 export const MAX_MOD_TOOL_CALL_DEPTH = 3;
 
 // Interactive question tools need a model-issued tool call to answer.
+// Agent-spawning and orchestration tools are excluded for the same reason
+// the Workflow script scope excludes them (see SCRIPT_EXCLUDED_TOOLS):
+// a mod tool should not start unbounded agents or nested workflows.
 const NON_RUNNABLE_TOOL_NAMES = new Set([
   "AskUserQuestion",
   "AskUserQuestionAsync",
+  "Agent",
+  "Task",
+  "SendAgentMessage",
+  "Workflow",
+  "CodeMode",
 ]);
 
 // Mod tools currently running nested calls, outermost first.
