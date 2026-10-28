@@ -199,7 +199,7 @@ const slackConfigCodec: ChannelConfigCodec<SlackChannelConfig> = {
   },
 };
 
-function parseDefaultPermissionMode(
+export function parseDefaultPermissionMode(
   value: unknown,
 ): ChannelDefaultPermissionMode {
   if (typeof value !== "string") return "standard";

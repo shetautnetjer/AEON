@@ -8,6 +8,7 @@ import {
 } from "./access-control";
 import { getChannelAccount, LEGACY_CHANNEL_ACCOUNT_ID } from "./accounts";
 import { tryHandleChannelSlashCommand } from "./commands";
+import { parseDefaultPermissionMode } from "./config";
 import { isDiscordGuildChannelAllowed } from "./discord/channel-gating";
 import { createPairingCode } from "./pairing";
 import type { ChannelCommandRouter } from "./registry-commands";
@@ -29,6 +30,7 @@ import type {
   InboundChannelMessage,
 } from "./types";
 import {
+  isCustomChannelAccount,
   isDiscordChannelAccount,
   isSignalChannelAccount,
   isSlackChannelAccount,
@@ -407,7 +409,16 @@ export function createChannelInboundRouter(deps: {
       turnSources: [buildChannelTurnSource(route, preparedMessage)],
       ...(isDiscordChannelAccount(config) || isSlackChannelAccount(config)
         ? { defaultPermissionMode: config.defaultPermissionMode }
-        : {}),
+        : isCustomChannelAccount(config)
+          ? {
+              // User plugins read `default_permission_mode` from their own account config and
+              // default to "standard", so tool approvals reach the channel instead of turns
+              // inheriting the process-wide "unrestricted" default.
+              defaultPermissionMode: parseDefaultPermissionMode(
+                config.config?.default_permission_mode,
+              ),
+            }
+          : {}),
     });
   }
 
