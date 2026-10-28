@@ -106,6 +106,7 @@ describe("createModToolsHandle", () => {
       "SendAgentMessage",
       "Workflow",
       "CodeMode",
+      "Skill",
     ]) {
       const result = await handle.run(name, {});
       expect(result.status).toBe("error");

@@ -17,9 +17,13 @@ export const MAX_MOD_TOOL_CALL_DEPTH = 3;
 // Agent-spawning and orchestration tools are excluded for the same reason
 // the Workflow script scope excludes them (see SCRIPT_EXCLUDED_TOOLS):
 // a mod tool should not start unbounded agents or nested workflows.
+// Skill delivers its instructions through a side channel keyed by the model's
+// toolCallId; a nested call has none, so it would report success while the
+// skill content is silently dropped.
 const NON_RUNNABLE_TOOL_NAMES = new Set([
   "AskUserQuestion",
   "AskUserQuestionAsync",
+  "Skill",
   "Agent",
   "Task",
   "SendAgentMessage",
