@@ -10,6 +10,7 @@ For tools that are part of a larger mod with commands, UI, local state, or event
 - Read-only shell tool
 - Tool with arguments
 - Mutating or risky tool
+- Calling other tools
 
 ## Defaults
 
@@ -25,6 +26,7 @@ For tools that are part of a larger mod with commands, UI, local state, or event
 - Use `await ctx.conversation.updateTitle(title)` to persist a conversation title and refresh active local UI consumers when the host supports it.
 - Respect `ctx.signal` for long-running work when practical.
 - Tools should return information for the model to use; they should not start hidden model runs.
+- Use `ctx.tools.run(name, args)` to call other harness tools; see "Calling other tools".
 
 ## Read-only shell tool
 
@@ -144,3 +146,22 @@ letta.tools.register({
   },
 });
 ```
+
+## Calling other tools
+
+`ctx.tools` (optional; check it exists) runs the same tools the model can call in this turn:
+
+```ts
+async run(ctx) {
+  if (!ctx.tools) return { status: "error", content: "ctx.tools unavailable" };
+  const names = (await ctx.tools.list()).map((tool) => tool.name);
+  const result = await ctx.tools.run("Read", { file_path: `${ctx.cwd}/README.md` }, { signal: ctx.signal });
+  // result: { status: "success" | "error", output: string }
+  return result.status === "success" ? result.output.slice(0, 2000) : result.output;
+}
+```
+
+- Every call gets the same permission check as a model-issued call (deny rules, permission mode, mod permission overlays, PermissionRequest hooks), then the normal execution path (execution-phase overlays, PreToolUse/PostToolUse hooks, `tool_start`/`tool_end` events).
+- A call that would need interactive approval is not prompted or auto-approved; it returns `status: "error"`. Add an allow rule or let the model call that tool directly.
+- A mod tool cannot run itself or any mod tool already running in its call chain, and nested chains stop after 3 levels. `AskUserQuestion`, `Agent`, `Task`, `SendAgentMessage`, `Workflow` and `CodeMode` are not runnable, matching the Workflow tool's script scope.
+- Calls never throw for tool failures; aborting `ctx.signal` or `options.signal` resolves with an error result.
