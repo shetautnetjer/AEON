@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { runMemorySubcommand } from "@/cli/subcommands/memory";
 
 describe("letta memory pull", () => {
@@ -98,5 +102,65 @@ describe("letta memory pull", () => {
 
     expect(code).toBe(0);
     expect(initialized).toBe(false);
+  });
+});
+
+describe("letta memory commit", () => {
+  let dir = "";
+  let logSpy: ReturnType<typeof spyOn>;
+  let errorSpy: ReturnType<typeof spyOn>;
+  const git = (...args: string[]) =>
+    execFileSync("git", ["-C", dir, ...args], { encoding: "utf8" }).trim();
+
+  beforeEach(() => {
+    logSpy = spyOn(console, "log").mockImplementation(() => {});
+    errorSpy = spyOn(console, "error").mockImplementation(() => {});
+    dir = mkdtempSync(join(tmpdir(), "memory-commit-cli-"));
+    git("init", "-q", "-b", "main");
+    git("config", "user.name", "t");
+    git("config", "user.email", "t@example.com");
+    git("config", "commit.gpgsign", "false");
+    writeFileSync(join(dir, "x.md"), "1\n");
+    git("add", "-A");
+    git("commit", "-qm", "init");
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  test("commits the named paths and prints the result as JSON", async () => {
+    writeFileSync(join(dir, "x.md"), "2\n");
+    const code = await runMemorySubcommand([
+      "commit",
+      "--memory-dir",
+      dir,
+      "-m",
+      "cli edit",
+      "--",
+      "x.md",
+    ]);
+    expect(code).toBe(0);
+    expect(JSON.parse(String(logSpy.mock.calls[0]?.[0])).status).toBe(
+      "committed",
+    );
+    expect(git("log", "-1", "--format=%s")).toBe("cli edit");
+  });
+
+  test("refuses to commit without named paths and says why", async () => {
+    const code = await runMemorySubcommand([
+      "commit",
+      "--memory-dir",
+      dir,
+      "-m",
+      "none",
+    ]);
+    expect(code).toBe(1);
+    expect(String(errorSpy.mock.calls[0]?.[0])).toContain(
+      "never commits everything",
+    );
+    expect(git("log", "-1", "--format=%s")).toBe("init");
   });
 });

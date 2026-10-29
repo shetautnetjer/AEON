@@ -2,6 +2,7 @@ import { cpSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
+import { commitNamedMemoryPaths } from "@/agent/memory-commit";
 import { getScopedMemoryFilesystemRoot } from "@/agent/memory-filesystem";
 import { getMemoryGitStatus, isGitRepo, pullMemory } from "@/agent/memory-git";
 import { isLocalBackendEnvEnabled } from "@/backend/local/paths";
@@ -25,6 +26,7 @@ Usage:
   letta memory restore --from <backup> --force [--agent <id>]
   letta memory export --agent <id> --out <dir>
   letta memory pull [--agent <id>]
+  letta memory commit -m <message> [--author <name <email>>] [--memory-dir <path>] [--agent <id>] -- <path>...
   letta memory tokens [--memory-dir <path>] [--agent <id>] [--top <N>]
                      [--format text|json] [--quiet]
 
@@ -33,7 +35,9 @@ Notes:
   - \`tokens\` additionally accepts --memory-dir or $MEMORY_DIR; reports the
     estimated token size of core memory for the detected MemFS layout. Policy
     (whether a size is concerning) is up to the caller.
-  - Memory is git-backed. Use git commands for commit/push.
+  - Memory is git-backed. \`commit\` stages and commits only the named paths under the
+    same lock the harness's memory writers use, so concurrent threads of one agent
+    don't interleave. It never commits everything. Use git for push.
 
 Examples:
   LETTA_AGENT_ID=agent-123 letta memory status
@@ -61,6 +65,8 @@ const MEMORY_OPTIONS = {
   top: { type: "string" },
   format: { type: "string" },
   quiet: { type: "boolean" },
+  message: { type: "string", short: "m" },
+  author: { type: "string" },
 } as const;
 
 function parseMemoryArgs(argv: string[]) {
@@ -162,6 +168,34 @@ export async function runMemorySubcommand(
       quiet: Boolean(parsed.values.quiet),
       localMemfs: isLocalBackendEnvEnabled(),
     });
+  }
+
+  if (action === "commit") {
+    const memoryDir =
+      parsed.values["memory-dir"] ||
+      process.env.MEMORY_DIR ||
+      (agentId ? getMemoryRoot(agentId) : "");
+    if (!memoryDir) {
+      console.error(
+        "Missing memory dir. Pass --memory-dir, set MEMORY_DIR, or give an agent id.",
+      );
+      return 1;
+    }
+    try {
+      const result = await commitNamedMemoryPaths({
+        memoryDir,
+        paths: parsed.positionals.slice(1),
+        message: parsed.values.message ?? "",
+        author: parsed.values.author,
+      });
+      console.log(JSON.stringify(result));
+      return 0;
+    } catch (error) {
+      console.error(
+        `Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return 1;
+    }
   }
 
   if (!agentId) {
