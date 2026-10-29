@@ -159,7 +159,7 @@ describe("commitNamedMemoryPaths", () => {
     ).toEqual(["D\tnotes/x.md", "D\tnotes/y.md"]);
   });
 
-  test("a deleted nested file named by path is committed (paths are normalized to '/')", async () => {
+  test("a deleted file inside a folder, named by its path, is committed", async () => {
     mkdirSync(join(dir, "deep"));
     writeFileSync(join(dir, "deep", "n.md"), "n\n");
     git("add", "-A");
