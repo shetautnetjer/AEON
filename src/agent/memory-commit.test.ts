@@ -64,7 +64,11 @@ describe("commitNamedMemoryPaths", () => {
       commitNamedMemoryPaths({ memoryDir: dir, paths: ["../x"], message: "x" }),
     ).rejects.toThrow(/outside/);
     await expect(
-      commitNamedMemoryPaths({ memoryDir: dir, paths: ["a.md"], message: "  " }),
+      commitNamedMemoryPaths({
+        memoryDir: dir,
+        paths: ["a.md"],
+        message: "  ",
+      }),
     ).rejects.toThrow(/message/);
   });
 
@@ -153,5 +157,23 @@ describe("commitNamedMemoryPaths", () => {
     expect(
       git("show", "--name-status", "--format=", "HEAD").split("\n").sort(),
     ).toEqual(["D\tnotes/x.md", "D\tnotes/y.md"]);
+  });
+
+  test("a deleted nested file named by path is committed (paths are normalized to '/')", async () => {
+    mkdirSync(join(dir, "deep"));
+    writeFileSync(join(dir, "deep", "n.md"), "n\n");
+    git("add", "-A");
+    git("commit", "-qm", "add deep");
+    rmSync(join(dir, "deep", "n.md"));
+    const r = await commitNamedMemoryPaths({
+      memoryDir: dir,
+      paths: [join("deep", "n.md")],
+      message: "rm deep/n",
+    });
+    expect(r.status).toBe("committed");
+    expect(r.paths).toEqual(["deep/n.md"]);
+    expect(git("show", "--name-status", "--format=", "HEAD")).toBe(
+      "D\tdeep/n.md",
+    );
   });
 });

@@ -53,7 +53,9 @@ export async function commitNamedMemoryPaths(
         `path is outside the memory repository (or is its root): ${p}`,
       );
     }
-    return rel;
+    // Git paths always use "/", so normalize once here: every later check (tracked-file
+    // membership, directory prefixes, pathspecs) then compares like with like on Windows too.
+    return rel.split(sep).join("/");
   });
   // The harness git runner: default timeout, non-interactive env, no commit signing, MemFS proxy
   // args, debug logging. A hung git call must not hold the cross-process memory lease forever.
@@ -79,7 +81,7 @@ export async function commitNamedMemoryPaths(
       const stageable = specs.filter((_, i) => {
         const p = paths[i] as string;
         if (existsSync(resolve(root, p)) || tracked.has(p)) return true;
-        const prefix = `${p.replaceAll(sep, "/").replace(/\/+$/, "")}/`;
+        const prefix = `${p.replace(/\/+$/, "")}/`;
         return trackedList.some((t) => t.startsWith(prefix));
       });
       if (stageable.length > 0) await git(["add", "-A", "--", ...stageable]);
