@@ -18,13 +18,18 @@ export type MemoryCommitResult =
   | { status: "nothing-to-commit"; paths: string[] };
 
 /**
+ * Distinct from the private `commitMemoryPaths` in memory-git.ts (harness writers): that one
+ * stages its paths but then runs a bare `git commit`, which commits everything staged, including
+ * another thread's work. This one is for the agent's own edits and scopes both staging and the
+ * commit to the named paths, as literal pathspecs.
+ *
  * Commit the agent's own memory edits under the same cross-process lease the
  * harness writers use (memory workers, conflict repair, reflection
  * integration, post-turn sync), so two threads of one agent cannot interleave
  * staging and committing. Only the named paths are staged and committed;
  * anything else already staged by someone else stays out of the commit.
  */
-export async function commitMemoryPaths(
+export async function commitNamedMemoryPaths(
   options: MemoryCommitOptions,
 ): Promise<MemoryCommitResult> {
   const root = resolve(options.memoryDir);

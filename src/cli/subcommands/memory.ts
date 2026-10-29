@@ -2,7 +2,7 @@ import { cpSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
-import { commitMemoryPaths } from "@/agent/memory-commit";
+import { commitNamedMemoryPaths } from "@/agent/memory-commit";
 import { getScopedMemoryFilesystemRoot } from "@/agent/memory-filesystem";
 import { getMemoryGitStatus, isGitRepo, pullMemory } from "@/agent/memory-git";
 import { isLocalBackendEnvEnabled } from "@/backend/local/paths";
@@ -182,7 +182,7 @@ export async function runMemorySubcommand(
       return 1;
     }
     try {
-      const result = await commitMemoryPaths({
+      const result = await commitNamedMemoryPaths({
         memoryDir,
         paths: parsed.positionals.slice(1),
         message: parsed.values.message ?? "",

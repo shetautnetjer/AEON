@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { commitMemoryPaths } from "@/agent/memory-commit";
+import { commitNamedMemoryPaths } from "@/agent/memory-commit";
 import { claimMemoryOperation } from "@/agent/memory-operation";
 
 let dir = "";
@@ -25,12 +25,12 @@ afterEach(() => {
   if (dir) rmSync(dir, { recursive: true, force: true });
 });
 
-describe("commitMemoryPaths", () => {
+describe("commitNamedMemoryPaths", () => {
   test("commits only the named paths; other staged and unstaged edits stay out", async () => {
     writeFileSync(join(dir, "a.md"), "a2\n");
     writeFileSync(join(dir, "b.md"), "b2\n");
     git("add", "b.md"); // another thread staged b.md
-    const r = await commitMemoryPaths({
+    const r = await commitNamedMemoryPaths({
       memoryDir: dir,
       paths: ["a.md"],
       message: "edit a",
@@ -43,7 +43,7 @@ describe("commitMemoryPaths", () => {
   test("stages deletions and new files inside the named paths", async () => {
     rmSync(join(dir, "a.md"));
     writeFileSync(join(dir, "c.md"), "c\n");
-    await commitMemoryPaths({
+    await commitNamedMemoryPaths({
       memoryDir: dir,
       paths: ["a.md", "c.md"],
       message: "rm a, add c",
@@ -55,22 +55,22 @@ describe("commitMemoryPaths", () => {
 
   test("refuses no paths, the repo root, and paths outside the repo", async () => {
     await expect(
-      commitMemoryPaths({ memoryDir: dir, paths: [], message: "x" }),
+      commitNamedMemoryPaths({ memoryDir: dir, paths: [], message: "x" }),
     ).rejects.toThrow(/never commits everything/);
     await expect(
-      commitMemoryPaths({ memoryDir: dir, paths: ["."], message: "x" }),
+      commitNamedMemoryPaths({ memoryDir: dir, paths: ["."], message: "x" }),
     ).rejects.toThrow(/outside|root/);
     await expect(
-      commitMemoryPaths({ memoryDir: dir, paths: ["../x"], message: "x" }),
+      commitNamedMemoryPaths({ memoryDir: dir, paths: ["../x"], message: "x" }),
     ).rejects.toThrow(/outside/);
     await expect(
-      commitMemoryPaths({ memoryDir: dir, paths: ["a.md"], message: "  " }),
+      commitNamedMemoryPaths({ memoryDir: dir, paths: ["a.md"], message: "  " }),
     ).rejects.toThrow(/message/);
   });
 
   test("reports nothing-to-commit without creating a commit", async () => {
     const before = git("rev-parse", "HEAD");
-    const r = await commitMemoryPaths({
+    const r = await commitNamedMemoryPaths({
       memoryDir: dir,
       paths: ["a.md"],
       message: "noop",
@@ -84,7 +84,7 @@ describe("commitMemoryPaths", () => {
     expect(release).not.toBeNull();
     writeFileSync(join(dir, "a.md"), "locked\n");
     let done = false;
-    const pending = commitMemoryPaths({
+    const pending = commitNamedMemoryPaths({
       memoryDir: dir,
       paths: ["a.md"],
       message: "after lock",
@@ -100,7 +100,7 @@ describe("commitMemoryPaths", () => {
 
   test("applies an explicit author", async () => {
     writeFileSync(join(dir, "a.md"), "by aya\n");
-    await commitMemoryPaths({
+    await commitNamedMemoryPaths({
       memoryDir: dir,
       paths: ["a.md"],
       message: "authored",
@@ -117,7 +117,7 @@ describe("commitMemoryPaths", () => {
     git("commit", "-qm", "add glob-named file");
     writeFileSync(join(dir, "[a].md"), "glob2\n");
     writeFileSync(join(dir, "a.md"), "a-other-thread\n"); // `[a].md` as a glob would match `a.md`
-    await commitMemoryPaths({
+    await commitNamedMemoryPaths({
       memoryDir: dir,
       paths: ["[a].md"],
       message: "literal",
@@ -128,7 +128,7 @@ describe("commitMemoryPaths", () => {
 
   test("a deletion that is already staged (git rm) can be committed by name", async () => {
     git("rm", "-q", "a.md");
-    const r = await commitMemoryPaths({
+    const r = await commitNamedMemoryPaths({
       memoryDir: dir,
       paths: ["a.md"],
       message: "rm a",
@@ -144,7 +144,7 @@ describe("commitMemoryPaths", () => {
     git("add", "-A");
     git("commit", "-qm", "add notes");
     rmSync(join(dir, "notes"), { recursive: true, force: true });
-    const r = await commitMemoryPaths({
+    const r = await commitNamedMemoryPaths({
       memoryDir: dir,
       paths: ["notes"],
       message: "rm notes",
