@@ -100,3 +100,26 @@ describe("letta memory pull", () => {
     expect(initialized).toBe(false);
   });
 });
+
+describe("memory commit subcommand", () => {
+  test("commits named paths under --memory-dir and prints JSON; refuses no paths", async () => {
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+    const { execFileSync } = await import("node:child_process");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const d = mkdtempSync(join(tmpdir(), "memory-commit-cli-"));
+    const git = (...a: string[]) => execFileSync("git", ["-C", d, ...a], { encoding: "utf8" }).trim();
+    git("init", "-q", "-b", "main"); git("config", "user.name", "t"); git("config", "user.email", "t@e.com"); git("config", "commit.gpgsign", "false");
+    writeFileSync(join(d, "x.md"), "1\n"); git("add", "-A"); git("commit", "-qm", "init");
+    writeFileSync(join(d, "x.md"), "2\n");
+    const logs: string[] = [];
+    const orig = console.log; console.log = (m: string) => logs.push(m);
+    try {
+      expect(await runMemorySubcommand(["commit", "--memory-dir", d, "-m", "cli edit", "--", "x.md"])).toBe(0);
+      expect(await runMemorySubcommand(["commit", "--memory-dir", d, "-m", "none"])).toBe(1);
+    } finally { console.log = orig; }
+    expect(JSON.parse(logs[0] ?? "{}").status).toBe("committed");
+    expect(git("log", "-1", "--format=%s")).toBe("cli edit");
+    rmSync(d, { recursive: true, force: true });
+  });
+});
