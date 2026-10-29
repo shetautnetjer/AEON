@@ -1,10 +1,7 @@
-import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve, sep } from "node:path";
-import { promisify } from "node:util";
+import { runGit } from "@/agent/memory-git";
 import { withMemoryOperation } from "@/agent/memory-operation";
-
-const run = promisify(execFile);
 
 export interface MemoryCommitOptions {
   memoryDir: string;
@@ -32,18 +29,30 @@ export async function commitMemoryPaths(
 ): Promise<MemoryCommitResult> {
   const root = resolve(options.memoryDir);
   if (options.paths.length === 0) {
-    throw new Error("memory commit needs at least one path; it never commits everything");
+    throw new Error(
+      "memory commit needs at least one path; it never commits everything",
+    );
   }
   if (!options.message.trim()) throw new Error("memory commit needs a message");
   const paths = options.paths.map((p) => {
     const abs = isAbsolute(p) ? normalize(p) : resolve(root, p);
     const rel = relative(root, abs);
-    if (rel === "" || rel === "." || rel.startsWith(`..${sep}`) || rel === ".." || isAbsolute(rel)) {
-      throw new Error(`path is outside the memory repository (or is its root): ${p}`);
+    if (
+      rel === "" ||
+      rel === "." ||
+      rel.startsWith(`..${sep}`) ||
+      rel === ".." ||
+      isAbsolute(rel)
+    ) {
+      throw new Error(
+        `path is outside the memory repository (or is its root): ${p}`,
+      );
     }
     return rel;
   });
-  const git = (args: string[]) => run("git", ["-C", root, ...args], { maxBuffer: 16 << 20 });
+  // The harness git runner: default timeout, non-interactive env, no commit signing, MemFS proxy
+  // args, debug logging. A hung git call must not hold the cross-process memory lease forever.
+  const git = (args: string[]) => runGit(root, args);
   // Literal pathspecs: a memory file named `[a].md` must never act as a glob that also
   // matches `a.md` (another thread's edit).
   const specs = paths.map((p) => `:(literal)${p}`);
@@ -55,7 +64,9 @@ export async function commitMemoryPaths(
       // that matches nothing, which is exactly a file whose deletion is already staged (`git rm`):
       // skip those, since the index already holds the deletion and the commit below includes it.
       const tracked = new Set(
-        (await git(["ls-files", "-z", "--cached", "--", ...specs])).stdout.split("\0").filter(Boolean),
+        (await git(["ls-files", "-z", "--cached", "--", ...specs])).stdout
+          .split("\0")
+          .filter(Boolean),
       );
       // A path is stageable when it exists on disk or is tracked, either as a file or as a
       // directory with tracked files under it (a deleted folder named by its path).
@@ -67,8 +78,15 @@ export async function commitMemoryPaths(
         return trackedList.some((t) => t.startsWith(prefix));
       });
       if (stageable.length > 0) await git(["add", "-A", "--", ...stageable]);
-      const { stdout } = await git(["diff", "--cached", "--name-only", "--", ...specs]);
-      if (!stdout.trim()) return { status: "nothing-to-commit", paths } as const;
+      const { stdout } = await git([
+        "diff",
+        "--cached",
+        "--name-only",
+        "--",
+        ...specs,
+      ]);
+      if (!stdout.trim())
+        return { status: "nothing-to-commit", paths } as const;
       // `commit -- <paths>` commits only these paths, leaving other staged changes staged.
       await git([
         "commit",

@@ -2,8 +2,8 @@ import { cpSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
-import { getScopedMemoryFilesystemRoot } from "@/agent/memory-filesystem";
 import { commitMemoryPaths } from "@/agent/memory-commit";
+import { getScopedMemoryFilesystemRoot } from "@/agent/memory-filesystem";
 import { getMemoryGitStatus, isGitRepo, pullMemory } from "@/agent/memory-git";
 import { isLocalBackendEnvEnabled } from "@/backend/local/paths";
 import { settingsManager } from "@/settings-manager";
@@ -176,7 +176,9 @@ export async function runMemorySubcommand(
       process.env.MEMORY_DIR ||
       (agentId ? getMemoryRoot(agentId) : "");
     if (!memoryDir) {
-      console.error("Missing memory dir. Pass --memory-dir, set MEMORY_DIR, or give an agent id.");
+      console.error(
+        "Missing memory dir. Pass --memory-dir, set MEMORY_DIR, or give an agent id.",
+      );
       return 1;
     }
     try {
@@ -189,7 +191,9 @@ export async function runMemorySubcommand(
       console.log(JSON.stringify(result));
       return 0;
     } catch (error) {
-      console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(
+        `Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return 1;
     }
   }
