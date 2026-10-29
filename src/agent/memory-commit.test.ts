@@ -78,3 +78,23 @@ describe("commitMemoryPaths", () => {
     expect(git("log", "-1", "--format=%an <%ae>")).toBe("Aya <aya@example.com>");
   });
 });
+
+describe("commitMemoryPaths review fixes", () => {
+  test("paths are literal: a name with glob characters never matches other files", async () => {
+    writeFileSync(join(dir, "[a].md"), "glob\n");
+    git("add", "--", ":(literal)[a].md");
+    git("commit", "-qm", "add glob-named file");
+    writeFileSync(join(dir, "[a].md"), "glob2\n");
+    writeFileSync(join(dir, "a.md"), "a-other-thread\n"); // `[a].md` as a glob would match `a.md`
+    await commitMemoryPaths({ memoryDir: dir, paths: ["[a].md"], message: "literal" });
+    expect(git("show", "--name-only", "--format=", "HEAD")).toBe("[a].md");
+    expect(git("status", "--porcelain", "--", ":(literal)a.md")).toBe("M a.md"); // untouched, unstaged
+  });
+
+  test("a deletion that is already staged (git rm) can be committed by name", async () => {
+    git("rm", "-q", "a.md");
+    const r = await commitMemoryPaths({ memoryDir: dir, paths: ["a.md"], message: "rm a" });
+    expect(r.status).toBe("committed");
+    expect(git("show", "--name-status", "--format=", "HEAD")).toBe("D\ta.md");
+  });
+});
