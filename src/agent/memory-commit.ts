@@ -57,9 +57,14 @@ export async function commitMemoryPaths(
       const tracked = new Set(
         (await git(["ls-files", "-z", "--cached", "--", ...specs])).stdout.split("\0").filter(Boolean),
       );
+      // A path is stageable when it exists on disk or is tracked, either as a file or as a
+      // directory with tracked files under it (a deleted folder named by its path).
+      const trackedList = [...tracked];
       const stageable = specs.filter((_, i) => {
         const p = paths[i] as string;
-        return existsSync(resolve(root, p)) || tracked.has(p);
+        if (existsSync(resolve(root, p)) || tracked.has(p)) return true;
+        const prefix = `${p.replaceAll(sep, "/").replace(/\/+$/, "")}/`;
+        return trackedList.some((t) => t.startsWith(prefix));
       });
       if (stageable.length > 0) await git(["add", "-A", "--", ...stageable]);
       const { stdout } = await git(["diff", "--cached", "--name-only", "--", ...specs]);

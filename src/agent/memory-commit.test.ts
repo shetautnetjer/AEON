@@ -98,3 +98,15 @@ describe("commitMemoryPaths review fixes", () => {
     expect(git("show", "--name-status", "--format=", "HEAD")).toBe("D\ta.md");
   });
 });
+
+test("deleting a whole tracked directory commits by the directory name", async () => {
+  const { mkdirSync } = await import("node:fs");
+  mkdirSync(join(dir, "notes"));
+  writeFileSync(join(dir, "notes", "x.md"), "x\n");
+  writeFileSync(join(dir, "notes", "y.md"), "y\n");
+  git("add", "-A"); git("commit", "-qm", "add notes");
+  rmSync(join(dir, "notes"), { recursive: true, force: true });
+  const r = await commitMemoryPaths({ memoryDir: dir, paths: ["notes"], message: "rm notes" });
+  expect(r.status).toBe("committed");
+  expect(git("show", "--name-status", "--format=", "HEAD").split("\n").sort()).toEqual(["D\tnotes/x.md", "D\tnotes/y.md"]);
+});
