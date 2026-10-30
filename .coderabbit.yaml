@@ -1,0 +1,7 @@
+# Review only PRs that are ready: skip drafts, and don't re-review every push.
+# Ask for another pass with "@coderabbitai review".
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: false
