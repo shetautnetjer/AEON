@@ -5,12 +5,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { __testOverrideChannelsRoot } from "@/channels/config";
 import { startLocalChannelGateway } from "@/channels/gateway-local";
+import { CHANNEL_GATEWAY_READY_SIGNAL } from "@/channels/gateway-supervisor";
 import { runChannelGatewaySubcommand } from "@/cli/subcommands/channel-gateway";
 import { type AppServerHandle, startAppServer } from "@/websocket/app-server";
 import { parseAppServerWebsocketAuthSettings } from "@/websocket/app-server-auth";
 
-// Aya's daemon runs with `--ws-auth capability-token`. These tests drive the gateway's own entry
-// points against such a server, so they fail if the token is not wired through to the client.
+// An always-on App Server started with `--ws-auth capability-token`. These tests drive the
+// gateway's own entry points against such a server, so they fail if the token is not wired
+// through from the CLI flag to the client.
 const sha256Hex = (v: string) => createHash("sha256").update(v).digest("hex");
 let handle: AppServerHandle | null = null;
 let dir: string | null = null;
@@ -67,6 +69,44 @@ describe("channel gateway against a capability-token App Server", () => {
         new Promise((r) => setTimeout(() => r("timeout"), 3000)),
       ]);
       expect(outcome).toBe("refused");
+    }
+  });
+
+  test("the CLI attaches with a valid --app-server-token-file", async () => {
+    handle = await tokenServer();
+    dir = mkdtempSync(join(tmpdir(), "cg-auth-"));
+    __testOverrideChannelsRoot(dir);
+    const tokenFile = join(dir, "token");
+    writeFileSync(tokenFile, "gateway-secret\n");
+    const logs: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((m: unknown) => {
+      logs.push(String(m));
+    });
+    const err = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const exit = runChannelGatewaySubcommand([
+        "--app-server-url",
+        handle.controlUrl,
+        "--channels",
+        "custom",
+        "--allow-startup-errors",
+        "--app-server-token-file",
+        tokenFile,
+      ]);
+      // Ready means the CLI's client attached through the token; then stop it the way systemd does.
+      for (
+        let i = 0;
+        i < 100 && !logs.includes(CHANNEL_GATEWAY_READY_SIGNAL);
+        i++
+      ) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      expect(logs).toContain(CHANNEL_GATEWAY_READY_SIGNAL);
+      process.emit("SIGTERM");
+      expect(await exit).toBe(0);
+    } finally {
+      log.mockRestore();
+      err.mockRestore();
     }
   });
 
