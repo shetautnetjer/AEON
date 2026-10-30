@@ -197,9 +197,7 @@ export async function startLocalChannelGateway(
   const client = createAppServerClient({
     url: options.appServerUrl,
     WebSocket: WebSocket as never,
-    ...(options.appServerAuthToken !== undefined
-      ? { authToken: options.appServerAuthToken }
-      : {}),
+    authToken: options.appServerAuthToken,
   });
   await client.connect();
   let serverInfo: Awaited<ReturnType<typeof client.info>>;

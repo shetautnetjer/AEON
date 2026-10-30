@@ -3,14 +3,14 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import WebSocket from "ws";
-import { createAppServerClient } from "@/app-server-client";
+import { __testOverrideChannelsRoot } from "@/channels/config";
+import { startLocalChannelGateway } from "@/channels/gateway-local";
 import { runChannelGatewaySubcommand } from "@/cli/subcommands/channel-gateway";
 import { type AppServerHandle, startAppServer } from "@/websocket/app-server";
 import { parseAppServerWebsocketAuthSettings } from "@/websocket/app-server-auth";
 
-// A capability-token App Server (how Aya's daemon runs) must accept the channel gateway's
-// client only with the token, which channel-gateway now reads from --app-server-token-file.
+// Aya's daemon runs with `--ws-auth capability-token`. These tests drive the gateway's own entry
+// points against such a server, so they fail if the token is not wired through to the client.
 const sha256Hex = (v: string) => createHash("sha256").update(v).digest("hex");
 let handle: AppServerHandle | null = null;
 let dir: string | null = null;
@@ -18,49 +18,55 @@ let dir: string | null = null;
 afterEach(async () => {
   await handle?.close();
   handle = null;
+  __testOverrideChannelsRoot(null);
   if (dir) rmSync(dir, { recursive: true, force: true });
   dir = null;
 });
 
-describe("channel-gateway against a capability-token App Server", () => {
-  test("the gateway's client connects with the token and is refused without it", async () => {
-    handle = await startAppServer({
-      listen: "ws://127.0.0.1:0",
-      websocketAuth: parseAppServerWebsocketAuthSettings({
-        wsAuth: "capability-token",
-        wsTokenSha256: sha256Hex("gateway-secret"),
-      }),
-    });
-    const withToken = createAppServerClient({
-      url: handle.controlUrl,
-      WebSocket: WebSocket as never,
-      authToken: "gateway-secret",
-    });
-    await withToken.connect();
-    const info = await withToken.info();
-    expect(info.type).toBe("app_server_info_response");
-    withToken.close();
+async function tokenServer(): Promise<AppServerHandle> {
+  return startAppServer({
+    listen: "ws://127.0.0.1:0",
+    websocketAuth: parseAppServerWebsocketAuthSettings({
+      wsAuth: "capability-token",
+      wsTokenSha256: sha256Hex("gateway-secret"),
+    }),
+  });
+}
 
-    // Without the token the server refuses the WebSocket upgrade with 401 before any socket opens;
-    // check it with a plain upgrade request so it doesn't depend on a client's error events.
-    // Without (or with a wrong) token the upgrade is refused, so the gateway's client can never
-    // attach. connect() rejects instead of opening.
-    for (const authToken of [undefined, "wrong-token"]) {
-      const client = createAppServerClient({
-        url: handle.controlUrl,
-        WebSocket: WebSocket as never,
-        ...(authToken ? { authToken } : {}),
+describe("channel gateway against a capability-token App Server", () => {
+  test("startLocalChannelGateway attaches with appServerAuthToken and is refused without it", async () => {
+    handle = await tokenServer();
+    dir = mkdtempSync(join(tmpdir(), "cg-auth-"));
+    __testOverrideChannelsRoot(dir);
+
+    const gateway = await startLocalChannelGateway({
+      appServerUrl: handle.controlUrl,
+      appServerAuthToken: "gateway-secret",
+      channelNames: [],
+      failOnStartupError: false,
+      logger: () => {},
+    });
+    await gateway.close();
+
+    for (const appServerAuthToken of [undefined, "wrong-token"]) {
+      const attempt = startLocalChannelGateway({
+        appServerUrl: handle.controlUrl,
+        appServerAuthToken,
+        channelNames: [],
+        failOnStartupError: false,
+        logger: () => {},
       });
-      client.socket.on?.("error", () => {});
       const outcome = await Promise.race([
-        client.connect().then(
-          () => "opened",
+        attempt.then(
+          async (g) => {
+            await g.close();
+            return "attached";
+          },
           () => "refused",
         ),
         new Promise((r) => setTimeout(() => r("timeout"), 3000)),
       ]);
       expect(outcome).toBe("refused");
-      client.close();
     }
   });
 

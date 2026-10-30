@@ -315,6 +315,14 @@ export class AppServerClient {
     attachSocketListener(this.socket, "close", (event) => {
       this.handleDisconnect("control", event);
     });
+    // Keep an "error" listener for the socket's whole life. connect() listens only until it
+    // settles, and a refused upgrade (e.g. a wrong capability token) can emit a second error
+    // after that. An unlistened "error" on an EventEmitter is an uncaught exception that would
+    // crash a long-running client. Failures still surface through connect() and "close".
+    // Prefer the EventEmitter side when present: under Bun's `ws`, addEventListener and `on` are
+    // separate lists, and only an `on("error")` listener prevents the unhandled-error throw.
+    if (this.socket.on) this.socket.on("error", () => {});
+    else attachSocketListener(this.socket, "error", () => {});
   }
 
   async connect(): Promise<this> {

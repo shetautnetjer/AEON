@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { listenForGatewayCommands } from "@/channels/gateway-command-input";
 import { startLocalChannelGateway } from "@/channels/gateway-local";
@@ -78,7 +79,6 @@ export async function runChannelGatewaySubcommand(
   let appServerAuthToken: string | undefined;
   if (values["app-server-token-file"]) {
     try {
-      const { readFileSync } = await import("node:fs");
       appServerAuthToken = readFileSync(
         values["app-server-token-file"],
         "utf8",
@@ -134,7 +134,7 @@ export async function runChannelGatewaySubcommand(
 
     void startLocalChannelGateway({
       appServerUrl,
-      ...(appServerAuthToken !== undefined ? { appServerAuthToken } : {}),
+      appServerAuthToken,
       channelNames,
       failOnStartupError: values["allow-startup-errors"] !== true,
       restoreAgentScope,
