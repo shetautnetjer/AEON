@@ -50,6 +50,12 @@ import type {
 
 export interface StartLocalChannelGatewayOptions {
   appServerUrl: string;
+  /**
+   * Capability token for an App Server started with `--ws-auth capability-token`
+   * (sent as `Authorization: Bearer`). Omit for the unauthenticated loopback
+   * App Server that `server --channels` starts for its own gateway.
+   */
+  appServerAuthToken?: string;
   channelNames: string[];
   failOnStartupError?: boolean;
   restoreAgentScope?: ChannelRestoreAgentScope | null;
@@ -191,6 +197,9 @@ export async function startLocalChannelGateway(
   const client = createAppServerClient({
     url: options.appServerUrl,
     WebSocket: WebSocket as never,
+    ...(options.appServerAuthToken !== undefined
+      ? { authToken: options.appServerAuthToken }
+      : {}),
   });
   await client.connect();
   let serverInfo: Awaited<ReturnType<typeof client.info>>;
