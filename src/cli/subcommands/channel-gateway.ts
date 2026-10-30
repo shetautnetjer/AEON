@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { listenForGatewayCommands } from "@/channels/gateway-command-input";
 import { startLocalChannelGateway } from "@/channels/gateway-local";
@@ -37,6 +38,7 @@ export async function runChannelGatewaySubcommand(
 ): Promise<number> {
   let values: {
     "app-server-url"?: string;
+    "app-server-token-file"?: string;
     channels?: string;
     "restore-agent-scope"?: string;
     "allow-startup-errors"?: boolean;
@@ -50,6 +52,7 @@ export async function runChannelGatewaySubcommand(
       allowPositionals: false,
       options: {
         "app-server-url": { type: "string" },
+        "app-server-token-file": { type: "string" },
         channels: { type: "string" },
         "restore-agent-scope": { type: "string" },
         "allow-startup-errors": { type: "boolean" },
@@ -72,6 +75,25 @@ export async function runChannelGatewaySubcommand(
     return 1;
   }
   const appServerUrl = values["app-server-url"];
+  // A file, not a flag value, so the capability token never appears in argv or `ps`.
+  let appServerAuthToken: string | undefined;
+  if (values["app-server-token-file"]) {
+    try {
+      appServerAuthToken = readFileSync(
+        values["app-server-token-file"],
+        "utf8",
+      ).trim();
+    } catch (error) {
+      console.error(
+        `channel-gateway: cannot read --app-server-token-file: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return 1;
+    }
+    if (!appServerAuthToken) {
+      console.error("channel-gateway: --app-server-token-file is empty");
+      return 1;
+    }
+  }
 
   let channelNames = (values.channels ?? "")
     .split(",")
@@ -112,6 +134,7 @@ export async function runChannelGatewaySubcommand(
 
     void startLocalChannelGateway({
       appServerUrl,
+      appServerAuthToken,
       channelNames,
       failOnStartupError: values["allow-startup-errors"] !== true,
       restoreAgentScope,
