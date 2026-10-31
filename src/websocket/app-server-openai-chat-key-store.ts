@@ -126,6 +126,12 @@ function tempPathFor(path: string): string {
   return `${path}.${process.pid}.tmp`;
 }
 
+// Distinct from tempPathFor so an exit-time sync write can't collide with an
+// async flush that is still mid-write.
+function exitTempPathFor(path: string): string {
+  return `${path}.${process.pid}.exit.tmp`;
+}
+
 async function writeNow(): Promise<void> {
   if (!dirty) return;
   dirty = false;
@@ -138,21 +144,23 @@ async function writeNow(): Promise<void> {
     await chmod(tempPath, 0o600);
     await rename(tempPath, path);
   } catch (error) {
+    // Keep the changes pending so the next flush (or exit hook) retries.
+    dirty = true;
     debugWarn(LOG_PREFIX, `failed to write ${path}: ${String(error)}`);
   }
 }
 
 function writeNowSync(): void {
-  if (!dirty) return;
   dirty = false;
   const path = getChatKeyStorePath();
-  const tempPath = tempPathFor(path);
+  const tempPath = exitTempPathFor(path);
   try {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(tempPath, serialize(), { mode: 0o600 });
     chmodSync(tempPath, 0o600);
     renameSync(tempPath, path);
   } catch (error) {
+    dirty = true;
     debugWarn(LOG_PREFIX, `failed to write ${path}: ${String(error)}`);
   }
 }
@@ -166,7 +174,9 @@ function installExitHook(): void {
       clearTimeout(flushTimer);
       flushTimer = null;
     }
-    writeNowSync();
+    // An in-flight async flush may not finish before exit (and may fail),
+    // so write the current state synchronously in that case too.
+    if (dirty || flushInFlight) writeNowSync();
   });
 }
 

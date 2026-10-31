@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
+  chmodSync,
   existsSync,
   mkdtempSync,
   readFileSync,
@@ -18,6 +19,7 @@ import {
   flushChatKeyStore,
   getChatKeyConversation,
   getChatKeyStorePath,
+  isChatKeyUnverified,
   MAX_TRACKED_CHAT_KEYS,
   setChatKeyConversation,
 } from "@/websocket/app-server-openai-chat-key-store";
@@ -37,6 +39,7 @@ describe("OpenAI chat-key store persistence", () => {
   });
 
   afterEach(() => {
+    chmodSync(dir, 0o700);
     __testClearChatKeyStore();
     __testSetBackend(null);
     if (originalDir === undefined) delete process.env[ENV_KEY];
@@ -174,5 +177,76 @@ describe("OpenAI chat-key store persistence", () => {
     expect(await resolveConversationId("agent-1", "chat-key:agent-1:a")).toBe(
       "conv-fresh",
     );
+  });
+  test("failed write stays dirty and the next flush retries", async () => {
+    setChatKeyConversation("chat-key:agent-1:a", "conv-a");
+    chmodSync(dir, 0o500);
+    await flushChatKeyStore();
+    const path = getChatKeyStorePath();
+    expect(existsSync(path)).toBe(false);
+
+    chmodSync(dir, 0o700);
+    await flushChatKeyStore();
+    expect(readFileSync(path, "utf8")).toContain("conv-a");
+  });
+
+  test("transient retrieve failure keeps the restored mapping unverified", async () => {
+    setChatKeyConversation("chat-key:agent-1:a", "conv-live");
+    await flushChatKeyStore();
+    __testResetChatKeyStoreForReload();
+
+    let failRetrieve = true;
+    let retrieves = 0;
+    const created: string[] = [];
+    __testSetBackend({
+      retrieveConversation: async (id: string) => {
+        retrieves++;
+        if (failRetrieve) {
+          const error = new Error("Service Unavailable") as Error & {
+            status: number;
+          };
+          error.status = 503;
+          throw error;
+        }
+        return { id };
+      },
+      createConversation: async () => {
+        created.push("x");
+        return { id: "conv-new" };
+      },
+    } as unknown as Backend);
+
+    const key = "chat-key:agent-1:a";
+    expect(await resolveConversationId("agent-1", key)).toBe("conv-live");
+    expect(isChatKeyUnverified(key)).toBe(true);
+
+    failRetrieve = false;
+    expect(await resolveConversationId("agent-1", key)).toBe("conv-live");
+    expect(isChatKeyUnverified(key)).toBe(false);
+    expect(retrieves).toBe(2);
+    expect(created).toEqual([]);
+  });
+
+  test("concurrent requests for a new key share one conversation", async () => {
+    let n = 0;
+    __testSetBackend({
+      retrieveConversation: async (id: string) => ({ id }),
+      createConversation: async () => {
+        n++;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return { id: `conv-${n}` };
+      },
+    } as unknown as Backend);
+
+    const key = "chat-key:agent-1:new";
+    const [a, b] = await Promise.all([
+      resolveConversationId("agent-1", key),
+      resolveConversationId("agent-1", key),
+    ]);
+    expect(a).toBe("conv-1");
+    expect(b).toBe("conv-1");
+    expect(n).toBe(1);
+    expect(getChatKeyConversation(key)).toBe("conv-1");
+    expect(isChatKeyUnverified(key)).toBe(false);
   });
 });

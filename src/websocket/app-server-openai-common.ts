@@ -302,7 +302,15 @@ export async function createConversationSerialized(
       const raced = getChatKeyConversation(reuseKey);
       if (raced && !isChatKeyUnverified(reuseKey)) return raced;
     }
-    return await createConversationWithRetry(agentId);
+    const id = await createConversationWithRetry(agentId);
+    // Pin inside the queue so a concurrent request with the same key, queued
+    // behind this one, sees the mapping instead of creating a second
+    // conversation. Created this run, so it is already verified.
+    if (reuseKey) {
+      setChatKeyConversation(reuseKey, id);
+      markChatKeyVerified(reuseKey);
+    }
+    return id;
   });
   const settled = creation.then(
     () => undefined,
@@ -326,13 +334,16 @@ export async function resolveConversationId(
     if (!isChatKeyUnverified(chatKey)) return existing;
     // Restored from disk: confirm the conversation still exists before
     // routing a turn into it. Only a definite not-found drops the mapping;
-    // anything else (transient failure, backend without retrieve) keeps it.
-    if (await persistedConversationExists(existing)) {
+    // an indeterminate result (transient failure, backend without retrieve)
+    // keeps it but leaves it unverified so the next request re-checks.
+    const status = await persistedConversationStatus(existing);
+    if (status === "exists") {
       if (getChatKeyConversation(chatKey) === existing) {
         markChatKeyVerified(chatKey);
       }
       return existing;
     }
+    if (status === "unknown") return existing;
     if (getChatKeyConversation(chatKey) === existing) {
       deleteChatKeyConversation(chatKey);
     }
@@ -347,21 +358,21 @@ function isBackendNotFoundError(error: unknown): boolean {
   return status === 404 || status === 422;
 }
 
-async function persistedConversationExists(
+async function persistedConversationStatus(
   conversationId: string,
-): Promise<boolean> {
+): Promise<"exists" | "missing" | "unknown"> {
   try {
     await getBackend().retrieveConversation(conversationId);
-    return true;
+    return "exists";
   } catch (error) {
     if (isBackendNotFoundError(error)) {
       debugLog(
         "openai-chat-keys",
         `persisted conversation ${conversationId} no longer exists; starting a new one`,
       );
-      return false;
+      return "missing";
     }
-    return true;
+    return "unknown";
   }
 }
 
