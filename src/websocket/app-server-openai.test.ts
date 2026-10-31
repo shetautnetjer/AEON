@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
+import { existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Backend } from "@/backend";
 import { __testSetBackend } from "@/backend";
@@ -16,6 +17,33 @@ import {
   __testResetConversationMap,
   __testSetRunTurnImpl,
 } from "@/websocket/app-server-openai";
+import {
+  __testClearChatKeyStore,
+  getChatKeyStorePath,
+} from "@/websocket/app-server-openai-chat-key-store";
+
+// The chat-key store persists under the local-backend dir; point it at a
+// throwaway dir for the whole file so the suite never reads or writes the
+// developer's real ~/.letta/lc-local-backend/openai-chat-keys.json. Setting
+// it at module load is early enough: the store resolves the dir lazily on
+// first access, which only happens inside a test. Clearing the store keeps
+// entries left by another suite sharing this worker from leaking in.
+const testLocalBackendDir = mkdtempSync(
+  join(tmpdir(), "letta-openai-test-backend-"),
+);
+const previousLocalBackendDir = process.env.LETTA_LOCAL_BACKEND_DIR;
+process.env.LETTA_LOCAL_BACKEND_DIR = testLocalBackendDir;
+__testClearChatKeyStore();
+
+afterAll(() => {
+  __testClearChatKeyStore();
+  if (previousLocalBackendDir === undefined) {
+    delete process.env.LETTA_LOCAL_BACKEND_DIR;
+  } else {
+    process.env.LETTA_LOCAL_BACKEND_DIR = previousLocalBackendDir;
+  }
+  rmSync(testLocalBackendDir, { recursive: true, force: true });
+});
 
 const TEST_AGENTS = [
   {
@@ -427,6 +455,51 @@ describe("app-server OpenAI-compatible API", () => {
       "conv-test-1",
     ]);
     expect(created.length).toBe(2);
+  });
+
+  test("chat-key writes never touch the real local-backend dir", async () => {
+    const realPath = join(
+      homedir(),
+      ".letta",
+      "lc-local-backend",
+      "openai-chat-keys.json",
+    );
+    const existedBefore = existsSync(realPath);
+    const mtimeBefore = existedBefore ? statSync(realPath).mtimeMs : null;
+
+    __testSetBackend(fakeBackend());
+    stubTurn();
+    handle = await startAppServer({
+      listen: "ws://127.0.0.1:0",
+      openaiApi: true,
+    });
+
+    const response = await fetch(httpUrl(handle, "/v1/chat/completions"), {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-letta-chat-key": "guard-chat",
+      },
+      body: JSON.stringify({
+        model: "memo",
+        messages: [{ role: "user", content: "hi" }],
+      }),
+    });
+    expect(response.status).toBe(200);
+
+    // close() awaits the chat-key flush: the persisted entry must land in
+    // the temp dir while the real path stays untouched.
+    await handle.close();
+    handle = null;
+
+    expect(getChatKeyStorePath()).toBe(
+      join(testLocalBackendDir, "openai-chat-keys.json"),
+    );
+    expect(existsSync(getChatKeyStorePath())).toBe(true);
+    expect(existsSync(realPath)).toBe(existedBefore);
+    if (mtimeBefore !== null) {
+      expect(statSync(realPath).mtimeMs).toBe(mtimeBefore);
+    }
   });
 
   test("chat-key header creates and reuses a local conversation", async () => {
