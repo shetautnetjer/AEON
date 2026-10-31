@@ -17,6 +17,7 @@ import {
   handleOpenAiCompatRequest,
   isOpenAiCompatPath,
 } from "@/websocket/app-server-openai";
+import { flushChatKeyStore } from "@/websocket/app-server-openai-chat-key-store";
 import { closeOpenAiBridgeRuntime } from "@/websocket/app-server-openai-turn";
 import { getAppServerInfoResponse } from "@/websocket/listener/commands/app-server-info";
 import { createMissedPongWatchdog } from "@/websocket/listener/heartbeat";
@@ -437,6 +438,7 @@ export async function startAppServer(
       clearInterval(heartbeatInterval);
       if (options.openaiApi) {
         closeOpenAiBridgeRuntime();
+        await flushChatKeyStore();
       }
       for (const client of wss.clients) {
         terminateSocket(client);
