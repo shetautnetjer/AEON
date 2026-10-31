@@ -88,6 +88,64 @@ setChatKeyConversation("chat-key:agent-2:b", "conv-b");
 await flushChatKeyStore();
 `;
 
+// Exit-during-flush worker: the pre-write hook fires inside the async write's
+// critical section (after the disk read, lock held) and exits the process,
+// leaving the flush suspended on an await it can never resume from. The exit
+// listener's sync write must then reuse the lock this process still holds.
+// The hook is one-shot because the sync write invokes it again inside the
+// "exit" handler, where a nested process.exit would be wrong.
+const EXIT_WORKER_SOURCE = `
+import {
+  __testSetChatKeyPreWriteHook,
+  flushChatKeyStore,
+  setChatKeyConversation,
+} from ${JSON.stringify(join(import.meta.dir, "app-server-openai-chat-key-store.ts"))};
+
+let exiting = false;
+__testSetChatKeyPreWriteHook(() => {
+  if (exiting) return;
+  exiting = true;
+  process.exit(0);
+});
+setChatKeyConversation("chat-key:agent-1:exit", "conv-exit");
+void flushChatKeyStore();
+`;
+
+// Same exit shape, but the hook marks when it sits inside the critical section
+// and then busy-waits while holding the lock, so a second process spawned on
+// that mark is provably blocked on the lock when the exit write runs.
+const EXIT_HOLD_WORKER_SOURCE = `
+import { writeFileSync } from "node:fs";
+import {
+  __testSetChatKeyPreWriteHook,
+  flushChatKeyStore,
+  setChatKeyConversation,
+} from ${JSON.stringify(join(import.meta.dir, "app-server-openai-chat-key-store.ts"))};
+
+let exiting = false;
+__testSetChatKeyPreWriteHook(() => {
+  if (exiting) return;
+  exiting = true;
+  writeFileSync(process.env.CHAT_KEY_INSIDE as string, "");
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 800);
+  process.exit(0);
+});
+setChatKeyConversation("chat-key:agent-1:exit", "conv-exit");
+void flushChatKeyStore();
+`;
+
+// Second process that waits on the lock while the exiting process holds it,
+// then merges its own key on top of whatever the exit write left on disk.
+const LATE_WRITER_SOURCE = `
+import {
+  flushChatKeyStore,
+  setChatKeyConversation,
+} from ${JSON.stringify(join(import.meta.dir, "app-server-openai-chat-key-store.ts"))};
+
+setChatKeyConversation("chat-key:agent-2:b", "conv-b");
+await flushChatKeyStore();
+`;
+
 describe("OpenAI chat-key store persistence", () => {
   let dir: string;
   let originalDir: string | undefined;
@@ -432,5 +490,99 @@ describe("OpenAI chat-key store persistence", () => {
     expect(n).toBe(1);
     expect(getChatKeyConversation(key)).toBe("conv-1");
     expect(isChatKeyUnverified(key)).toBe(false);
+  });
+
+  test("exit with a suspended flush holding the lock still writes pending keys", async () => {
+    const workerFile = join(dir, "chat-key-exit-worker.ts");
+    writeFileSync(workerFile, EXIT_WORKER_SOURCE, { mode: 0o600 });
+    const startedAt = Date.now();
+    const child = Bun.spawn([process.execPath, workerFile], {
+      cwd: join(import.meta.dir, "..", ".."),
+      env: { ...process.env, [ENV_KEY]: dir },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    let exitCode: number;
+    try {
+      exitCode = await Promise.race([
+        child.exited,
+        new Promise<number>((_resolve, reject) =>
+          setTimeout(() => reject(new Error("exit worker timed out")), 10_000),
+        ),
+      ]);
+    } finally {
+      try {
+        child.kill();
+      } catch {}
+    }
+    const elapsedMs = Date.now() - startedAt;
+    if (exitCode !== 0) {
+      throw new Error(
+        `worker exited ${exitCode}: ${await new Response(child.stderr).text()}`,
+      );
+    }
+    // A sync write that tried to re-acquire the lock would eat the full 2 s
+    // lock wait against this process's own suspended flush.
+    expect(elapsedMs).toBeLessThan(1500);
+    const entries = new Map(readStoreEntries(getChatKeyStorePath()));
+    expect(entries.get("chat-key:agent-1:exit")).toBe("conv-exit");
+  });
+
+  test("a process waiting on the lock merges correctly after the exit write", async () => {
+    const exitWorkerFile = join(dir, "chat-key-exit-hold-worker.ts");
+    const lateWorkerFile = join(dir, "chat-key-late-worker.ts");
+    writeFileSync(exitWorkerFile, EXIT_HOLD_WORKER_SOURCE, { mode: 0o600 });
+    writeFileSync(lateWorkerFile, LATE_WRITER_SOURCE, { mode: 0o600 });
+    const insidePath = join(dir, "child-inside");
+    const exiting = Bun.spawn([process.execPath, exitWorkerFile], {
+      cwd: join(import.meta.dir, "..", ".."),
+      env: { ...process.env, [ENV_KEY]: dir, CHAT_KEY_INSIDE: insidePath },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    let late: ReturnType<typeof Bun.spawn> | undefined;
+    try {
+      // The exiting worker is now inside its critical section holding the
+      // lock for ~800 ms, so the late worker is forced to wait on it.
+      await waitForFile(insidePath, 15_000);
+      const lateProc = Bun.spawn([process.execPath, lateWorkerFile], {
+        cwd: join(import.meta.dir, "..", ".."),
+        env: { ...process.env, [ENV_KEY]: dir },
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      late = lateProc;
+      const lateStderr = new Response(lateProc.stderr).text();
+      const exitCode = await Promise.race([
+        exiting.exited,
+        new Promise<number>((_resolve, reject) =>
+          setTimeout(() => reject(new Error("exit worker timed out")), 10_000),
+        ),
+      ]);
+      if (exitCode !== 0) {
+        throw new Error(
+          `exit worker exited ${exitCode}: ${await new Response(exiting.stderr).text()}`,
+        );
+      }
+      const lateCode = await Promise.race([
+        late.exited,
+        new Promise<number>((_resolve, reject) =>
+          setTimeout(() => reject(new Error("late worker timed out")), 10_000),
+        ),
+      ]);
+      if (lateCode !== 0) {
+        throw new Error(`late worker exited ${lateCode}: ${await lateStderr}`);
+      }
+    } finally {
+      try {
+        exiting.kill();
+      } catch {}
+      try {
+        late?.kill();
+      } catch {}
+    }
+    const entries = new Map(readStoreEntries(getChatKeyStorePath()));
+    expect(entries.get("chat-key:agent-1:exit")).toBe("conv-exit");
+    expect(entries.get("chat-key:agent-2:b")).toBe("conv-b");
   });
 });

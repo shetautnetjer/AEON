@@ -44,6 +44,13 @@ let loaded = false;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let flushInFlight: Promise<void> | null = null;
 let exitHookInstalled = false;
+// Release of the interprocess lock while writeMerged's critical section is
+// suspended on an await. The exit-time sync write reuses it instead of
+// acquiring a second time: an "exit" listener can never let the suspended
+// async flush resume and release, so re-acquiring would wait out the whole
+// lock timeout against this process's own live owner and drop the pending
+// mappings.
+let heldRelease: (() => void) | null = null;
 // Test seam invoked inside a write's critical section after the disk read.
 let preWriteHook: (() => void | Promise<void>) | null = null;
 
@@ -208,7 +215,16 @@ async function writeMerged(
 ): Promise<MergedWrite | null> {
   let release: (() => void) | null = null;
   try {
-    release = acquireDurableFileLock(path, { waitMs: LOCK_WAIT_MS });
+    const acquired = acquireDurableFileLock(path, { waitMs: LOCK_WAIT_MS });
+    // Guarded so the exit-time sync write can release the lock this suspended
+    // flush still holds and this finally can call it again harmlessly.
+    let released = false;
+    release = () => {
+      if (released) return;
+      released = true;
+      acquired();
+    };
+    heldRelease = release;
     const applied = new Map(pendingChanges);
     const merged = mergePersistedEntries(readPersistedEntries(path), applied);
     const contents = serializeEntries(merged);
@@ -222,6 +238,7 @@ async function writeMerged(
     debugWarn(LOG_PREFIX, `failed to write ${path}: ${String(error)}`);
     return null;
   } finally {
+    if (heldRelease === release) heldRelease = null;
     release?.();
   }
 }
@@ -229,7 +246,16 @@ async function writeMerged(
 function writeMergedSync(path: string, tempPath: string): MergedWrite | null {
   let release: (() => void) | null = null;
   try {
-    release = acquireDurableFileLock(path, { waitMs: LOCK_WAIT_MS });
+    if (heldRelease) {
+      // This process already owns the critical section in a suspended async
+      // flush that can never resume during "exit". Borrow its release instead
+      // of contending with itself, and release it here since the suspended
+      // path's finally will not run.
+      release = heldRelease;
+      heldRelease = null;
+    } else {
+      release = acquireDurableFileLock(path, { waitMs: LOCK_WAIT_MS });
+    }
     const applied = new Map(pendingChanges);
     const merged = mergePersistedEntries(readPersistedEntries(path), applied);
     void preWriteHook?.();
