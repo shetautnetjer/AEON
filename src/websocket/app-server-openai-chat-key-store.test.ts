@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   chmodSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmdirSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -16,6 +18,8 @@ import {
   __testChatKeyStoreSize,
   __testClearChatKeyStore,
   __testResetChatKeyStoreForReload,
+  __testSetChatKeyPreWriteHook,
+  deleteChatKeyConversation,
   flushChatKeyStore,
   getChatKeyConversation,
   getChatKeyStorePath,
@@ -26,6 +30,63 @@ import {
 import { resolveConversationId } from "@/websocket/app-server-openai-common";
 
 const ENV_KEY = "LETTA_LOCAL_BACKEND_DIR";
+
+async function waitForFile(path: string, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!existsSync(path)) {
+    if (Date.now() > deadline) {
+      throw new Error(`timed out waiting for ${path}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
+function readStoreEntries(path: string): Array<[string, string]> {
+  const parsed = JSON.parse(readFileSync(path, "utf8")) as {
+    entries: Array<[string, string]>;
+  };
+  return parsed.entries;
+}
+
+function writeStoreEntries(
+  path: string,
+  entries: Array<[string, string]>,
+): void {
+  writeFileSync(path, JSON.stringify({ version: 1, entries }), {
+    mode: 0o600,
+  });
+}
+
+// Second-process worker: loads the store (before the parent's flush), signals
+// readiness, then waits for the go signal so both processes have loaded before
+// either one writes. Its pre-write hook marks when it sits inside its own
+// read/write critical section.
+const WORKER_SOURCE = `
+import { existsSync, writeFileSync } from "node:fs";
+import {
+  __testSetChatKeyPreWriteHook,
+  flushChatKeyStore,
+  getChatKeyConversation,
+  setChatKeyConversation,
+} from ${JSON.stringify(join(import.meta.dir, "app-server-openai-chat-key-store.ts"))};
+
+const readyPath = process.env.CHAT_KEY_READY as string;
+const goPath = process.env.CHAT_KEY_GO as string;
+const insidePath = process.env.CHAT_KEY_INSIDE as string;
+
+getChatKeyConversation("chat-key:warmup");
+__testSetChatKeyPreWriteHook(() => {
+  writeFileSync(insidePath, "");
+});
+writeFileSync(readyPath, "");
+const deadline = Date.now() + 15_000;
+while (!existsSync(goPath)) {
+  if (Date.now() > deadline) process.exit(3);
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
+}
+setChatKeyConversation("chat-key:agent-2:b", "conv-b");
+await flushChatKeyStore();
+`;
 
 describe("OpenAI chat-key store persistence", () => {
   let dir: string;
@@ -178,18 +239,139 @@ describe("OpenAI chat-key store persistence", () => {
       "conv-fresh",
     );
   });
-  test("failed write stays dirty and the next flush retries", async () => {
-    // A read-only dir doesn't block writes on Windows or for root.
-    if (process.platform === "win32" || process.getuid?.() === 0) return;
-    setChatKeyConversation("chat-key:agent-1:a", "conv-a");
-    chmodSync(dir, 0o500);
-    await flushChatKeyStore();
+  test("failed write keeps changes pending and the next flush retries", async () => {
+    // A directory at the store path blocks the rename target everywhere —
+    // including as root, where permission bits don't apply.
     const path = getChatKeyStorePath();
-    expect(existsSync(path)).toBe(false);
+    mkdirSync(path);
+    setChatKeyConversation("chat-key:agent-1:a", "conv-a");
+    await flushChatKeyStore();
+    expect(statSync(path).isDirectory()).toBe(true);
 
-    chmodSync(dir, 0o700);
+    rmdirSync(path);
     await flushChatKeyStore();
     expect(readFileSync(path, "utf8")).toContain("conv-a");
+  });
+
+  test("a flush merges keys another process wrote after this one loaded", async () => {
+    // Load first; then a second process sharing the storage dir replaces the
+    // file with its own snapshot containing only its key.
+    expect(__testChatKeyStoreSize()).toBe(0);
+    writeStoreEntries(getChatKeyStorePath(), [
+      ["chat-key:agent-2:b", "conv-b"],
+    ]);
+
+    setChatKeyConversation("chat-key:agent-1:a", "conv-a");
+    await flushChatKeyStore();
+
+    expect(readStoreEntries(getChatKeyStorePath())).toEqual([
+      ["chat-key:agent-2:b", "conv-b"],
+      ["chat-key:agent-1:a", "conv-a"],
+    ]);
+    // The other process's key is adopted into memory, still unverified.
+    expect(getChatKeyConversation("chat-key:agent-2:b")).toBe("conv-b");
+    expect(isChatKeyUnverified("chat-key:agent-2:b")).toBe(true);
+  });
+
+  test("a delete removes only that key from the merged file", async () => {
+    writeStoreEntries(getChatKeyStorePath(), [
+      ["chat-key:agent-1:a", "conv-a"],
+      ["chat-key:agent-2:b", "conv-b"],
+    ]);
+
+    deleteChatKeyConversation("chat-key:agent-1:a");
+    await flushChatKeyStore();
+
+    expect(readStoreEntries(getChatKeyStorePath())).toEqual([
+      ["chat-key:agent-2:b", "conv-b"],
+    ]);
+  });
+
+  test("two processes sharing a storage dir merge their chat keys", async () => {
+    const workerFile = join(dir, "chat-key-store-worker.ts");
+    writeFileSync(workerFile, WORKER_SOURCE, { mode: 0o600 });
+    for (let i = 0; i < 5; i++) {
+      const sub = join(dir, `iter-${i}`);
+      mkdirSync(sub, { recursive: true });
+      const readyPath = join(sub, "ready");
+      const goPath = join(sub, "go");
+      const childInside = join(sub, "child-inside");
+      process.env[ENV_KEY] = sub;
+      __testResetChatKeyStoreForReload();
+      // Pause inside this process's write after the disk read so the child's
+      // own read/write either waits on the lock or provably overlaps.
+      __testSetChatKeyPreWriteHook(async () => {
+        const deadline = Date.now() + 500;
+        while (!existsSync(childInside) && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        }
+      });
+
+      const child = Bun.spawn([process.execPath, workerFile], {
+        cwd: join(import.meta.dir, "..", ".."),
+        env: {
+          ...process.env,
+          [ENV_KEY]: sub,
+          CHAT_KEY_READY: readyPath,
+          CHAT_KEY_GO: goPath,
+          CHAT_KEY_INSIDE: childInside,
+        },
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      try {
+        await waitForFile(readyPath, 15_000);
+        setChatKeyConversation("chat-key:agent-1:a", "conv-a");
+        writeFileSync(goPath, "");
+        await flushChatKeyStore();
+        const exitCode = await Promise.race([
+          child.exited,
+          new Promise<number>((_resolve, reject) =>
+            setTimeout(
+              () => reject(new Error("child process timed out")),
+              20_000,
+            ),
+          ),
+        ]);
+        if (exitCode !== 0) {
+          throw new Error(
+            `worker exited ${exitCode}: ${await new Response(child.stderr).text()}`,
+          );
+        }
+      } finally {
+        try {
+          child.kill();
+        } catch {}
+      }
+
+      const entries = new Map(readStoreEntries(getChatKeyStorePath()));
+      expect(entries.get("chat-key:agent-1:a")).toBe("conv-a");
+      expect(entries.get("chat-key:agent-2:b")).toBe("conv-b");
+    }
+  });
+
+  test("local eviction does not delete a key only another process wrote", async () => {
+    // Another process's key only exists on disk; this process loads it, then
+    // evicts it locally under memory pressure from non-persisted keys.
+    writeStoreEntries(getChatKeyStorePath(), [
+      ["chat-key:agent-2:b", "conv-b"],
+      ["chat-key:agent-1:k", "conv-k"],
+    ]);
+    expect(__testChatKeyStoreSize()).toBe(2);
+    for (let i = 0; i < MAX_TRACKED_CHAT_KEYS; i++) {
+      setChatKeyConversation(`memory-only-${i}`, `conv-m-${i}`);
+    }
+    expect(getChatKeyConversation("chat-key:agent-2:b")).toBeUndefined();
+
+    setChatKeyConversation("chat-key:agent-1:n", "conv-n");
+    await flushChatKeyStore();
+
+    const entries = new Map(readStoreEntries(getChatKeyStorePath()));
+    expect(entries.get("chat-key:agent-2:b")).toBe("conv-b");
+    expect(entries.get("chat-key:agent-1:n")).toBe("conv-n");
+    // Adopted back into memory from the merged file, still unverified.
+    expect(getChatKeyConversation("chat-key:agent-2:b")).toBe("conv-b");
+    expect(isChatKeyUnverified("chat-key:agent-2:b")).toBe(true);
   });
 
   test("transient retrieve failure keeps the restored mapping unverified", async () => {
