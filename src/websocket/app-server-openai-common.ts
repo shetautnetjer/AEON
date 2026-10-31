@@ -3,7 +3,16 @@ import type {
   ServerResponse,
 } from "node:http";
 import { getBackend } from "@/backend";
+import { debugLog } from "@/utils/debug";
 import type { WebsocketAuthPolicy } from "@/websocket/app-server-auth";
+import {
+  __testClearChatKeyStore,
+  deleteChatKeyConversation,
+  getChatKeyConversation,
+  isChatKeyUnverified,
+  markChatKeyVerified,
+  setChatKeyConversation,
+} from "@/websocket/app-server-openai-chat-key-store";
 import type {
   TurnOutcome,
   UserContentPart,
@@ -243,20 +252,13 @@ export async function resolveAgentForModel(
 // Conversation continuity for header-keyed chats. Clients that supply a
 // stable chat identity get a pinned Letta conversation; the bounded FIFO
 // map evicts long-idle chats, which then start a fresh conversation.
-const MAX_TRACKED_TRANSCRIPTS = 4096;
-const conversationIdByTranscript = new Map<string, string>();
-
+// `chat-key:` entries persist across App Server restarts (see
+// app-server-openai-chat-key-store.ts).
 export function rememberConversation(
   key: string,
   conversationId: string,
 ): void {
-  conversationIdByTranscript.delete(key);
-  conversationIdByTranscript.set(key, conversationId);
-  while (conversationIdByTranscript.size > MAX_TRACKED_TRANSCRIPTS) {
-    const oldest = conversationIdByTranscript.keys().next().value;
-    if (oldest === undefined) break;
-    conversationIdByTranscript.delete(oldest);
-  }
+  setChatKeyConversation(key, conversationId);
 }
 
 // Conversation creation is serialized per agent: concurrent creations race
@@ -297,8 +299,8 @@ export async function createConversationSerialized(
   const tail = conversationCreateTailByAgent.get(agentId) ?? Promise.resolve();
   const creation = tail.then(async () => {
     if (reuseKey) {
-      const raced = conversationIdByTranscript.get(reuseKey);
-      if (raced) return raced;
+      const raced = getChatKeyConversation(reuseKey);
+      if (raced && !isChatKeyUnverified(reuseKey)) return raced;
     }
     return await createConversationWithRetry(agentId);
   });
@@ -319,9 +321,48 @@ export async function resolveConversationId(
   agentId: string,
   chatKey: string,
 ): Promise<string> {
-  const existing = conversationIdByTranscript.get(chatKey);
-  if (existing) return existing;
+  const existing = getChatKeyConversation(chatKey);
+  if (existing) {
+    if (!isChatKeyUnverified(chatKey)) return existing;
+    // Restored from disk: confirm the conversation still exists before
+    // routing a turn into it. Only a definite not-found drops the mapping;
+    // anything else (transient failure, backend without retrieve) keeps it.
+    if (await persistedConversationExists(existing)) {
+      if (getChatKeyConversation(chatKey) === existing) {
+        markChatKeyVerified(chatKey);
+      }
+      return existing;
+    }
+    if (getChatKeyConversation(chatKey) === existing) {
+      deleteChatKeyConversation(chatKey);
+    }
+  }
   return await createConversationSerialized(agentId, chatKey);
+}
+
+function isBackendNotFoundError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if (error.name === "LocalBackendNotFoundError") return true;
+  const status = (error as { status?: unknown }).status;
+  return status === 404 || status === 422;
+}
+
+async function persistedConversationExists(
+  conversationId: string,
+): Promise<boolean> {
+  try {
+    await getBackend().retrieveConversation(conversationId);
+    return true;
+  } catch (error) {
+    if (isBackendNotFoundError(error)) {
+      debugLog(
+        "openai-chat-keys",
+        `persisted conversation ${conversationId} no longer exists; starting a new one`,
+      );
+      return false;
+    }
+    return true;
+  }
 }
 
 // Clients that know their chat identity can pin it explicitly instead of
@@ -410,6 +451,6 @@ export function getIdempotentOutcome(
 
 /** @internal Clears chat-key and idempotency maps between tests. */
 export function resetOpenAiCompatState(): void {
-  conversationIdByTranscript.clear();
+  __testClearChatKeyStore();
   outcomeByIdempotencyKey.clear();
 }
