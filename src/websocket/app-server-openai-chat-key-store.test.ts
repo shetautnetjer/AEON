@@ -179,6 +179,8 @@ describe("OpenAI chat-key store persistence", () => {
     );
   });
   test("failed write stays dirty and the next flush retries", async () => {
+    // A read-only dir doesn't block writes on Windows or for root.
+    if (process.platform === "win32" || process.getuid?.() === 0) return;
     setChatKeyConversation("chat-key:agent-1:a", "conv-a");
     chmodSync(dir, 0o500);
     await flushChatKeyStore();
