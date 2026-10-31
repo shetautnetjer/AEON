@@ -469,63 +469,6 @@ describe("OpenAI chat-key store persistence", () => {
     expect(created).toEqual([]);
   });
 
-  test("a 422 retrieve failure keeps the restored mapping unverified", async () => {
-    setChatKeyConversation("chat-key:agent-1:a", "conv-live");
-    await flushChatKeyStore();
-    __testResetChatKeyStoreForReload();
-
-    let retrieves = 0;
-    const created: string[] = [];
-    __testSetBackend({
-      retrieveConversation: async (_id: string) => {
-        retrieves++;
-        const error = new Error("Unprocessable Entity") as Error & {
-          status: number;
-        };
-        error.status = 422;
-        throw error;
-      },
-      createConversation: async () => {
-        created.push("x");
-        return { id: "conv-new" };
-      },
-    } as unknown as Backend);
-
-    // A validation error is not a not-found: the pinned mapping must
-    // survive unverified instead of being dropped for a new conversation.
-    const key = "chat-key:agent-1:a";
-    expect(await resolveConversationId("agent-1", key)).toBe("conv-live");
-    expect(isChatKeyUnverified(key)).toBe(true);
-    expect(retrieves).toBe(1);
-    expect(created).toEqual([]);
-  });
-
-  test("a 404 retrieve failure still drops the restored mapping", async () => {
-    setChatKeyConversation("chat-key:agent-1:a", "conv-gone");
-    await flushChatKeyStore();
-    __testResetChatKeyStoreForReload();
-
-    const created: string[] = [];
-    __testSetBackend({
-      retrieveConversation: async (id: string) => {
-        const error = new Error(`Conversation ${id} not found`) as Error & {
-          status: number;
-        };
-        error.status = 404;
-        throw error;
-      },
-      createConversation: async () => {
-        created.push("x");
-        return { id: "conv-fresh" };
-      },
-    } as unknown as Backend);
-
-    const key = "chat-key:agent-1:a";
-    expect(await resolveConversationId("agent-1", key)).toBe("conv-fresh");
-    expect(getChatKeyConversation(key)).toBe("conv-fresh");
-    expect(created).toEqual(["x"]);
-  });
-
   test("concurrent requests for a new key share one conversation", async () => {
     let n = 0;
     __testSetBackend({

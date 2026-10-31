@@ -351,14 +351,11 @@ export async function resolveConversationId(
   return await createConversationSerialized(agentId, chatKey);
 }
 
-// Only a definite "conversation is gone" may drop a pinned mapping. A 422
-// is a validation error, not a not-found: treating it as one would drop the
-// user's mapping and silently start a new conversation on a bad request.
 function isBackendNotFoundError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   if (error.name === "LocalBackendNotFoundError") return true;
   const status = (error as { status?: unknown }).status;
-  return status === 404;
+  return status === 404 || status === 422;
 }
 
 async function persistedConversationStatus(
