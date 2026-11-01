@@ -129,6 +129,14 @@ export async function ensureMemoryRepair(
     conversationId?: string | null;
     result: MemoryPostTurnSyncResult;
     actingUserId?: string | null;
+    /**
+     * Already claimed under the caller's lease (e.g. reflection finalize):
+     * skip claiming and launch the worker with this token.
+     */
+    repairToken?: string;
+    /** Task text for a specialized repair; defaults to the sync prompts. */
+    description?: string;
+    prompt?: string;
   },
   spawn: (args: SpawnBackgroundSubagentTaskArgs) => unknown,
   claimRepair = claimMemoryConflictRepair,
@@ -136,17 +144,24 @@ export async function ensureMemoryRepair(
   let claim: MemoryConflictRepairClaim | undefined;
   try {
     const kind = params.result.status === "invalid" ? "invalid" : "conflict";
-    claim = await claimRepair(params.result.memoryDir, kind);
+    claim =
+      params.repairToken !== undefined
+        ? { status: "claimed", token: params.repairToken }
+        : await claimRepair(params.result.memoryDir, kind);
     if (claim.status !== "claimed") return claim.status === "in_progress";
     const invalid = params.result.status === "invalid";
     spawn({
       subagentType: "memory",
-      description: invalid
-        ? "Repair invalid committed memory"
-        : "Repair memory Git conflict",
-      prompt: invalid
-        ? `The committed memory tree fails the repository's validation, usually because concurrent memory updates were combined. Make one new commit that brings the current memory within the limits while preserving its information: move detail out of oversized files and behind indexes instead of deleting it. Do not change or disable the limits, rewrite history, or perform unrelated edits. If the committed memory already passes validation, stop.\n\nMemory directory: ${params.result.memoryDir}\nReported status: ${params.result.summary}`
-        : `Repair only the existing Git conflict in your memory repository. Do not perform unrelated edits or reorganization. If the conflict is already resolved, stop.\n\nMemory directory: ${params.result.memoryDir}\nReported status: ${params.result.summary}`,
+      description:
+        params.description ??
+        (invalid
+          ? "Repair invalid committed memory"
+          : "Repair memory Git conflict"),
+      prompt:
+        params.prompt ??
+        (invalid
+          ? `The committed memory tree fails the repository's validation, usually because concurrent memory updates were combined. Make one new commit that brings the current memory within the limits while preserving its information: move detail out of oversized files and behind indexes instead of deleting it. Do not change or disable the limits, rewrite history, or perform unrelated edits. If the committed memory already passes validation, stop.\n\nMemory directory: ${params.result.memoryDir}\nReported status: ${params.result.summary}`
+          : `Repair only the existing Git conflict in your memory repository. Do not perform unrelated edits or reorganization. If the conflict is already resolved, stop.\n\nMemory directory: ${params.result.memoryDir}\nReported status: ${params.result.summary}`),
       parentScope: {
         agentId: params.agentId,
         conversationId: params.conversationId ?? "default",

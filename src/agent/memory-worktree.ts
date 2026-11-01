@@ -5,6 +5,10 @@ import { mkdir } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { getAuthToken } from "@/agent/memory-auth";
+import type {
+  MemoryConflictRepairClaim,
+  MemoryRepairKind,
+} from "@/agent/memory-conflict-repair";
 import { runGit as runMemoryGit } from "@/agent/memory-git";
 import { GIT_DISABLE_COMMIT_SIGNING_ARGS } from "@/agent/memory-git-signing";
 import { withMemoryOperation } from "@/agent/memory-operation";
@@ -217,6 +221,7 @@ export type ReflectionMemoryWorktreeFinalizeStatus =
   | "no_changes"
   | "parent_dirty"
   | "merge_conflict"
+  | "repair_started"
   | "dirty_uncommitted"
   | "failed";
 
@@ -230,6 +235,11 @@ export interface ReflectionMemoryWorktreeFinalizeResult {
   summary: string;
   error?: string;
   failurePhase?: "reflection" | "integration";
+  /**
+   * Set on `repair_started`: the attempt token the caller passes to the
+   * repair worker it launches for the conflict left in progress.
+   */
+  repairToken?: string;
 }
 
 export function reflectionIntegrationConsumesTranscript(
@@ -605,6 +615,41 @@ export async function finalizeReflectionMemoryWorktreeUnlocked(
     mergeMessage,
   ]);
   if (!mergeResult) {
+    const claim = await claimReflectionMergeRepair(
+      worktree.parentMemoryDir,
+      options.claimConflictRepair,
+    );
+    if (claim?.status === "claimed") {
+      // The merge stays in progress in the parent checkout so the claimed
+      // repair worker finds a concrete conflict to resolve. The branch is
+      // its second parent and preserves the reflection's commits; only the
+      // now-idle worktree is removed.
+      if (existsSync(worktree.worktreeDir)) {
+        await tryRunGit(worktree.parentMemoryDir, [
+          "worktree",
+          "remove",
+          "--force",
+          worktree.worktreeDir,
+        ]);
+      }
+      debugLog(
+        "memfs-git",
+        "reflection finalized id=%s status=repair_started commitCount=%d mergeInProgress=true branchKept=true",
+        worktree.id,
+        commitCount,
+      );
+      return {
+        status: "repair_started",
+        parentMemoryDir: worktree.parentMemoryDir,
+        reflectionWorktreeDir: worktree.worktreeDir,
+        reflectionBranch: worktree.branchName,
+        commitCount,
+        head,
+        repairToken: claim.token,
+        summary:
+          "Reflection produced memory updates that conflicted with newer changes in the parent memory repo; the merge is left in progress for a background repair worker.",
+      };
+    }
     await tryRunGit(worktree.parentMemoryDir, ["merge", "--abort"]);
     await cleanupWorktreeAndBranch(
       worktree.parentMemoryDir,
@@ -747,4 +792,32 @@ export interface ReflectionMemoryWorktreeFinalizeOptions {
   knownNoChanges?: boolean;
   failureSummary?: string;
   requireAlreadyMerged?: boolean;
+  /**
+   * Claims a conflicted merge for the background repair worker while it is
+   * still in progress under this lease. When supplied and the claim succeeds,
+   * finalize returns `repair_started` and the caller launches the worker with
+   * the returned token. Anything else falls back to aborting and cleaning up.
+   */
+  claimConflictRepair?: (
+    memoryDir: string,
+    kind: MemoryRepairKind,
+  ) => Promise<MemoryConflictRepairClaim>;
+}
+
+/**
+ * Claim the conflicted merge for repair while the lease still guarantees the
+ * checkout is stable. A claim that cannot be taken (already in progress,
+ * attempted, or the marker lock is unreachable) returns nothing so the caller
+ * falls back to the abort-and-retry path.
+ */
+async function claimReflectionMergeRepair(
+  parentMemoryDir: string,
+  claimRepair: ReflectionMemoryWorktreeFinalizeOptions["claimConflictRepair"],
+): Promise<MemoryConflictRepairClaim | undefined> {
+  if (!claimRepair) return undefined;
+  try {
+    return await claimRepair(parentMemoryDir, "conflict");
+  } catch {
+    return undefined;
+  }
 }

@@ -17,13 +17,13 @@ import {
 } from "@/cli/helpers/reflection-arena-hf-upload";
 import { finalizeAutoReflectionCompletion } from "@/cli/helpers/reflection-completion";
 import { isRetryableReflectionArenaModelError } from "@/cli/helpers/reflection-configuration-error";
+import { REFLECTION_AGENT_ID_WAIT_MS } from "@/cli/helpers/reflection-integration";
 import {
   emitReflectionRunEnd,
   emitReflectionRunStart,
   finalizeReflectionMemoryWorktreeLaunch,
   getReflectionFinalizationContext,
   prepareReflectionMemoryWorktreeLaunch,
-  REFLECTION_AGENT_ID_WAIT_MS,
   type ReflectionFeedbackContext,
   type ReflectionLaunchTriggerSource,
   recordReflectionConfigurationFailure,

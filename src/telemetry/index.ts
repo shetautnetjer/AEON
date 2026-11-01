@@ -164,6 +164,7 @@ export interface ReflectionEndData {
 export type ReflectionWorktreeCleanupOutcome =
   | "parent_dirty"
   | "merge_conflict"
+  | "merge_repair"
   | "reflection_worktree_dirty"
   | "subagent_failed";
 
@@ -172,6 +173,7 @@ export interface ReflectionWorktreeCleanupData {
   integration_status:
     | "parent_dirty"
     | "merge_conflict"
+    | "repair_started"
     | "dirty_uncommitted"
     | "failed";
   trigger_source?: ReflectionTriggerSource;
