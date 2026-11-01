@@ -1,6 +1,7 @@
 /** Redaction shared by `letta mcp get` and `letta mcp add/remove` output. */
 
-const SENSITIVE_NAME = /token|key|secret|password|signature|credential|auth/i;
+export const SENSITIVE_NAME =
+  /token|key|secret|password|signature|credential|auth/i;
 
 export function redactUrl(value: string): string {
   try {
@@ -16,7 +17,13 @@ export function redactUrl(value: string): string {
   }
 }
 
-/** Redact values that follow (or are inline with) sensitive-named flags. */
+const URL_LIKE = /^[a-z][a-z0-9+.-]*:\/\//i;
+
+/**
+ * Redact secrets in command-line args: URL credentials and sensitive query
+ * values, `NAME=value` (with or without leading dashes) and `Name: value`
+ * where NAME looks sensitive, and the arg after a sensitive bare flag.
+ */
 export function redactArgs(args: string[]): string[] {
   const redacted: string[] = [];
   let redactNext = false;
@@ -26,19 +33,23 @@ export function redactArgs(args: string[]): string[] {
       redactNext = false;
       continue;
     }
-    if (arg.startsWith("-")) {
-      const equalsIndex = arg.indexOf("=");
-      const flagName = equalsIndex === -1 ? arg : arg.slice(0, equalsIndex);
-      if (SENSITIVE_NAME.test(flagName)) {
-        if (equalsIndex === -1) {
-          redactNext = true;
-          redacted.push(arg);
-        } else {
-          redacted.push(`${flagName}=[REDACTED]`);
-        }
-        continue;
-      }
+    if (URL_LIKE.test(arg)) {
+      redacted.push(redactUrl(arg));
+      continue;
     }
+    const pair = arg.match(/^([^=:\s]+)(=|:\s*)(.*)$/s);
+    if (pair) {
+      const [, name = "", separator = "", value = ""] = pair;
+      if (SENSITIVE_NAME.test(name)) {
+        redacted.push(`${name}${separator}[REDACTED]`);
+      } else {
+        redacted.push(
+          URL_LIKE.test(value) ? `${name}${separator}${redactUrl(value)}` : arg,
+        );
+      }
+      continue;
+    }
+    if (arg.startsWith("-") && SENSITIVE_NAME.test(arg)) redactNext = true;
     redacted.push(arg);
   }
   return redacted;

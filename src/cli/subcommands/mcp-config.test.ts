@@ -14,6 +14,7 @@ function configHarness(
   options: {
     servers?: McpServerConfig[];
     connect?: (config: McpServerConfig) => Promise<ConnectedMcpServer>;
+    writeError?: Error;
   } = {},
 ): ConfigHarness {
   const stdout: string[] = [];
@@ -30,8 +31,11 @@ function configHarness(
       initializeSettings: async () => {},
       isServerMcpAvailable: () => false,
       getLocalServers: () => options.servers ?? [],
-      saveLocalServers: async (agentId, configs) => {
+      updateLocalServers: async (agentId, update) => {
+        if (options.writeError) throw options.writeError;
+        const configs = update(options.servers ?? []);
         saves.push({ agentId, configs });
+        return configs;
       },
       cwd: () => "/work",
       connectLocalServer: async (config) => {
@@ -104,6 +108,8 @@ describe("letta mcp add/remove", () => {
         cwd: "/work",
         env: { API_TOKEN: "[REDACTED]" },
       },
+      warning:
+        "literal secret-looking values stored in settings; prefer --auth-token-env",
     });
     expect(harness.stdout.join("")).not.toContain("sk-");
     expect(harness.connects).toEqual([]);
@@ -148,6 +154,8 @@ describe("letta mcp add/remove", () => {
         url: "https://mcp.example.test/mcp?api_key=%5BREDACTED%5D",
         headers: { Authorization: "[REDACTED]", "X-Secret": "[REDACTED]" },
       },
+      warning:
+        "literal secret-looking values stored in settings; prefer --auth-token-env",
     });
     expect(output).not.toContain("hdr-789");
     expect(output).not.toContain("abc123");
@@ -293,8 +301,164 @@ describe("letta mcp add/remove", () => {
     expect(harness.saves).toHaveLength(1);
     expect(JSON.parse(harness.stdout[0] ?? "{}").check).toEqual({
       status: "failed",
-      error: "spawn srv ENOENT",
+      error: "Connection check failed",
+      errorClass: "Error",
     });
+  });
+
+  test("--check failure output never includes the SDK error message", async () => {
+    const httpError = Object.assign(
+      new Error(
+        "Error POSTing to endpoint (HTTP 401): bad token sk-body-secret at https://u:p@x.test",
+      ),
+      { name: "StreamableHTTPError", code: 401 },
+    );
+    const spawnError = Object.assign(new Error("spawn /x?key=sk-arg ENOENT"), {
+      code: "ENOENT",
+    });
+    for (const [error, expected] of [
+      [httpError, { errorClass: "StreamableHTTPError", httpStatus: 401 }],
+      [spawnError, { errorClass: "Error", errorCode: "ENOENT" }],
+    ] as const) {
+      const harness = configHarness({
+        connect: async () => {
+          throw error;
+        },
+      });
+      expect(
+        await runMcpSubcommand(
+          ["add", "remote", "--command", "srv", "--check"],
+          harness.deps,
+        ),
+      ).toBe(1);
+      const output = harness.stdout.join("");
+      expect(JSON.parse(output).check).toEqual({
+        status: "failed",
+        error: "Connection check failed",
+        ...expected,
+      });
+      expect(output).not.toContain("sk-");
+    }
+  });
+
+  test("redacts NAME=value args without dashes and URL credentials", async () => {
+    const harness = configHarness();
+    expect(
+      await runMcpSubcommand(
+        [
+          "add",
+          "files",
+          "--command",
+          "srv",
+          "--arg=API_KEY=sk-a",
+          "--arg=auth_token=sk-b",
+          "--arg=--Password=sk-c",
+          "--arg=https://user:sk-d@x.test/p?access_token=sk-e&page=2",
+          "--arg=--endpoint=https://x.test/?secret=sk-f",
+          "--arg=Authorization: Bearer sk-g",
+          "--arg=--client-secret",
+          "--arg=sk-h",
+          "--arg=plain=value",
+        ],
+        harness.deps,
+      ),
+    ).toBe(0);
+    const output = harness.stdout.join("");
+    expect(JSON.parse(output).server.args).toEqual([
+      "API_KEY=[REDACTED]",
+      "auth_token=[REDACTED]",
+      "--Password=[REDACTED]",
+      "https://x.test/p?access_token=%5BREDACTED%5D&page=2",
+      "--endpoint=https://x.test/?secret=%5BREDACTED%5D",
+      "Authorization: [REDACTED]",
+      "--client-secret",
+      "[REDACTED]",
+      "plain=value",
+    ]);
+    expect(output).not.toContain("sk-");
+  });
+
+  test("warns when a sensitive --env/--header value is stored literally", async () => {
+    const warning =
+      "literal secret-looking values stored in settings; prefer --auth-token-env";
+    const cases: Array<[string[], string | undefined]> = [
+      [["--command", "srv", "--env", "API_TOKEN=sk-1"], warning],
+      [["--command", "srv", "--env", "LOG_LEVEL=debug"], undefined],
+      [["--url", "https://x.test", "--header", "X-Api-Key: sk-2"], warning],
+      [["--url", "https://x.test", "--auth-token-env", "TOKEN"], undefined],
+      [
+        [
+          "--url",
+          "https://x.test",
+          "--header",
+          "Authorization=Bearer ${TOKEN}",
+        ],
+        undefined,
+      ],
+    ];
+    for (const [flags, expected] of cases) {
+      const harness = configHarness();
+      expect(await runMcpSubcommand(["add", "s", ...flags], harness.deps)).toBe(
+        0,
+      );
+      expect(JSON.parse(harness.stdout[0] ?? "{}").warning).toBe(expected);
+    }
+  });
+
+  test("add and remove exit 1 with a fixed JSON error when the write fails", async () => {
+    for (const argv of [
+      ["add", "files", "--command", "srv"],
+      ["remove", "docs"],
+    ]) {
+      const harness = configHarness({
+        servers: [existing],
+        writeError: Object.assign(new Error("EACCES: /home/u/.letta/x sk-z"), {
+          code: "EACCES",
+        }),
+      });
+      expect(await runMcpSubcommand(argv, harness.deps)).toBe(1);
+      expect(harness.stdout).toEqual([]);
+      expect(errorOf(harness)).toEqual({
+        code: "settings_write_failed",
+        message: "Could not update MCP servers in the settings file",
+        hint: "Filesystem error EACCES",
+      });
+      expect(harness.stderr.join("")).not.toContain("sk-z");
+    }
+  });
+
+  test("a subagent must name --agent to add or remove", async () => {
+    for (const argv of [
+      ["add", "files", "--command", "srv"],
+      ["remove", "docs"],
+    ]) {
+      const harness = configHarness({ servers: [existing] });
+      const deps = {
+        ...harness.deps,
+        env: {
+          AGENT_ID: "agent-child",
+          LETTA_CODE_AGENT_ROLE: "subagent",
+          LETTA_PARENT_AGENT_ID: "agent-root",
+        },
+        lookupParentAgent: async () => {
+          throw new Error("must not resolve the parent for add/remove");
+        },
+      };
+      expect(await runMcpSubcommand(argv, deps)).toBe(1);
+      expect(errorOf(harness).code).toBe("subagent_requires_agent");
+      expect(harness.saves).toEqual([]);
+
+      const explicit = configHarness({ servers: [existing] });
+      expect(
+        await runMcpSubcommand([...argv, "--agent", "agent-child"], {
+          ...deps,
+          stdout: explicit.deps.stdout,
+          stderr: explicit.deps.stderr,
+          updateLocalServers: explicit.deps.updateLocalServers,
+        }),
+      ).toBe(0);
+      expect(explicit.saves[0]?.agentId).toBe("agent-child");
+    }
   });
 
   test("removes a configured server", async () => {

@@ -33,6 +33,7 @@ import type {
   StoredReflectionSettings,
 } from "./reflection-settings";
 import { getRuntimeContext } from "./runtime-context";
+import { AgentMcpDiskSync } from "./settings-agent-mcp-disk";
 import { trackBoundaryError } from "./telemetry/error-reporting";
 import type { ToolsetPreference } from "./tools/toolset-types";
 import type { ClientPreferences } from "./types/client-preferences";
@@ -333,6 +334,16 @@ class SettingsManager {
   // Keys explicitly changed by this process. Only these keys are written back,
   // preventing stale in-memory values from clobbering external updates.
   private dirtyKeys = new Set<string>();
+  /** Per-agent mcpServers vs. other processes; disk wins unless set here. */
+  readonly mcpDisk = new AgentMcpDiskSync({
+    path: () => this.getSettingsPath(),
+    serverKey: () => getCurrentServerKey(this.getSettings()),
+    agents: () => this.getSettings().agents ?? [],
+    setAgents: (agents) => {
+      this.settings = { ...this.getSettings(), agents };
+    },
+    flush: () => this.flush(),
+  });
   private secureTokensCache: SecureTokens = {};
 
   // Mark keys as managed AND dirty (i.e. this process owns the value and it
@@ -882,6 +893,7 @@ class SettingsManager {
     const home = process.env.HOME || homedir();
     const dirPath = join(home, ".letta");
 
+    const ownMcp = this.mcpDisk.snapshot();
     try {
       if (!exists(dirPath)) {
         await mkdir(dirPath, { recursive: true });
@@ -916,7 +928,14 @@ class SettingsManager {
         if (!this.dirtyKeys.has(key)) {
           continue;
         }
-        if (key in settingsRecord) {
+        if (key === "agents" && this.settings.agents) {
+          const disk = existingSettings.agents;
+          merged.agents = this.mcpDisk.merge(
+            this.settings.agents,
+            disk,
+            ownMcp,
+          );
+        } else if (key in settingsRecord) {
           merged[key] = settingsRecord[key];
         } else {
           delete merged[key];
@@ -924,6 +943,7 @@ class SettingsManager {
       }
 
       await writeFile(settingsPath, JSON.stringify(merged, null, 2));
+      this.mcpDisk.written(ownMcp);
     } catch (error) {
       console.error("Error saving settings:", error);
       throw error;
@@ -1718,29 +1738,8 @@ class SettingsManager {
     return this.getAgentSettings(agentId)?.mcpServers ?? [];
   }
   setMcpServers(agentId: string, servers: McpServerConfig[]): void {
+    this.mcpDisk.markOwn(agentId);
     this.upsertAgentSettings(agentId, { mcpServers: servers });
-  }
-  /**
-   * Adopt one agent's MCP servers from disk, where another process (e.g.
-   * `letta mcp add`) may have changed them. Does not mark settings dirty.
-   */
-  async reloadMcpServersFromDisk(agentId: string): Promise<McpServerConfig[]> {
-    await this.flush();
-    const disk = JSON.parse(await readFile(this.getSettingsPath())) as Settings;
-    const settings = this.getSettings();
-    const key = getCurrentServerKey(settings);
-    const baseUrl = key === "api.letta.com" ? undefined : key;
-    const isAgent = (a: AgentSettings) =>
-      a.agentId === agentId && (a.baseUrl ?? undefined) === baseUrl;
-    const fromDisk = disk.agents?.find(isAgent);
-    const agents = [...(settings.agents ?? [])];
-    const index = agents.findIndex(isAgent);
-    const current = agents[index];
-    if (current)
-      agents[index] = { ...current, mcpServers: fromDisk?.mcpServers };
-    else if (fromDisk) agents.push(fromDisk);
-    this.settings = { ...settings, agents };
-    return fromDisk?.mcpServers ?? [];
   }
   /** Resolve the manual override for one conversation; unset means auto. */
   getToolsetPreference(agentId: string, conversationId = "default") {
@@ -2078,6 +2077,7 @@ class SettingsManager {
     this.secretsAvailable = null;
     this.managedKeys.clear();
     this.dirtyKeys.clear();
+    this.mcpDisk.clear();
     this.clearSecureTokensCache();
   }
 

@@ -112,6 +112,8 @@ Commands:
   add       Save one client-local MCP server to this agent's settings. Does
             not authorize; OAuth servers still need the TUI /mcp flow
   remove    Delete one client-local MCP server from this agent's settings
+            (add/remove change only the named or current agent; from a
+            subagent they require an explicit --agent)
 
 Options:
   --agent <id>       Agent ID. Defaults to LETTA_AGENT_ID or AGENT_ID

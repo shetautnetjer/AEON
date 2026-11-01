@@ -892,7 +892,24 @@ export async function runMcpSubcommand(
 
   try {
     await (deps.initializeSettings ?? (() => settingsManager.initialize()))();
-    if (!parsed.values.agent && !parsed.values["agent-id"]) {
+    const explicitAgent = Boolean(
+      parsed.values.agent || parsed.values["agent-id"],
+    );
+    const mutating = parsed.action === "add" || parsed.action === "remove";
+    if (
+      mutating &&
+      !explicitAgent &&
+      (deps.env ?? process.env).LETTA_CODE_AGENT_ROLE === "subagent"
+    ) {
+      // A subagent's MCP view resolves to its root ancestor; never let it
+      // change that agent's servers (or its own, which it cannot use) implicitly.
+      throw new McpCliError(
+        "subagent_requires_agent",
+        `letta mcp ${parsed.action} does not run implicitly from a subagent`,
+        "Pass --agent <agent-id> to name the agent whose servers to change.",
+      );
+    }
+    if (!explicitAgent && !mutating) {
       agentId = await getMcpScopeAgentId(
         agentId,
         deps.env ?? process.env,
@@ -902,7 +919,6 @@ export async function runMcpSubcommand(
     const configContext = (): McpConfigContext => ({
       ...deps,
       agentId,
-      servers: getLocalServers(deps, agentId),
       describe: (config) => serverDetails({ kind: "client", config }),
       connect: (config) =>
         connectConfiguredServer(deps, agentId, config, false),

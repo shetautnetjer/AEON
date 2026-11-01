@@ -5,6 +5,7 @@ import {
 } from "@/mcp-server-config";
 import { settingsManager } from "@/settings-manager";
 import { McpCliError, type McpOutput } from "./mcp-io";
+import { SENSITIVE_NAME } from "./mcp-redaction";
 
 /** parseArgs options for `letta mcp add`; spread into the shared parser. */
 export const MCP_CONFIG_OPTIONS = {
@@ -34,18 +35,19 @@ export interface McpConfigValues {
 }
 
 export interface McpConfigDependencies {
-  /** Persist the agent's client MCP servers. Defaults to settings + flush. */
-  saveLocalServers?: (
+  /**
+   * Locked read-modify-write of only this agent's client MCP servers on disk.
+   * Defaults to settingsManager.mcpDisk.update; must throw on failure.
+   */
+  updateLocalServers?: (
     agentId: string,
-    configs: McpServerConfig[],
-  ) => Promise<void>;
+    update: (current: McpServerConfig[]) => McpServerConfig[],
+  ) => Promise<McpServerConfig[]>;
   cwd?: () => string;
 }
 
 export interface McpConfigContext extends McpConfigDependencies {
   agentId: string;
-  /** The agent's current client-local servers (from settings). */
-  servers: McpServerConfig[];
   /** Redacted JSON view of a config; the same one `letta mcp get` prints. */
   describe: (config: McpServerConfig) => unknown;
   /** One non-interactive connection (no browser OAuth). */
@@ -56,16 +58,27 @@ export interface McpConfigContext extends McpConfigDependencies {
 const ADD_USAGE =
   "Usage: letta mcp add <name> (--command <cmd> [--arg <a>]... [--cwd <dir>] [--env K=V]... | --url <url> [--transport http|sse] [--header K=V]... [--auth-token-env NAME]) [--replace] [--check]";
 
-async function saveServers(
+async function updateServers(
   ctx: McpConfigContext,
-  configs: McpServerConfig[],
+  update: (current: McpServerConfig[]) => McpServerConfig[],
 ): Promise<void> {
-  if (ctx.saveLocalServers) {
-    await ctx.saveLocalServers(ctx.agentId, configs);
-    return;
+  const write =
+    ctx.updateLocalServers ??
+    ((agentId, fn) => settingsManager.mcpDisk.update(agentId, fn));
+  try {
+    await write(ctx.agentId, update);
+  } catch (error) {
+    if (error instanceof McpCliError) throw error;
+    // Our own text only: the cause can quote settings content.
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    throw new McpCliError(
+      "settings_write_failed",
+      "Could not update MCP servers in the settings file",
+      typeof code === "string" && /^E[A-Z0-9_]+$/.test(code)
+        ? `Filesystem error ${code}`
+        : undefined,
+    );
   }
-  settingsManager.setMcpServers(ctx.agentId, configs);
-  await settingsManager.flush();
 }
 
 function parsePairs(
@@ -149,12 +162,46 @@ export function parseMcpAddInput(
   };
 }
 
+type CheckResult =
+  | { status: "connected"; tools: number }
+  | {
+      status: "failed";
+      error: string;
+      errorClass: string;
+      httpStatus?: number;
+      errorCode?: string;
+    };
+
+/**
+ * Fixed text plus non-secret facts only. SDK and server error messages can
+ * echo URLs, headers or response bodies, so they are never printed.
+ */
+export function describeCheckFailure(
+  error: unknown,
+): Extract<CheckResult, { status: "failed" }> {
+  const record = (error ?? {}) as Record<string, unknown>;
+  const name = error instanceof Error ? error.name : "";
+  const status = [record.status, record.code].find(
+    (value): value is number =>
+      typeof value === "number" && value >= 100 && value < 600,
+  );
+  const code =
+    typeof record.code === "string" && /^E[A-Z0-9_]+$/.test(record.code)
+      ? record.code
+      : undefined;
+  return {
+    status: "failed",
+    error: "Connection check failed",
+    errorClass: /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(name) ? name : "Error",
+    ...(status !== undefined ? { httpStatus: status } : {}),
+    ...(code ? { errorCode: code } : {}),
+  };
+}
+
 async function checkConnection(
   ctx: McpConfigContext,
   config: McpServerConfig,
-): Promise<
-  { status: "connected"; tools: number } | { status: "failed"; error: string }
-> {
+): Promise<CheckResult> {
   try {
     const connection = await ctx.connect(config);
     try {
@@ -163,11 +210,21 @@ async function checkConnection(
       await connection.close().catch(() => undefined);
     }
   } catch (error) {
-    return {
-      status: "failed",
-      error: error instanceof Error ? error.message : String(error),
-    };
+    return describeCheckFailure(error);
   }
+}
+
+const LITERAL_SECRET_WARNING =
+  "literal secret-looking values stored in settings; prefer --auth-token-env";
+
+/** True when a user-supplied --env/--header has a sensitive name and a literal value. */
+function hasLiteralSecret(input: McpServerConfigInput): boolean {
+  const pairs = input.transport === "stdio" ? input.env : input.headers;
+  return Object.entries(pairs ?? {}).some(
+    ([name, value]) =>
+      SENSITIVE_NAME.test(name) &&
+      !/^(Bearer\s+)?\$\{[A-Z_][A-Z0-9_]*\}$/.test(value),
+  );
 }
 
 /** `letta mcp add`: write one client-local server to this agent's settings. */
@@ -188,26 +245,28 @@ export async function runMcpAdd(
       error instanceof Error ? error.message : String(error),
     );
   }
-  const exists = ctx.servers.some((server) => server.name === config.name);
-  if (exists && values.replace !== true) {
-    throw new McpCliError(
-      "server_exists",
-      `MCP server '${config.name}' already exists for this agent`,
-      "Pass --replace to overwrite it, or remove it first.",
-    );
-  }
-  const configs = exists
-    ? ctx.servers.map((server) =>
-        server.name === config.name ? config : server,
-      )
-    : [...ctx.servers, config];
-  await saveServers(ctx, configs);
+  const result = { replaced: false };
+  await updateServers(ctx, (current) => {
+    const replaced = current.some((server) => server.name === config.name);
+    if (replaced && values.replace !== true) {
+      throw new McpCliError(
+        "server_exists",
+        `MCP server '${config.name}' already exists for this agent`,
+        "Pass --replace to overwrite it, or remove it first.",
+      );
+    }
+    result.replaced = replaced;
+    return replaced
+      ? current.map((server) => (server.name === config.name ? config : server))
+      : [...current, config];
+  });
   const check = values.check ? await checkConnection(ctx, config) : undefined;
   await ctx.stdout(
     JSON.stringify(
       {
-        action: exists ? "replaced" : "added",
+        action: result.replaced ? "replaced" : "added",
         server: ctx.describe(config),
+        ...(hasLiteralSecret(input) ? { warning: LITERAL_SECRET_WARNING } : {}),
         ...(check ? { check } : {}),
       },
       null,
@@ -228,21 +287,25 @@ export async function runMcpRemove(
       "Usage: letta mcp remove <name>",
     );
   }
-  const removed = ctx.servers.find((server) => server.name === name);
-  if (!removed) {
-    throw new McpCliError(
-      "server_not_found",
-      `No client MCP server named '${name}' is configured for this agent`,
-      "Server-side MCP servers are managed through the Letta ADE or API.",
-    );
-  }
-  await saveServers(
-    ctx,
-    ctx.servers.filter((server) => server !== removed),
-  );
+  const result: { removed?: McpServerConfig } = {};
+  await updateServers(ctx, (current) => {
+    const removed = current.find((server) => server.name === name);
+    if (!removed) {
+      throw new McpCliError(
+        "server_not_found",
+        `No client MCP server named '${name}' is configured for this agent`,
+        "Server-side MCP servers are managed through the Letta ADE or API.",
+      );
+    }
+    result.removed = removed;
+    return current.filter((server) => server !== removed);
+  });
   await ctx.stdout(
     JSON.stringify(
-      { action: "removed", server: ctx.describe(removed) },
+      {
+        action: "removed",
+        server: result.removed && ctx.describe(result.removed),
+      },
       null,
       2,
     ),

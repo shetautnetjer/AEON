@@ -253,7 +253,7 @@
     {
       "path": "src/websocket/listener/commands-reload-mcp.test.ts",
       "timeoutMs": 30000,
-      "reason": "Mutates HOME, the settings singleton, and the process-global client MCP runtime while reconnecting real stdio MCP servers on reload."
+      "reason": "Mutates HOME and the settings singleton, spawns child processes that write the same settings file, and connects a real stdio MCP server end to end."
     }
   ]
 }

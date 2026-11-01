@@ -23,7 +23,6 @@ import { launchReflectionSubagent } from "@/cli/helpers/reflection-launcher";
 import { buildModCommandPrompt } from "@/cli/mods/command-runtime";
 import { DEFAULT_SUMMARIZATION_MODEL } from "@/constants";
 import { runPreCompactHooks } from "@/hooks";
-import { closeClientMcpServers, replaceClientMcpServers } from "@/mcp-runtime";
 import type { ModCommand } from "@/mods/types";
 import { markPostCompactionContextRemindersPending } from "@/reminders/state";
 import { settingsManager } from "@/settings-manager";
@@ -391,50 +390,25 @@ export async function handleReloadCommand(
   }
 
   const mcpSummary = conversationRuntime.agentId
-    ? `\n${await refreshClientMcpServers(conversationRuntime.agentId)}`
+    ? `\n${await reloadClientMcpServerList(conversationRuntime.agentId)}`
     : "";
-  return `Reloaded settings, local mods, agent secrets, and MCP servers${mcpSummary}`;
+  return `Reloaded settings, local mods, agent secrets, and MCP server list${mcpSummary}`;
 }
 
-const MCP_RELOAD_TIMEOUT_MS = 30_000;
-
 /**
- * Reconnect this agent's client-local MCP servers from settings on disk
- * (another process may have run `letta mcp add/remove`). OAuth is
- * non-interactive. Never throws; failures are summarized in the result.
+ * Re-read this agent's client-local MCP server list from settings on disk
+ * (another process may have run `letta mcp add/remove`). Only reads the
+ * list: no connections and no child processes. Never throws.
  */
-export async function refreshClientMcpServers(
+export async function reloadClientMcpServerList(
   agentId: string,
-  timeoutMs = MCP_RELOAD_TIMEOUT_MS,
 ): Promise<string> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const configs = await settingsManager.reloadMcpServersFromDisk(agentId);
-    const timedOut = new Promise<"timeout">((resolve) => {
-      timer = setTimeout(() => resolve("timeout"), timeoutMs);
-    });
-    const states = await Promise.race([
-      replaceClientMcpServers(agentId, configs, {
-        interactiveOAuth: false,
-        stderr: "pipe",
-      }),
-      timedOut,
-    ]);
-    if (states === "timeout") {
-      // Bumps the runtime generation so late connections close themselves.
-      await closeClientMcpServers();
-      return `MCP: refresh timed out after ${Math.round(timeoutMs / 1000)}s`;
-    }
-    const connected = states.filter((state) => state.status === "connected");
-    const tools = connected.reduce((sum, state) => sum + state.tools.length, 0);
-    const failures = states
-      .filter((state) => state.status === "failed")
-      .map((state) => `\n  ${state.config.name}: ${state.error ?? "failed"}`);
-    return `MCP: ${connected.length}/${states.length} server${states.length === 1 ? "" : "s"} connected (${tools} tool${tools === 1 ? "" : "s"})${failures.join("")}`;
-  } catch (error) {
-    return `MCP: refresh failed: ${error instanceof Error ? error.message : String(error)}`;
-  } finally {
-    if (timer) clearTimeout(timer);
+    const count = (await settingsManager.mcpDisk.reload(agentId)).length;
+    return `MCP: ${count} server${count === 1 ? "" : "s"} configured`;
+  } catch {
+    // Fixed text: parse errors can quote settings content.
+    return "MCP: could not read the MCP server list from settings";
   }
 }
 

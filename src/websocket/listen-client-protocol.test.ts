@@ -1977,7 +1977,7 @@ describe("listen-client parseServerMessage", () => {
 
     expect(reloadCalls).toBe(1);
     expect(socket.sentPayloads.join("\n")).toContain(
-      "Reloaded settings, local mods, and agent secrets",
+      "Reloaded settings, local mods, agent secrets, and MCP server list",
     );
   });
 
