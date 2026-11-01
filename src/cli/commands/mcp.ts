@@ -3,6 +3,7 @@
 
 import type { Buffers, Line } from "@/cli/helpers/accumulator";
 import { formatErrorDetails } from "@/cli/helpers/error-formatter";
+import type { McpServerConfig } from "@/mcp-client";
 import { replaceClientMcpServers } from "@/mcp-runtime";
 import { buildMcpServerConfig } from "@/mcp-server-config";
 import { settingsManager } from "@/settings-manager";
@@ -10,6 +11,34 @@ import { settingsManager } from "@/settings-manager";
 // tiny helper for unique ids
 function uid(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Add one client-local MCP server by name: a locked read-modify-write of
+ * only this agent's list as it is on disk now (the same helper `letta mcp
+ * add` uses), never a cached whole list. The in-memory copy is refreshed
+ * from what was written. Throws if the name already exists.
+ */
+export function addAgentMcpServer(
+  agentId: string,
+  config: McpServerConfig,
+): Promise<McpServerConfig[]> {
+  return settingsManager.mcpDisk.update(agentId, (current) => {
+    if (current.some((server) => server.name === config.name)) {
+      throw new Error(`MCP server "${config.name}" already exists`);
+    }
+    return [...current, config];
+  });
+}
+
+/** Remove one client-local MCP server by name; see addAgentMcpServer. */
+export function removeAgentMcpServer(
+  agentId: string,
+  name: string,
+): Promise<McpServerConfig[]> {
+  return settingsManager.mcpDisk.update(agentId, (current) =>
+    current.filter((server) => server.name !== name),
+  );
 }
 
 // Helper type for command result
@@ -268,16 +297,9 @@ export async function handleMcpAdd(
   ctx.setCommandRunning(true);
 
   try {
-    const existing = settingsManager.getMcpServers(ctx.agentId);
-    if (existing.some((server) => server.name === args.name)) {
-      throw new Error(`MCP server "${args.name}" already exists`);
-    }
-
     const config = buildMcpServerConfig(args, { cwd: process.cwd() });
 
-    const configs = [...existing, config];
-    settingsManager.setMcpServers(ctx.agentId, configs);
-    await settingsManager.flush();
+    const configs = await addAgentMcpServer(ctx.agentId, config);
     const states = await replaceClientMcpServers(ctx.agentId, configs, {
       interactiveOAuth: true,
       onStatus: (status) =>

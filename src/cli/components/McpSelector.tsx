@@ -15,6 +15,7 @@ import {
   refreshServerMcpServer,
   type ServerMcpEntry,
 } from "@/backend/api/mcp-servers";
+import { removeAgentMcpServer } from "@/cli/commands/mcp";
 import { truncateText } from "@/cli/helpers/truncate-text";
 import { useTerminalWidth } from "@/cli/hooks/use-terminal-width";
 import type { McpServerConfig } from "@/mcp-client";
@@ -134,11 +135,7 @@ export const McpSelector = memo(function McpSelector({
       setLoading(true);
       setError(null);
       try {
-        const configs = settingsManager
-          .getMcpServers(agentId)
-          .filter((server) => server.name !== config.name);
-        settingsManager.setMcpServers(agentId, configs);
-        await settingsManager.flush();
+        const configs = await removeAgentMcpServer(agentId, config.name);
         if (config.transport === "http" || config.transport === "sse") {
           await clearMcpOAuthCredentials(agentId, config.name, config.url);
         }
