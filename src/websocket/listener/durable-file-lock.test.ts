@@ -8,6 +8,7 @@ import {
   renameSync,
   rmdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -519,5 +520,31 @@ test("release removes empty lock artifacts", () => {
     }
   } finally {
     rmSync(f.root, { recursive: true, force: true });
+  }
+});
+
+test("preserveExistingParentMode never chmods an existing parent directory", () => {
+  if (process.platform === "win32") return;
+  const root = mkdtempSync(join(tmpdir(), "letta-durable-lock-mode-"));
+  try {
+    const shared = join(root, "shared");
+    mkdirSync(shared, { mode: 0o755 });
+    const sharedMode = statSync(shared).mode & 0o777;
+    acquireDurableFileLock(join(shared, "state.json"), {
+      preserveExistingParentMode: true,
+    })();
+    expect(statSync(shared).mode & 0o777).toBe(sharedMode);
+
+    const fresh = join(root, "fresh", "nested");
+    acquireDurableFileLock(join(fresh, "state.json"), {
+      preserveExistingParentMode: true,
+    })();
+    expect(statSync(fresh).mode & 0o077).toBe(0);
+
+    // Default for existing callers is unchanged: the parent is forced to 0700.
+    acquireDurableFileLock(join(shared, "other.json"))();
+    expect(statSync(shared).mode & 0o777).toBe(0o700);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });

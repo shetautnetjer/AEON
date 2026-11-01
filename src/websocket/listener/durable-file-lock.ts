@@ -34,6 +34,12 @@ export type DurableLockOwner = {
 
 export type DurableFileLockOptions = {
   waitMs?: number;
+  /**
+   * When true, create the lock's parent directory 0700 only if it does not
+   * exist and never chmod an existing one (e.g. a user's ~/.letta). Default
+   * false: the parent is created if needed and always forced to 0700.
+   */
+  preserveExistingParentMode?: boolean;
   owner?: DurableLockOwner;
   isOwnerAlive?: (owner: DurableLockOwner) => boolean;
   /** @deprecated Retained for source compatibility with the former file lock. */
@@ -562,7 +568,7 @@ export function acquireDurableFileLock(
   };
   const parent = dirname(path);
   mkdirSync(parent, { recursive: true, mode: 0o700 });
-  chmodSync(parent, 0o700);
+  if (!options.preserveExistingParentMode) chmodSync(parent, 0o700);
   const lockPath = `${path}.lock`;
   const legacyMarkerPath = `${lockPath}.recovery`;
   const legacyOwnersPath = `${lockPath}-owners`;

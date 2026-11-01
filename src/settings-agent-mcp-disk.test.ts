@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import {
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -94,4 +95,20 @@ test("update changes only the target agent, atomically, mode 0600", () => {
     updateAgentMcpServersOnDisk(path, "a", undefined, (c) => c),
   ).toThrow();
   expect(readFileSync(path, "utf8")).toBe("{ corrupt");
+});
+
+test("update never chmods an existing settings directory", () => {
+  if (process.platform === "win32") return;
+  dir = mkdtempSync(join(tmpdir(), "agent-mcp-disk-"));
+  const letta = join(dir, ".letta");
+  mkdirSync(letta, { mode: 0o755 });
+  const before = statSync(letta).mode & 0o777;
+  expect(before & 0o055).not.toBe(0);
+  updateAgentMcpServersOnDisk(
+    join(letta, "settings.json"),
+    "a",
+    undefined,
+    () => [server("one")],
+  );
+  expect(statSync(letta).mode & 0o777).toBe(before);
 });

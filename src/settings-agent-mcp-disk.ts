@@ -123,7 +123,10 @@ export function updateAgentMcpServersOnDisk(
   baseUrl: string | undefined,
   update: (current: McpServerConfig[]) => McpServerConfig[],
 ): McpServerConfig[] {
-  const release = acquireDurableFileLock(path, { waitMs: LOCK_WAIT_MS });
+  const release = acquireDurableFileLock(path, {
+    waitMs: LOCK_WAIT_MS,
+    preserveExistingParentMode: true,
+  });
   try {
     const settings = readSettingsFile(path);
     const agents = Array.isArray(settings.agents) ? [...settings.agents] : [];
