@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { claimMemoryOperation } from "@/agent/memory-operation";
@@ -14,6 +20,7 @@ import {
   isAutomaticReflectionSuppressed,
 } from "@/cli/helpers/reflection-launcher";
 import { telemetry } from "@/telemetry";
+import type { SpawnBackgroundSubagentTaskArgs } from "@/tools/impl/task";
 
 let tempDir: string;
 let memoryDir: string;
@@ -329,7 +336,130 @@ describe("reflection worktree completion messaging", () => {
     });
   });
 
-  test("parent merge conflict cleans up and leaves the transcript retryable", async () => {
+  test("conflicted merge hands the parent repo to a reflection repair worker", async () => {
+    const worktree = await createReflectionMemoryWorktree({
+      parentMemoryDir: memoryDir,
+    });
+    // Reflection and parent both append to the same file.
+    writeFileSync(
+      join(worktree.worktreeDir, "persona.md"),
+      "base\nreflection\n",
+      "utf-8",
+    );
+    git(worktree.worktreeDir, ["add", "persona.md"]);
+    git(worktree.worktreeDir, ["commit", "-m", "reflection"]);
+    writeParentMemoryFile("persona.md", "base\nparent\n");
+    git(memoryDir, ["add", "persona.md"]);
+    git(memoryDir, ["commit", "-m", "parent"]);
+
+    const spawnMemoryRepair = mock(
+      (_args: SpawnBackgroundSubagentTaskArgs) => ({
+        taskId: "task-1",
+      }),
+    );
+    const result = await finalizeLaunch(worktree, true, {
+      spawnMemoryRepair,
+    });
+
+    expect(result.integration.status).toBe("repair_started");
+    // The transcript is not consumed until the repair succeeds.
+    expect(result.completionSuccess).toBe(false);
+    expect(result.completionMessage).toBe(
+      "Reflection's memory updates overlapped newer changes; a repair worker is merging them.",
+    );
+
+    // The claimed token reached the repair spawn exactly once, with a
+    // reflection-specific prompt and the parent checkout as its scope.
+    expect(spawnMemoryRepair).toHaveBeenCalledTimes(1);
+    const spawnArgs = spawnMemoryRepair.mock.calls[0]?.[0];
+    expect(spawnArgs?.subagentType).toBe("memory");
+    expect(spawnArgs?.memoryRepairToken).toBe(result.integration.repairToken);
+    expect(spawnArgs?.parentScope).toEqual({
+      agentId: "agent-test",
+      conversationId: "conv-test",
+    });
+    expect(spawnArgs?.memoryScope).toEqual({
+      primaryRoot: memoryDir,
+      writableRoots: [memoryDir],
+    });
+    expect(spawnArgs?.prompt).toContain("reflection");
+    expect(spawnArgs?.prompt).toContain("both sides");
+    expect(spawnArgs?.prompt).toContain(worktree.branchName);
+    expect(spawnArgs?.prompt).toContain("already resolved");
+
+    // The real claim recorded its attempt under the parent's git dir.
+    const attemptPath = join(memoryDir, ".git", "letta-memory-repair.json");
+    expect(existsSync(attemptPath)).toBe(true);
+    const attempt = JSON.parse(readFileSync(attemptPath, "utf-8")) as {
+      token?: string;
+    };
+    expect(attempt.token).toBe(result.integration.repairToken);
+
+    // The merge is left in progress: conflict markers in the file, MERGE_HEAD
+    // recorded, the worktree removed but the reflection branch kept.
+    expect(existsSync(join(memoryDir, ".git", "MERGE_HEAD"))).toBe(true);
+    const conflicted = readFileSync(join(memoryDir, "persona.md"), "utf-8");
+    expect(conflicted).toContain("<<<<<<<");
+    expect(conflicted).toContain("reflection");
+    expect(conflicted).toContain("parent");
+    expect(existsSync(worktree.worktreeDir)).toBe(false);
+    expect(
+      git(memoryDir, ["branch", "--list", worktree.branchName]).trim(),
+    ).toBe(worktree.branchName);
+
+    const event = telemetryState.events.find(
+      (entry) => entry.type === "reflection_worktree_cleanup",
+    );
+    expect(telemetryState.events).toHaveLength(1);
+    expect(event?.data).toMatchObject({
+      outcome: "merge_repair",
+      integration_status: "repair_started",
+      trigger_source: "manual",
+      subagent_id: "agent-reflection-test",
+      conversation_id: "conv-test",
+      reflection_worktree_id: worktree.id,
+      commit_count: 1,
+      model: "reflection-model",
+    });
+  });
+
+  test("a clean merge never involves the repair worker", async () => {
+    const worktree = await createReflectionMemoryWorktree({
+      parentMemoryDir: memoryDir,
+    });
+    writeFileSync(
+      join(worktree.worktreeDir, "reflection.md"),
+      "dream\n",
+      "utf-8",
+    );
+    git(worktree.worktreeDir, ["add", "reflection.md"]);
+    git(worktree.worktreeDir, ["commit", "-m", "reflection"]);
+    writeParentMemoryFile("parent.md", "awake\n");
+    git(memoryDir, ["add", "parent.md"]);
+    git(memoryDir, ["commit", "-m", "parent"]);
+
+    const claimConflictRepair = mock(async () => ({
+      status: "claimed" as const,
+      token: "unused",
+    }));
+    const spawnMemoryRepair = mock(
+      (_args: SpawnBackgroundSubagentTaskArgs) => ({
+        taskId: "task-1",
+      }),
+    );
+    const result = await finalizeLaunch(worktree, true, {
+      claimConflictRepair,
+      spawnMemoryRepair,
+    });
+
+    expect(result.integration.status).toBe("merged");
+    expect(result.completionSuccess).toBe(true);
+    expect(claimConflictRepair).not.toHaveBeenCalled();
+    expect(spawnMemoryRepair).not.toHaveBeenCalled();
+    expect(existsSync(join(memoryDir, ".git", "MERGE_HEAD"))).toBe(false);
+  });
+
+  test("a failed repair launch releases the claim for the next sync", async () => {
     const worktree = await createReflectionMemoryWorktree({
       parentMemoryDir: memoryDir,
     });
@@ -344,7 +474,47 @@ describe("reflection worktree completion messaging", () => {
     git(memoryDir, ["add", "persona.md"]);
     git(memoryDir, ["commit", "-m", "parent"]);
 
-    const result = await finalizeLaunch(worktree, true);
+    const spawnMemoryRepair = mock((_args: SpawnBackgroundSubagentTaskArgs) => {
+      throw new Error("task capacity reached");
+    });
+    const result = await finalizeLaunch(worktree, true, {
+      spawnMemoryRepair,
+    });
+
+    // The conflict is left for the next post-turn sync to reclaim: the merge
+    // stays in progress but the attempt marker is forgotten.
+    expect(result.integration.status).toBe("repair_started");
+    expect(spawnMemoryRepair).toHaveBeenCalledTimes(1);
+    expect(existsSync(join(memoryDir, ".git", "MERGE_HEAD"))).toBe(true);
+    expect(
+      existsSync(join(memoryDir, ".git", "letta-memory-repair.json")),
+    ).toBe(false);
+  });
+
+  test("parent merge conflict cleans up and leaves the transcript retryable when repair is already in progress", async () => {
+    const worktree = await createReflectionMemoryWorktree({
+      parentMemoryDir: memoryDir,
+    });
+    writeFileSync(
+      join(worktree.worktreeDir, "persona.md"),
+      "reflection\n",
+      "utf-8",
+    );
+    git(worktree.worktreeDir, ["add", "persona.md"]);
+    git(worktree.worktreeDir, ["commit", "-m", "reflection"]);
+    writeParentMemoryFile("persona.md", "parent\n");
+    git(memoryDir, ["add", "persona.md"]);
+    git(memoryDir, ["commit", "-m", "parent"]);
+
+    const spawnMemoryRepair = mock(
+      (_args: SpawnBackgroundSubagentTaskArgs) => ({
+        taskId: "task-1",
+      }),
+    );
+    const result = await finalizeLaunch(worktree, true, {
+      claimConflictRepair: async () => ({ status: "in_progress" }),
+      spawnMemoryRepair,
+    });
 
     expect(result.integration.status).toBe("merge_conflict");
     expect(result.integration.summary).toContain("conflicted");
@@ -352,6 +522,9 @@ describe("reflection worktree completion messaging", () => {
     expect(result.completionMessage).toBe(
       "Tried to reflect, but memory updates conflicted with newer changes; will retry later.",
     );
+    expect(spawnMemoryRepair).not.toHaveBeenCalled();
+    expect(existsSync(join(memoryDir, ".git", "MERGE_HEAD"))).toBe(false);
+    expect(git(memoryDir, ["status", "--porcelain"]).trim()).toBe("");
 
     const event = telemetryState.events.find(
       (entry) => entry.type === "reflection_worktree_cleanup",
