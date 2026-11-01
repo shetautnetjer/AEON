@@ -1720,6 +1720,28 @@ class SettingsManager {
   setMcpServers(agentId: string, servers: McpServerConfig[]): void {
     this.upsertAgentSettings(agentId, { mcpServers: servers });
   }
+  /**
+   * Adopt one agent's MCP servers from disk, where another process (e.g.
+   * `letta mcp add`) may have changed them. Does not mark settings dirty.
+   */
+  async reloadMcpServersFromDisk(agentId: string): Promise<McpServerConfig[]> {
+    await this.flush();
+    const disk = JSON.parse(await readFile(this.getSettingsPath())) as Settings;
+    const settings = this.getSettings();
+    const key = getCurrentServerKey(settings);
+    const baseUrl = key === "api.letta.com" ? undefined : key;
+    const isAgent = (a: AgentSettings) =>
+      a.agentId === agentId && (a.baseUrl ?? undefined) === baseUrl;
+    const fromDisk = disk.agents?.find(isAgent);
+    const agents = [...(settings.agents ?? [])];
+    const index = agents.findIndex(isAgent);
+    const current = agents[index];
+    if (current)
+      agents[index] = { ...current, mcpServers: fromDisk?.mcpServers };
+    else if (fromDisk) agents.push(fromDisk);
+    this.settings = { ...settings, agents };
+    return fromDisk?.mcpServers ?? [];
+  }
   /** Resolve the manual override for one conversation; unset means auto. */
   getToolsetPreference(agentId: string, conversationId = "default") {
     return readToolsetPreference(
