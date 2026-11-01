@@ -412,6 +412,16 @@ async function sweepMergedReflectionBranches(
   }
 }
 
+/** Whether a merge was started and stopped on a conflict (MERGE_HEAD present). */
+async function hasUnfinishedMerge(parentMemoryDir: string): Promise<boolean> {
+  const gitDir = await tryRunGit(parentMemoryDir, [
+    "rev-parse",
+    "--absolute-git-dir",
+  ]);
+  const dir = gitDir?.stdout.trim();
+  return !!dir && existsSync(join(dir, "MERGE_HEAD"));
+}
+
 /** Finalize without taking the checkout lease; the caller must already hold it. */
 export async function finalizeReflectionMemoryWorktreeUnlocked(
   worktree: ReflectionMemoryWorktree,
@@ -659,10 +669,17 @@ export async function finalizeReflectionMemoryWorktreeUnlocked(
     mergeMessage,
   ]);
   if (!mergeResult) {
-    const claim = await claimReflectionMergeRepair(
-      worktree.parentMemoryDir,
-      options.claimConflictRepair,
-    );
+    // Only an actual unfinished merge (MERGE_HEAD) can be handed to the repair
+    // worker: its sync proceeds only on a conflict. Git can also refuse the
+    // merge before starting it (e.g. merge.ff=only on diverged branches),
+    // leaving a clean checkout; claiming repair then would consume the
+    // transcript and lose the reflection, so that keeps the retry path.
+    const claim = (await hasUnfinishedMerge(worktree.parentMemoryDir))
+      ? await claimReflectionMergeRepair(
+          worktree.parentMemoryDir,
+          options.claimConflictRepair,
+        )
+      : undefined;
     if (claim?.status === "claimed") {
       // The merge stays in progress in the parent checkout so the claimed
       // repair worker finds a concrete conflict to resolve. The branch is

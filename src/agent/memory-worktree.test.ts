@@ -124,6 +124,37 @@ describe("reflection memory worktrees", () => {
     ).toBe("");
   });
 
+  test("a merge git refuses before starting (no MERGE_HEAD) is not handed to repair", async () => {
+    // merge.ff=only on diverged branches: git aborts before starting a merge,
+    // so there is no conflict for the repair worker and the transcript must
+    // stay retryable instead of being consumed.
+    git(memoryDir, ["config", "merge.ff", "only"]);
+    const worktree = await createReflectionMemoryWorktree({
+      parentMemoryDir: memoryDir,
+    });
+    writeFileSync(join(worktree.worktreeDir, "notes.md"), "reflection\n", "utf-8");
+    git(worktree.worktreeDir, ["add", "notes.md"]);
+    git(worktree.worktreeDir, ["commit", "-m", "reflection"]);
+    writeMemoryFile("persona.md", "parent\n");
+    git(memoryDir, ["add", "persona.md"]);
+    git(memoryDir, ["commit", "-m", "parent"]);
+
+    let claimed = 0;
+    const result = await finalizeReflectionMemoryWorktree(worktree, {
+      shouldMerge: true,
+      claimConflictRepair: async () => {
+        claimed++;
+        return { status: "claimed", token: "should-not-be-used" };
+      },
+    });
+
+    expect(claimed).toBe(0);
+    expect(result.status).toBe("merge_conflict");
+    expect(reflectionIntegrationConsumesTranscript(result)).toBe(false);
+    expect(existsSync(join(memoryDir, ".git", "MERGE_HEAD"))).toBe(false);
+    expect(git(memoryDir, ["status", "--porcelain"]).trim()).toBe("");
+  });
+
   test("leaves a conflicted merge in progress for the claimed repair worker", async () => {
     const worktree = await createReflectionMemoryWorktree({
       parentMemoryDir: memoryDir,
