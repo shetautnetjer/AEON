@@ -13,7 +13,7 @@ import { runGit as runMemoryGit } from "@/agent/memory-git";
 import { GIT_DISABLE_COMMIT_SIGNING_ARGS } from "@/agent/memory-git-signing";
 import { withMemoryOperation } from "@/agent/memory-operation";
 import { getMemfsServerUrl } from "@/backend/api/memfs-git-proxy";
-import { debugLog } from "@/utils/debug";
+import { debugLog, debugWarn } from "@/utils/debug";
 
 const execFile = promisify(execFileCb);
 
@@ -245,7 +245,15 @@ export interface ReflectionMemoryWorktreeFinalizeResult {
 export function reflectionIntegrationConsumesTranscript(
   result: ReflectionMemoryWorktreeFinalizeResult,
 ): boolean {
-  return result.status === "merged" || result.status === "no_changes";
+  // `repair_started` also consumes: the reflection's commits are the in-flight
+  // merge's second parent on the kept branch, and post-turn sync relaunches
+  // repair for a lingering MERGE_HEAD, so a retry reflection would only
+  // duplicate the same memories.
+  return (
+    result.status === "merged" ||
+    result.status === "no_changes" ||
+    result.status === "repair_started"
+  );
 }
 
 export function reflectionIntegrationShouldRecompile(
@@ -369,11 +377,47 @@ async function cleanupWorktreeAndBranch(
   ]);
 }
 
+/**
+ * Delete reflection branches already merged into HEAD that no worktree still
+ * uses. Repair workers are told to drop their merge's second parent; this
+ * sweep catches the ones left behind (and any branch orphaned by older runs).
+ * A branch checked out in a surviving worktree is skipped rather than forced.
+ */
+async function sweepMergedReflectionBranches(
+  parentMemoryDir: string,
+): Promise<void> {
+  const merged = await tryRunGit(parentMemoryDir, [
+    "branch",
+    "--merged",
+    "HEAD",
+    "--list",
+    "letta/reflection/*",
+  ]);
+  if (!merged) return;
+  const worktreeList = await tryRunGit(parentMemoryDir, [
+    "worktree",
+    "list",
+    "--porcelain",
+  ]);
+  const checkedOut = new Set(
+    (worktreeList?.stdout ?? "")
+      .split("\n")
+      .filter((line) => line.startsWith("branch refs/heads/"))
+      .map((line) => line.slice("branch refs/heads/".length).trim()),
+  );
+  for (const line of merged.stdout.split("\n")) {
+    const branch = line.replace(/^[*+]?\s*/, "").trim();
+    if (!branch || checkedOut.has(branch)) continue;
+    await tryRunGit(parentMemoryDir, ["branch", "-d", branch]);
+  }
+}
+
 /** Finalize without taking the checkout lease; the caller must already hold it. */
 export async function finalizeReflectionMemoryWorktreeUnlocked(
   worktree: ReflectionMemoryWorktree,
   options: ReflectionMemoryWorktreeFinalizeOptions,
 ): Promise<ReflectionMemoryWorktreeFinalizeResult> {
+  await sweepMergedReflectionBranches(worktree.parentMemoryDir);
   if (!existsSync(worktree.worktreeDir) && options.knownNoChanges) {
     const branchHead = (
       await tryRunGit(worktree.parentMemoryDir, [
@@ -708,6 +752,48 @@ export async function finalizeReflectionMemoryWorktree(
   return withMemoryOperation(worktree.parentMemoryDir, () =>
     finalizeReflectionMemoryWorktreeUnlocked(worktree, options),
   );
+}
+
+/**
+ * Undo a `repair_started` result when its repair worker could not be
+ * launched: abort the merge left in progress and delete the reflection
+ * branch so the parent repo is never left mid-merge with nothing working on
+ * it. Returns the same result re-reported as a retryable `merge_conflict`.
+ * Reacquires the checkout lease finalize already released.
+ */
+export async function abortReflectionMergeRepair(
+  result: ReflectionMemoryWorktreeFinalizeResult,
+): Promise<ReflectionMemoryWorktreeFinalizeResult> {
+  return withMemoryOperation(result.parentMemoryDir, async () => {
+    try {
+      await tryRunGit(result.parentMemoryDir, ["merge", "--abort"]);
+      await cleanupWorktreeAndBranch(
+        result.parentMemoryDir,
+        result.reflectionWorktreeDir,
+        result.reflectionBranch,
+        { force: true },
+      );
+      debugLog(
+        "memfs-git",
+        "reflection merge repair launch failed; merge aborted branch=%s",
+        result.reflectionBranch,
+      );
+    } catch (error) {
+      // Whatever remains is still repairable: post-turn sync hands a
+      // lingering MERGE_HEAD back to the repair worker.
+      debugWarn(
+        "memfs-git",
+        `Aborting an unlaunched reflection merge repair left remnants: ${String(error)}`,
+      );
+    }
+    return {
+      ...result,
+      status: "merge_conflict",
+      repairToken: undefined,
+      summary:
+        "Reflection produced memory updates, but merging them into the parent memory repo conflicted; the worktree was cleaned up so the transcript can be retried.",
+    };
+  });
 }
 
 export type MemoryWorkerWorktreeOutcome =

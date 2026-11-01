@@ -4,7 +4,7 @@ import type { SpawnBackgroundSubagentTaskArgs } from "@/tools/impl/task";
 export function buildReflectionMergeRepairPrompt(
   integration: ReflectionMemoryWorktreeFinalizeResult,
 ): string {
-  return `A background reflection's memory commits were merged into your memory repository and the merge stopped on a conflict, which is still in progress. Complete that in-progress merge: these conflicts are almost always the reflection and a newer update both adding to the same file, so keep both sides' information. Do not reorganize or perform unrelated edits. Stage the resolved files, commit the merge, and stop. If the conflict is already resolved, stop.
+  return `A background reflection's memory commits were merged into your memory repository and the merge stopped on a conflict, which is still in progress. Complete that in-progress merge: these conflicts are almost always the reflection and a newer update both adding to the same file, so keep both sides' information. Do not reorganize or perform unrelated edits. Stage the resolved files, commit the merge, then delete the now-merged reflection branch (\`git branch -D ${integration.reflectionBranch}\`), and stop. If the conflict is already resolved, still delete the branch and stop.
 
 Memory directory: ${integration.parentMemoryDir}
 Reflection branch (merge source): ${integration.reflectionBranch}

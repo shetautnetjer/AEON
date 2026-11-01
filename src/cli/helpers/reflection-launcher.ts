@@ -7,6 +7,7 @@ import { detectMemoryFormat } from "@/agent/memory-format";
 import { syncPendingMemoryCommitsAfterTurn } from "@/agent/memory-git";
 import { withMemoryOperation } from "@/agent/memory-operation";
 import {
+  abortReflectionMergeRepair,
   buildReflectionMemoryScope,
   createReflectionMemoryWorktree,
   finalizeReflectionMemoryWorktree,
@@ -568,7 +569,7 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
   // Explicit integration, its verification and the push happen under one
   // lease: releasing between them would let another process's post-turn sync
   // pull --rebase and rewrite the merge before ancestry is checked.
-  const integration = explicitIntegration
+  let integration = explicitIntegration
     ? await withMemoryOperation(params.worktree.parentMemoryDir, async () => {
         integrationRun = await (
           params.runExplicitIntegration ?? runExplicitReflectionIntegration
@@ -608,9 +609,11 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
           params.claimConflictRepair ?? claimMemoryConflictRepair,
       });
   // The conflict stays in progress in the parent checkout; hand it to the
-  // repair worker with the token claimed under the finalize lease.
+  // repair worker with the token claimed under the finalize lease. When no
+  // worker can be launched, undo the handoff so the repo is not left
+  // mid-merge with nothing working on it.
   if (integration.status === "repair_started") {
-    await launchReflectionMergeRepair(
+    const repairLaunched = await launchReflectionMergeRepair(
       {
         agentId: params.agentId,
         conversationId: params.conversationId,
@@ -619,6 +622,9 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
       },
       { spawnMemoryRepair: params.spawnMemoryRepair },
     );
+    if (!repairLaunched) {
+      integration = await abortReflectionMergeRepair(integration);
+    }
   }
   const completionSuccess =
     params.subagentSuccess &&
