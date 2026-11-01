@@ -81,10 +81,15 @@ async function updateServers(
   }
 }
 
+/**
+ * KEY=VALUE pairs. Keys are trimmed. Header values are trimmed like the TUI
+ * /mcp add parser; --env values are kept byte-for-byte (`trimValues` false).
+ */
 function parsePairs(
   values: string[] | undefined,
   flag: string,
   separator: RegExp,
+  trimValues: boolean,
 ): Record<string, string> {
   const pairs: Record<string, string> = {};
   for (const value of values ?? []) {
@@ -96,7 +101,7 @@ function parsePairs(
         `Invalid ${flag} value; expected KEY=VALUE`,
       );
     }
-    pairs[key] = match[2].trim();
+    pairs[key] = trimValues ? match[2].trim() : match[2];
   }
   return pairs;
 }
@@ -148,7 +153,7 @@ export function parseMcpAddInput(
       command: values.command,
       args: values.arg ?? [],
       cwd: values.cwd ?? null,
-      env: parsePairs(values.env, "--env", /^([^=]+)=(.*)$/s),
+      env: parsePairs(values.env, "--env", /^([^=]+)=(.*)$/s, false),
     };
   }
   rejectFlags(values, ["arg", "cwd", "env"], "only apply to --command servers");
@@ -157,7 +162,12 @@ export function parseMcpAddInput(
     name: name.trim(),
     url: values.url ?? null,
     // Same "key: value" or "key=value" forms as the TUI /mcp add --header.
-    headers: parsePairs(values.header, "--header", /^([^:=]+)[:=]\s*(.*)$/s),
+    headers: parsePairs(
+      values.header,
+      "--header",
+      /^([^:=]+)[:=]\s*(.*)$/s,
+      true,
+    ),
     authTokenEnv: values["auth-token-env"] ?? null,
   };
 }

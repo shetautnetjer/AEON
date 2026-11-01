@@ -115,6 +115,52 @@ describe("letta mcp add/remove", () => {
     expect(harness.connects).toEqual([]);
   });
 
+  test("--env keeps value whitespace exactly and trims only the key", async () => {
+    const harness = configHarness();
+    expect(
+      await runMcpSubcommand(
+        [
+          "add",
+          "files",
+          "--command",
+          "srv",
+          "--env",
+          " PREFIX =  two leading, one trailing ",
+          "--env=SEP=\tline\n",
+          "--env=EMPTY=",
+        ],
+        harness.deps,
+      ),
+    ).toBe(0);
+    const saved = harness.saves[0]?.configs[0];
+    expect(saved?.transport === "stdio" ? saved.env : undefined).toEqual({
+      PREFIX: "  two leading, one trailing ",
+      SEP: "\tline\n",
+      EMPTY: "",
+    });
+  });
+
+  test("--header trims names and values like the TUI parser", async () => {
+    const harness = configHarness();
+    expect(
+      await runMcpSubcommand(
+        [
+          "add",
+          "remote",
+          "--url",
+          "https://h.test/mcp",
+          "--header",
+          " X-Tenant :  acme  ",
+        ],
+        harness.deps,
+      ),
+    ).toBe(0);
+    const saved = harness.saves[0]?.configs[0];
+    expect(saved?.transport === "http" ? saved.headers : undefined).toEqual({
+      "X-Tenant": "acme",
+    });
+  });
+
   test("adds an http server with --auth-token-env as a placeholder only", async () => {
     const harness = configHarness();
     const code = await runMcpSubcommand(
