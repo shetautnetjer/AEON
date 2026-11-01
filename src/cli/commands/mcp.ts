@@ -3,8 +3,8 @@
 
 import type { Buffers, Line } from "@/cli/helpers/accumulator";
 import { formatErrorDetails } from "@/cli/helpers/error-formatter";
-import type { McpServerConfig } from "@/mcp-client";
 import { replaceClientMcpServers } from "@/mcp-runtime";
+import { buildMcpServerConfig } from "@/mcp-server-config";
 import { settingsManager } from "@/settings-manager";
 
 // tiny helper for unique ids
@@ -273,37 +273,7 @@ export async function handleMcpAdd(
       throw new Error(`MCP server "${args.name}" already exists`);
     }
 
-    if (args.authTokenEnv && !/^[A-Z_][A-Z0-9_]*$/.test(args.authTokenEnv)) {
-      throw new Error(
-        `Invalid token environment variable name: ${args.authTokenEnv}`,
-      );
-    }
-    const headers = {
-      ...args.headers,
-      ...(args.authTokenEnv
-        ? { Authorization: `Bearer \${${args.authTokenEnv}}` }
-        : {}),
-    };
-    let config: McpServerConfig;
-    if (args.transport === "stdio") {
-      if (!args.command) throw new Error("Command is required for stdio");
-      config = {
-        name: args.name,
-        transport: "stdio",
-        command: args.command,
-        args: args.args,
-        cwd: args.cwd ?? process.cwd(),
-        ...(Object.keys(args.env).length > 0 ? { env: args.env } : {}),
-      };
-    } else {
-      if (!args.url) throw new Error("URL is required for HTTP/SSE");
-      config = {
-        name: args.name,
-        transport: args.transport,
-        url: args.url,
-        ...(Object.keys(headers).length > 0 ? { headers } : {}),
-      };
-    }
+    const config = buildMcpServerConfig(args, { cwd: process.cwd() });
 
     const configs = [...existing, config];
     settingsManager.setMcpServers(ctx.agentId, configs);

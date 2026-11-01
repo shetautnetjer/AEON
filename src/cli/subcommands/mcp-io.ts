@@ -94,6 +94,11 @@ Usage:
   letta mcp search <query> [--mode <hybrid|vector|fts>] [--limit <n>] [--agent <id>]
   letta mcp call <tool-name> [--args '<json>' | --args-file <path|->] [--agent <id>]
   letta mcp connect <service> [--server-url <url>] [--client-name <name>] [--agent <id>]
+  letta mcp add <name> --command <cmd> [--arg <a>]... [--cwd <dir>] [--env K=V]...
+                [--replace] [--check] [--agent <id>]
+  letta mcp add <name> --url <url> [--transport http|sse] [--header K=V]...
+                [--auth-token-env NAME] [--replace] [--check] [--agent <id>]
+  letta mcp remove <name> [--agent <id>]
 
 Commands:
   list      List MCP servers available to the agent
@@ -104,6 +109,9 @@ Commands:
   call      Call one exact tool name and print an MCP CallToolResult
   connect   Authorize comfy or datadog in this computer's browser and save
             the connection to the Cloud agent
+  add       Save one client-local MCP server to this agent's settings. Does
+            not authorize; OAuth servers still need the TUI /mcp flow
+  remove    Delete one client-local MCP server from this agent's settings
 
 Options:
   --agent <id>       Agent ID. Defaults to LETTA_AGENT_ID or AGENT_ID
@@ -119,6 +127,18 @@ Options:
   --client-name <name>
                      Application name shown on the provider's consent screen
                      during connect, 1 to 64 characters (default: Letta Code)
+  --command <cmd>    stdio server executable (add)
+  --arg <value>      One stdio argument; repeatable. Use --arg=-y for dashes
+  --cwd <dir>        stdio working directory (default: current directory)
+  --env K=V          stdio environment variable; repeatable
+  --url <url>        Remote server URL (add)
+  --transport <t>    Remote transport: http (default) or sse
+  --header K=V       Remote request header; repeatable ("K: V" also works)
+  --auth-token-env NAME
+                     Store "Authorization: Bearer \${NAME}"; the value is read
+                     from the environment at connect time, never saved
+  --replace          Overwrite an existing server with the same name
+  --check            After saving, connect once (no browser) and report tools
   -h, --help         Show this help
 
 Output is JSON. Server placement and agent/server/tool IDs are internal.

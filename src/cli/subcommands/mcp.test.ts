@@ -159,7 +159,8 @@ describe("mcp subcommand", () => {
     expect(output[0]).toContain("letta mcp tools");
     expect(output[0]).toContain("letta mcp search");
     expect(output[0]).toContain("letta mcp call");
-    for (const action of ["add", "remove", "login", "logout"]) {
+    expect(output[0]).toContain("letta mcp add");
+    for (const action of ["login", "logout"]) {
       expect(output[0]).not.toContain(`letta mcp ${action}`);
     }
   });
@@ -201,8 +202,8 @@ describe("mcp subcommand", () => {
     });
   });
 
-  test("rejects configuration and authentication commands", async () => {
-    for (const action of ["add", "remove", "login", "logout"]) {
+  test("rejects authentication commands (add/remove are supported)", async () => {
+    for (const action of ["login", "logout"]) {
       const harness = localHarness();
       expect(await runMcpSubcommand([action, "everything"], harness.deps)).toBe(
         1,

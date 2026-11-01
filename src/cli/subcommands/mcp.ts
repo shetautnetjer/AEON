@@ -27,6 +27,13 @@ import { getMcpScopeAgentId, type ParentAgentLookup } from "@/mcp-scope";
 import { getRuntimeContext } from "@/runtime-context";
 import { settingsManager } from "@/settings-manager";
 import { isRecord } from "@/utils/type-guards";
+import {
+  MCP_CONFIG_OPTIONS,
+  type McpConfigContext,
+  type McpConfigDependencies,
+  runMcpAdd,
+  runMcpRemove,
+} from "./mcp-config";
 import { type McpConnectDependencies, runMcpConnect } from "./mcp-connect";
 import {
   loadMcpToolArgs,
@@ -38,6 +45,7 @@ import {
   writeMcpStderr,
   writeMcpStdout,
 } from "./mcp-io";
+import { redactArgs, redactUrl, redactValues } from "./mcp-redaction";
 import {
   mergeMcpSearchResults,
   runMcpSearch,
@@ -111,7 +119,9 @@ function defaultIsHostedLettaCloud(): boolean {
   }
 }
 
-export interface McpSubcommandDependencies extends McpConnectDependencies {
+export interface McpSubcommandDependencies
+  extends McpConnectDependencies,
+    McpConfigDependencies {
   initializeSettings?: () => Promise<void>;
   lookupParentAgent?: ParentAgentLookup;
   getLocalServers?: (agentId: string) => McpServerConfig[];
@@ -147,6 +157,7 @@ function parseMcpArgs(argv: string[]) {
       "args-file": { type: "string" },
       "server-url": { type: "string" },
       "client-name": { type: "string" },
+      ...MCP_CONFIG_OPTIONS,
     },
     strict: true,
     allowPositionals: true,
@@ -213,50 +224,6 @@ function serverSummary(target: ServerTarget): McpServerSummary {
       };
 }
 
-const SENSITIVE_NAME = /token|key|secret|password|signature|credential|auth/i;
-
-function redactUrl(value: string): string {
-  try {
-    const url = new URL(value);
-    url.username = "";
-    url.password = "";
-    for (const key of url.searchParams.keys()) {
-      if (SENSITIVE_NAME.test(key)) url.searchParams.set(key, "[REDACTED]");
-    }
-    return url.toString();
-  } catch {
-    return value;
-  }
-}
-
-/** Redact values that follow (or are inline with) sensitive-named flags. */
-function redactArgs(args: string[]): string[] {
-  const redacted: string[] = [];
-  let redactNext = false;
-  for (const arg of args) {
-    if (redactNext) {
-      redacted.push("[REDACTED]");
-      redactNext = false;
-      continue;
-    }
-    if (arg.startsWith("-")) {
-      const equalsIndex = arg.indexOf("=");
-      const flagName = equalsIndex === -1 ? arg : arg.slice(0, equalsIndex);
-      if (SENSITIVE_NAME.test(flagName)) {
-        if (equalsIndex === -1) {
-          redactNext = true;
-          redacted.push(arg);
-        } else {
-          redacted.push(`${flagName}=[REDACTED]`);
-        }
-        continue;
-      }
-    }
-    redacted.push(arg);
-  }
-  return redacted;
-}
-
 function serverDetails(target: ServerTarget): McpServerDetails {
   if (target.kind === "client") {
     const config = target.config;
@@ -297,16 +264,6 @@ function serverDetails(target: ServerTarget): McpServerDetails {
     url: redactUrl(server.serverUrl ?? server.target),
     headers: {},
   };
-}
-
-function redactValues(
-  values: Record<string, string> | undefined,
-): Record<string, string> {
-  return Object.fromEntries(
-    Object.keys(values ?? {})
-      .sort()
-      .map((name) => [name, "[REDACTED]"]),
-  );
 }
 
 async function listUnifiedServers(
@@ -942,6 +899,15 @@ export async function runMcpSubcommand(
         deps.lookupParentAgent,
       );
     }
+    const configContext = (): McpConfigContext => ({
+      ...deps,
+      agentId,
+      servers: getLocalServers(deps, agentId),
+      describe: (config) => serverDetails({ kind: "client", config }),
+      connect: (config) =>
+        connectConfiguredServer(deps, agentId, config, false),
+      stdout,
+    });
     switch (parsed.action) {
       case "list":
         return await runList(deps, agentId, stdout);
@@ -966,6 +932,10 @@ export async function runMcpSubcommand(
       case "run-tool":
       case "run_tool":
         return await runCall(parsed, deps, agentId, stdout);
+      case "add":
+        return await runMcpAdd(configContext(), parsed.target, parsed.values);
+      case "remove":
+        return await runMcpRemove(configContext(), parsed.target);
       case "connect":
         return await runMcpConnect(
           { ...deps, stderr },
