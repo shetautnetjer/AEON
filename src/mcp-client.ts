@@ -87,7 +87,8 @@ export interface ConnectMcpServerOptions {
   clientInfo?: { name: string; version: string };
   /** Custom fetch used for MCP transport and every SDK OAuth request. */
   fetch?: McpFetch;
-  stderr?: "inherit" | "pipe";
+  /** stdio servers only. "pipe" must be drained by the caller. */
+  stderr?: "inherit" | "pipe" | "ignore";
   oauth?: McpOAuthConnection;
   signal?: AbortSignal;
 }

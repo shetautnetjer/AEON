@@ -340,11 +340,12 @@ async function connectConfiguredServer(
   agentId: string,
   config: McpServerConfig,
   interactive: boolean,
+  stderr: "pipe" | "ignore" = "pipe",
 ): Promise<ConnectedMcpServer> {
   const oauth = await oauthForConfig(deps, agentId, config, interactive);
   return (deps.connectLocalServer ?? connectMcpServer)(config, {
     ...(oauth ? { oauth } : {}),
-    stderr: "pipe",
+    stderr,
   });
 }
 
@@ -920,8 +921,10 @@ export async function runMcpSubcommand(
       ...deps,
       agentId,
       describe: (config) => serverDetails({ kind: "client", config }),
+      // --check never reads the server's stderr; a piped but undrained
+      // stderr can fill and block a chatty server before it answers.
       connect: (config) =>
-        connectConfiguredServer(deps, agentId, config, false),
+        connectConfiguredServer(deps, agentId, config, false, "ignore"),
       stdout,
     });
     switch (parsed.action) {
