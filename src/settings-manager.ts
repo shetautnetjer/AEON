@@ -33,7 +33,10 @@ import type {
   StoredReflectionSettings,
 } from "./reflection-settings";
 import { getRuntimeContext } from "./runtime-context";
-import { AgentMcpDiskSync } from "./settings-agent-mcp-disk";
+import {
+  AgentMcpDiskSync,
+  rewriteSettingsFileLocked,
+} from "./settings-agent-mcp-disk";
 import { trackBoundaryError } from "./telemetry/error-reporting";
 import type { ToolsetPreference } from "./tools/toolset-types";
 import type { ClientPreferences } from "./types/client-preferences";
@@ -887,63 +890,49 @@ class SettingsManager {
    * Persist settings to disk (private helper)
    */
   private async persistSettings(): Promise<void> {
-    if (!this.settings) return;
+    const settings = this.settings;
+    if (!settings) return;
 
     const settingsPath = this.getSettingsPath();
-    const home = process.env.HOME || homedir();
-    const dirPath = join(home, ".letta");
-
-    const ownMcp = this.mcpDisk.snapshot();
+    const mcpOwnership = this.mcpDisk.snapshot();
     try {
-      if (!exists(dirPath)) {
-        await mkdir(dirPath, { recursive: true });
-      }
-
-      // Read existing file to preserve fields we don't manage (e.g., hooks added externally)
-      let existingSettings: Record<string, unknown> = {};
-      if (exists(settingsPath)) {
-        try {
-          const content = await readFile(settingsPath);
-          existingSettings = JSON.parse(content) as Record<string, unknown>;
-        } catch {
-          // If read/parse fails, use empty object
+      // Same durable lock as `letta mcp add/remove` and remote reload, so this
+      // read-merge-write cannot interleave with theirs; atomic 0600 replace.
+      // On lock timeout this throws and nothing is written.
+      rewriteSettingsFileLocked(settingsPath, (existingSettings, readable) => {
+        // Hard-deprecate legacy fields (now fully ignored). Always strip from disk.
+        for (const key of OBSOLETE_SETTINGS_KEYS) {
+          delete existingSettings[key];
         }
-      }
 
-      // Hard-deprecate legacy fields (now fully ignored). Always strip from disk.
-      for (const key of OBSOLETE_SETTINGS_KEYS) {
-        delete existingSettings[key];
-      }
-
-      // Only write keys we loaded from the file or explicitly set via updateSettings().
-      // This preserves manual file edits for keys we never touched (e.g. defaults).
-      const merged: Record<string, unknown> = { ...existingSettings };
-      const settingsRecord = this.settings as unknown as Record<
-        string,
-        unknown
-      >;
-      for (const key of this.managedKeys) {
-        // Preserve external updates (including deletions) for keys this
-        // process never touched.
-        if (!this.dirtyKeys.has(key)) {
-          continue;
+        // Only write keys we loaded from the file or explicitly set via updateSettings().
+        // This preserves manual file edits for keys we never touched (e.g. defaults).
+        const merged: Record<string, unknown> = { ...existingSettings };
+        const settingsRecord = settings as unknown as Record<string, unknown>;
+        for (const key of this.managedKeys) {
+          // Preserve external updates (including deletions) for keys this
+          // process never touched.
+          if (!this.dirtyKeys.has(key)) {
+            continue;
+          }
+          if (key === "agents" && settings.agents) {
+            // An unreadable file has no trustworthy agents to merge with.
+            merged.agents = readable
+              ? this.mcpDisk.merge(
+                  settings.agents,
+                  existingSettings.agents,
+                  mcpOwnership,
+                )
+              : settings.agents;
+          } else if (key in settingsRecord) {
+            merged[key] = settingsRecord[key];
+          } else {
+            delete merged[key];
+          }
         }
-        if (key === "agents" && this.settings.agents) {
-          const disk = existingSettings.agents;
-          merged.agents = this.mcpDisk.merge(
-            this.settings.agents,
-            disk,
-            ownMcp,
-          );
-        } else if (key in settingsRecord) {
-          merged[key] = settingsRecord[key];
-        } else {
-          delete merged[key];
-        }
-      }
-
-      await writeFile(settingsPath, JSON.stringify(merged, null, 2));
-      this.mcpDisk.written(ownMcp);
+        return merged;
+      });
+      this.mcpDisk.written(mcpOwnership);
     } catch (error) {
       console.error("Error saving settings:", error);
       throw error;
@@ -1703,6 +1692,7 @@ class SettingsManager {
       agents.push(stripEmptyAgentSettings(newAgent));
     }
 
+    this.mcpDisk.markTouched(agentId, normalizedBaseUrl);
     this.updateSettings({ agents });
   }
 

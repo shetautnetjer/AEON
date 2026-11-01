@@ -24,7 +24,8 @@ import {
   fsyncDirectory,
 } from "./websocket/listener/durable-file-lock";
 
-const LOCK_WAIT_MS = 5_000;
+/** Bounded wait for the settings-file lock (mutable for tests). */
+export const settingsFileLock = { waitMs: 5_000 };
 
 /** Identity of one agent entry: agent ID plus server (baseUrl). */
 export function agentEntryKey(agentId: string, baseUrl?: string): string {
@@ -40,31 +41,50 @@ function entryKey(entry: unknown): string | undefined {
 }
 
 /**
- * Build the `agents` array to persist from this process's copy. For agents
- * whose MCP servers this process did not change (`ownMcpKeys`), the value on
- * disk wins; agent entries that exist only on disk are kept.
+ * Build the `agents` array to persist from this process's copy.
+ *
+ * Ownership, per agent entry (agent ID + baseUrl), counted since this
+ * process's last successful settings write:
+ * - `ownMcpKeys`: this process itself set the entry's MCP server list.
+ * - `touchedKeys`: this process itself changed some field of the entry.
+ *
+ * Entry on disk: its MCP servers come from disk unless owned here.
+ * Entry missing on disk (or no `agents` array): it was deleted or never
+ * written. It is written back only if this process changed it — with its MCP
+ * servers only if it owns them — so an external deletion stays deleted.
+ * Agent entries that exist only on disk are kept.
  */
 export function mergeAgentsWithDisk(
   memory: AgentSettings[],
   disk: unknown,
   ownMcpKeys: ReadonlySet<string>,
+  touchedKeys: ReadonlySet<string> = new Set(),
 ): AgentSettings[] {
-  if (!Array.isArray(disk)) return memory;
   const diskByKey = new Map<string, Record<string, unknown>>();
-  for (const entry of disk) {
+  for (const entry of Array.isArray(disk) ? disk : []) {
     const key = entryKey(entry);
     if (key && isRecord(entry)) diskByKey.set(key, entry);
   }
-  const merged = memory.map((agent) => {
+  const merged: AgentSettings[] = [];
+  for (const agent of memory) {
     const key = agentEntryKey(agent.agentId, agent.baseUrl);
     const onDisk = diskByKey.get(key);
     diskByKey.delete(key);
-    if (!onDisk || ownMcpKeys.has(key)) return agent;
+    if (ownMcpKeys.has(key)) {
+      merged.push(agent);
+      continue;
+    }
     const { mcpServers: _ignored, ...rest } = agent;
-    return Array.isArray(onDisk.mcpServers)
-      ? { ...rest, mcpServers: onDisk.mcpServers as McpServerConfig[] }
-      : rest;
-  });
+    if (onDisk) {
+      merged.push(
+        Array.isArray(onDisk.mcpServers)
+          ? { ...rest, mcpServers: onDisk.mcpServers as McpServerConfig[] }
+          : rest,
+      );
+    } else if (touchedKeys.has(key)) {
+      merged.push(rest);
+    }
+  }
   return [...merged, ...(diskByKey.values() as Iterable<AgentSettings>)];
 }
 
@@ -97,6 +117,42 @@ function writeFileAtomic(path: string, contents: string): void {
   }
 }
 
+function lockSettingsFile(path: string): () => void {
+  return acquireDurableFileLock(path, {
+    waitMs: settingsFileLock.waitMs,
+    preserveExistingParentMode: true,
+  });
+}
+
+/**
+ * Whole-file read-merge-write of the settings file under the same durable
+ * lock as the per-agent MCP helpers, written atomically (temp + rename,
+ * 0600). `build` gets the current file contents; `readable` is false when
+ * the file exists but is not a JSON object (it is then passed `{}`).
+ * Throws without writing if the lock cannot be acquired in time.
+ */
+export function rewriteSettingsFileLocked(
+  path: string,
+  build: (
+    existing: Record<string, unknown>,
+    readable: boolean,
+  ) => Record<string, unknown>,
+): void {
+  const release = lockSettingsFile(path);
+  try {
+    let existing: Record<string, unknown> = {};
+    let readable = true;
+    try {
+      existing = readSettingsFile(path);
+    } catch {
+      readable = false;
+    }
+    writeFileAtomic(path, JSON.stringify(build(existing, readable), null, 2));
+  } finally {
+    release();
+  }
+}
+
 /** One agent's MCP servers as currently stored on disk. */
 export function readAgentMcpServersFromDisk(
   path: string,
@@ -123,10 +179,7 @@ export function updateAgentMcpServersOnDisk(
   baseUrl: string | undefined,
   update: (current: McpServerConfig[]) => McpServerConfig[],
 ): McpServerConfig[] {
-  const release = acquireDurableFileLock(path, {
-    waitMs: LOCK_WAIT_MS,
-    preserveExistingParentMode: true,
-  });
+  const release = lockSettingsFile(path);
   try {
     const settings = readSettingsFile(path);
     const agents = Array.isArray(settings.agents) ? [...settings.agents] : [];
@@ -150,6 +203,11 @@ export function updateAgentMcpServersOnDisk(
   }
 }
 
+export interface McpOwnershipSnapshot {
+  own: Map<string, number>;
+  touched: Map<string, number>;
+}
+
 export interface AgentMcpDiskHost {
   path(): string;
   /** Current server key ("api.letta.com" means no baseUrl). */
@@ -166,8 +224,10 @@ export interface AgentMcpDiskHost {
  * and the disk-first reload/update used by `letta mcp` and remote reload.
  */
 export class AgentMcpDiskSync {
-  // Agent entry key -> generation of this process's last own change.
+  // Agent entry key -> generation of this process's last own change, for the
+  // MCP list (`own`) and for any field of the entry (`touched`).
   private own = new Map<string, number>();
+  private touched = new Map<string, number>();
 
   constructor(private readonly host: AgentMcpDiskHost) {}
 
@@ -182,27 +242,44 @@ export class AgentMcpDiskSync {
     this.own.set(key, (this.own.get(key) ?? 0) + 1);
   }
 
-  snapshot(): Map<string, number> {
-    return new Map(this.own);
+  /** Record that this process itself changed some field of the entry. */
+  markTouched(agentId: string, baseUrl: string | undefined): void {
+    const key = agentEntryKey(agentId, baseUrl);
+    this.touched.set(key, (this.touched.get(key) ?? 0) + 1);
+  }
+
+  snapshot(): McpOwnershipSnapshot {
+    return { own: new Map(this.own), touched: new Map(this.touched) };
   }
 
   merge(
     memory: AgentSettings[],
     disk: unknown,
-    snapshot: Map<string, number>,
+    snapshot: McpOwnershipSnapshot,
   ): AgentSettings[] {
-    return mergeAgentsWithDisk(memory, disk, new Set(snapshot.keys()));
+    return mergeAgentsWithDisk(
+      memory,
+      disk,
+      new Set(snapshot.own.keys()),
+      new Set(snapshot.touched.keys()),
+    );
   }
 
   /** After a successful write, external changes to those agents win again. */
-  written(snapshot: Map<string, number>): void {
-    for (const [key, generation] of snapshot) {
-      if (this.own.get(key) === generation) this.own.delete(key);
+  written(snapshot: McpOwnershipSnapshot): void {
+    for (const [mine, recorded] of [
+      [this.own, snapshot.own],
+      [this.touched, snapshot.touched],
+    ] as const) {
+      for (const [key, generation] of recorded) {
+        if (mine.get(key) === generation) mine.delete(key);
+      }
     }
   }
 
   clear(): void {
     this.own.clear();
+    this.touched.clear();
   }
 
   /** Mirror one agent's on-disk servers in memory without dirtying them. */

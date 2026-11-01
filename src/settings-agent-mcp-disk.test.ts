@@ -54,7 +54,26 @@ test("disk servers win unless this process changed that agent", () => {
     },
     { agentId: "d", mcpServers: [server("disk-only")] },
   ]);
-  expect(mergeAgentsWithDisk(memory, undefined, new Set())).toBe(memory);
+});
+
+test("an agent missing on disk stays deleted unless this process changed it", () => {
+  const memory = [
+    { agentId: "gone", pinned: true, mcpServers: [server("stale")] },
+    { agentId: "touched", pinned: true, mcpServers: [server("stale-t")] },
+    { agentId: "own", mcpServers: [server("mine")] },
+  ];
+  const own = new Set([agentEntryKey("own")]);
+  const touched = new Set([agentEntryKey("touched"), agentEntryKey("own")]);
+  const expected = [
+    { agentId: "touched", pinned: true },
+    { agentId: "own", mcpServers: [server("mine")] },
+  ];
+  // Entry deleted externally, and the whole agents array deleted externally.
+  expect(mergeAgentsWithDisk(memory, [], own, touched)).toEqual(expected);
+  expect(mergeAgentsWithDisk(memory, undefined, own, touched)).toEqual(
+    expected,
+  );
+  expect(mergeAgentsWithDisk(memory, undefined, new Set())).toEqual([]);
 });
 
 test("update changes only the target agent, atomically, mode 0600", () => {
