@@ -38,9 +38,6 @@ import {
   assertLocalCompactionProgress,
   estimateLocalMessageTokens,
   isLocalSlidingWindowCompactionPlanningError,
-  LOCAL_DEFAULT_COMPACTION_MODE,
-  LOCAL_DEFAULT_SLIDING_WINDOW_PERCENTAGE,
-  type LocalCompactionMode,
   type LocalCompactionStats,
   type LocalCompleteFunction,
   packageLocalSummaryMessage,
@@ -51,6 +48,13 @@ import {
   summarizeLocalMessagesSlidingWindow,
 } from "./compaction";
 import { initialMemoryFilesFromCreateBody } from "./initial-memory";
+import {
+  compactionSettingsRecord,
+  localCompactionSettingsForStorage,
+  type ResolvedLocalCompactionSettings,
+  resolveLocalCompactionSettings,
+  validateLocalCompactionSettingsRecord,
+} from "./local-compaction-settings";
 import {
   createLocalExecutor,
   type LocalBackendExecutionMode,
@@ -113,59 +117,6 @@ export interface LocalBackendModEventHooks {
   }) => void | Promise<void>;
   onLlmStart?: (info: LlmStartInfo) => void | Promise<void>;
   onLlmEnd?: (info: LlmEndInfo) => void | Promise<void>;
-}
-
-type LocalCompactionSettingsRecord = Record<string, unknown>;
-
-interface ResolvedLocalCompactionSettings {
-  mode: LocalCompactionMode;
-  prompt?: string | null;
-  clipChars?: number | null;
-  slidingWindowPercentage: number;
-}
-
-function compactionSettingsRecord(
-  value: unknown,
-): LocalCompactionSettingsRecord | null | undefined {
-  if (value === null) return null;
-  return isRecord(value) ? { ...value } : undefined;
-}
-
-function hasOwn(record: Record<string, unknown>, key: string): boolean {
-  return Object.hasOwn(record, key);
-}
-
-function localCompactionMode(value: unknown): LocalCompactionMode | undefined {
-  if (value === "all" || value === "sliding_window") return value;
-  return undefined;
-}
-
-function validateLocalCompactionSettingsRecord(
-  settings: LocalCompactionSettingsRecord,
-): void {
-  if (settings.mode === undefined || settings.mode === null) return;
-  if (!localCompactionMode(settings.mode)) {
-    throw new Error(
-      `Local backend compaction currently supports only modes "all" and "sliding_window" (received "${String(
-        settings.mode,
-      )}").`,
-    );
-  }
-}
-
-function localCompactionSettingsForStorage(
-  settings: LocalCompactionSettingsRecord | null | undefined,
-): LocalCompactionSettingsRecord | null | undefined {
-  if (settings === undefined || settings === null) return settings;
-
-  const hasLocalSetting =
-    hasOwn(settings, "mode") ||
-    hasOwn(settings, "prompt") ||
-    hasOwn(settings, "clip_chars") ||
-    hasOwn(settings, "sliding_window_percentage");
-  if (!hasLocalSetting) return undefined;
-
-  return { ...settings };
 }
 
 function formatMidConversationMemoryUpdate(
@@ -384,7 +335,7 @@ export class LocalBackend extends HeadlessBackend {
   ) {
     const [agentId, body] = args;
     const bodyRecord = body as Record<string, unknown>;
-    const settings = hasOwn(bodyRecord, "compaction_settings")
+    const settings = Object.hasOwn(bodyRecord, "compaction_settings")
       ? compactionSettingsRecord(bodyRecord.compaction_settings)
       : undefined;
     if (settings !== undefined && settings !== null) {
@@ -393,7 +344,7 @@ export class LocalBackend extends HeadlessBackend {
     const compactionSettingsForStorage =
       localCompactionSettingsForStorage(settings);
     let agent = await super.updateAgent(...args);
-    if (hasOwn(bodyRecord, "compaction_settings")) {
+    if (Object.hasOwn(bodyRecord, "compaction_settings")) {
       if (compactionSettingsForStorage !== undefined) {
         agent = this.store.setAgentCompactionSettings(
           agentId,
@@ -669,57 +620,7 @@ export class LocalBackend extends HeadlessBackend {
     agent: LocalAgentRecord,
     body?: ConversationMessageCompactBody,
   ): ResolvedLocalCompactionSettings {
-    const bodyRecord = (body ?? {}) as Record<string, unknown>;
-    const requestSettings = compactionSettingsRecord(
-      bodyRecord.compaction_settings,
-    );
-    if (requestSettings !== undefined && requestSettings !== null) {
-      validateLocalCompactionSettingsRecord(requestSettings);
-    }
-    const agentSettings = compactionSettingsRecord(agent.compaction_settings);
-    const baseSettings =
-      agentSettings && agentSettings !== null ? agentSettings : {};
-    const mergedSettings =
-      requestSettings && requestSettings !== null
-        ? { ...baseSettings, ...requestSettings }
-        : baseSettings;
-    const requestChangedMode =
-      requestSettings !== undefined &&
-      requestSettings !== null &&
-      hasOwn(requestSettings, "mode");
-    const requestChangedPrompt =
-      requestSettings !== undefined &&
-      requestSettings !== null &&
-      hasOwn(requestSettings, "prompt");
-    if (
-      requestChangedMode &&
-      !requestChangedPrompt &&
-      agentSettings &&
-      agentSettings !== null &&
-      agentSettings.mode !== requestSettings.mode
-    ) {
-      delete mergedSettings.prompt;
-    }
-
-    const mode =
-      localCompactionMode(mergedSettings.mode) ?? LOCAL_DEFAULT_COMPACTION_MODE;
-    return {
-      mode,
-      prompt:
-        typeof mergedSettings.prompt === "string" ||
-        mergedSettings.prompt === null
-          ? mergedSettings.prompt
-          : undefined,
-      clipChars:
-        typeof mergedSettings.clip_chars === "number" ||
-        mergedSettings.clip_chars === null
-          ? mergedSettings.clip_chars
-          : undefined,
-      slidingWindowPercentage:
-        typeof mergedSettings.sliding_window_percentage === "number"
-          ? mergedSettings.sliding_window_percentage
-          : LOCAL_DEFAULT_SLIDING_WINDOW_PERCENTAGE,
-    };
+    return resolveLocalCompactionSettings(agent.compaction_settings, body);
   }
 
   private async compactLocalConversation(
@@ -829,6 +730,7 @@ export class LocalBackend extends HeadlessBackend {
       complete: this.complete,
       prompt: settings.prompt,
       clipChars: settings.clipChars,
+      summaryModel: settings.model,
       localProviderAuthStorageDir: this.storageDir,
       modelsRuntime: this.piModelsRuntime,
     });
@@ -884,6 +786,7 @@ export class LocalBackend extends HeadlessBackend {
       complete: this.complete,
       prompt: settings.prompt,
       clipChars: settings.clipChars,
+      summaryModel: settings.model,
       localProviderAuthStorageDir: this.storageDir,
       modelsRuntime: this.piModelsRuntime,
     });

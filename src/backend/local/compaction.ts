@@ -14,6 +14,7 @@ import {
 import { LocalPiModelsRuntime } from "@/backend/dev/pi-models-runtime";
 import { resolvePiRequestHeaders } from "@/backend/dev/pi-request-headers";
 import { estimateLocalMessagesTokens } from "@/backend/local/local-context-estimate";
+import { debugWarn } from "@/utils/debug";
 import { isRecord } from "@/utils/type-guards";
 import type { LocalMessage } from "./local-message";
 import { resolveAvailableLocalModelForTurn } from "./local-model-config";
@@ -164,6 +165,12 @@ export interface LocalAllCompactionInput {
   complete?: LocalCompleteFunction;
   prompt?: string | null;
   clipChars?: number | null;
+  /**
+   * Model handle that writes the summary instead of the agent's model. If that
+   * call fails (other than a context overflow or an abort), the summary is
+   * written by the agent's model, as when this is unset.
+   */
+  summaryModel?: string;
   abortSignal?: AbortSignal;
   localProviderAuthStorageDir?: string;
   modelsRuntime?: LocalPiModelsRuntime;
@@ -443,10 +450,50 @@ function fableCompactionSummaryFallbackSettings(
   };
 }
 
+/** Provider-only settings for a configured summary model: the agent's own
+ * settings (reasoning level, context limit) belong to the agent's model. */
+function summaryModelSettings(handle: string): Record<string, unknown> {
+  const provider = handle.includes("/") ? handle.split("/")[0] : undefined;
+  return provider ? { provider_type: provider } : {};
+}
+
 async function runGenerateText(
   input: LocalAllCompactionInput,
   transcript: string,
   defaultPrompt: string,
+): Promise<{ text: string }> {
+  const summaryModel = input.summaryModel?.trim();
+  if (summaryModel) {
+    try {
+      return await runGenerateTextWithModel(input, transcript, defaultPrompt, {
+        model: summaryModel,
+        modelSettings: summaryModelSettings(summaryModel),
+      });
+    } catch (error) {
+      // An overflow is handled by the caller's shorter-transcript retries, and
+      // an abort must stop compaction. Anything else (unavailable model,
+      // provider error, refusal) falls back to the agent's own model.
+      if (isContextWindowOverflowError(error) || input.abortSignal?.aborted) {
+        throw error;
+      }
+      debugWarn(
+        "compaction",
+        `summary model ${summaryModel} failed; writing the summary with the agent's model ${input.agent.model}`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  }
+  return runGenerateTextWithModel(input, transcript, defaultPrompt, {
+    model: input.agent.model,
+    modelSettings: input.agent.model_settings,
+  });
+}
+
+async function runGenerateTextWithModel(
+  input: LocalAllCompactionInput,
+  transcript: string,
+  defaultPrompt: string,
+  target: { model: string; modelSettings: LocalAgentRecord["model_settings"] },
 ): Promise<{ text: string }> {
   const systemPrompt = input.prompt ?? defaultPrompt;
   const modelsRuntime =
@@ -455,8 +502,8 @@ async function runGenerateText(
       storageDir: input.localProviderAuthStorageDir,
     });
   let localModel = await resolveAvailableLocalModelForTurn({
-    model: input.agent.model,
-    modelSettings: input.agent.model_settings,
+    model: target.model,
+    modelSettings: target.modelSettings,
     storageDir: input.localProviderAuthStorageDir,
     modelsRuntime,
   });
