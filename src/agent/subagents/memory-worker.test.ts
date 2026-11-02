@@ -197,6 +197,66 @@ test("a worker commit that conflicts with the primary's is kept on its branch", 
   expect(git("branch", "--list", "letta/memory-worker/*")).not.toBe("");
 });
 
+test("an update worker defers instead of aborting a reflection merge left for repair", async () => {
+  // A reflection whose merge conflicted is handed to its repair worker: the
+  // merge stays in progress in the checkout.
+  const reflection = await createReflectionMemoryWorktree({
+    parentMemoryDir: root,
+  });
+  writeFileSync(join(reflection.worktreeDir, "note.md"), "reflection\n");
+  gitIn(reflection.worktreeDir, "commit", "-am", "reflection");
+  writeFileSync(join(root, "note.md"), "primary\n");
+  git("commit", "-am", "primary");
+  const finalized = await finalizeReflectionMemoryWorktree(reflection, {
+    shouldMerge: true,
+    claimConflictRepair: async () => ({ status: "claimed", token: "t-1" }),
+  });
+  expect(finalized.status).toBe("repair_started");
+  const mergeHeadPath = join(root, ".git", "MERGE_HEAD");
+  const mergeHead = readFileSync(mergeHeadPath, "utf8");
+  const head = git("rev-parse", "HEAD");
+  const status = git("status", "--porcelain");
+  const conflicted = readFileSync(join(root, "note.md"), "utf8");
+
+  let synced = false;
+  const result = await runMemoryWorker(
+    scope(),
+    async (dir) => {
+      writeFileSync(join(dir, "update.md"), "update\n");
+      gitIn(dir, "add", "update.md");
+      gitIn(dir, "commit", "-m", "update");
+      return { agentId: "agent-worker", success: true, report: "saved" };
+    },
+    {
+      sync: async () => {
+        synced = true;
+        return localSync("clean")();
+      },
+    },
+  );
+
+  // Not done: reported as such, nothing merged, aborted or synced.
+  expect(result.success).toBe(false);
+  expect(result.error).toContain("merge in progress");
+  expect(result.error).toContain("letta/memory-worker/");
+  expect(synced).toBe(false);
+  // The reflection's merge and the checkout are exactly as they were.
+  expect(readFileSync(mergeHeadPath, "utf8")).toBe(mergeHead);
+  expect(git("rev-parse", "HEAD")).toBe(head);
+  expect(git("status", "--porcelain")).toBe(status);
+  expect(readFileSync(join(root, "note.md"), "utf8")).toBe(conflicted);
+  expect(existsSync(join(root, "update.md"))).toBe(false);
+  // The update's commit waits on its branch for a later merge.
+  const branch = git("branch", "--list", "letta/memory-worker/*")
+    .replace(/^[*+]?\s*/, "")
+    .trim();
+  expect(branch).toStartWith("letta/memory-worker/");
+  expect(git("log", "--format=%s", "-1", branch)).toBe("update");
+  expect(git("branch", "--list", reflection.branchName)).toContain(
+    reflection.branchName,
+  );
+});
+
 test("reflection integrates its own worktree after a memory edit releases the checkout", async () => {
   const worktree = await createReflectionMemoryWorktree({
     parentMemoryDir: root,
