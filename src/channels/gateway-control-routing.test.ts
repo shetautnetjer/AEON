@@ -11,8 +11,10 @@ import {
 
 // Control requests raised by turns that no channel message started (task
 // notifications, cron, mod continuations, OpenAI-compat bridge turns) carry no
-// active routing source. They must reach the conversation's bound route, or be
-// denied so the turn does not wait forever.
+// active routing source. They must reach the conversation's bound route. With
+// no deliverable route the gateway must not deny them: it cannot see whether
+// another client (TUI, aya-chat) is subscribed and can answer, so it leaves
+// them pending and replays them once a route can deliver them.
 
 function controlRequest(requestId: string): WsProtocolMessage {
   return {
@@ -83,7 +85,7 @@ test("the host's route choice wins for a control request without a channel sourc
   gateway.close();
 });
 
-test("control request without any deliverable route is denied, not dropped", async () => {
+test("control request without any deliverable route is left pending, not denied", async () => {
   const client = new FakeClient();
   const logs: string[] = [];
   const { hooks, controlRequestEvents } = makeHooks({
@@ -92,54 +94,62 @@ test("control request without any deliverable route is denied, not dropped", asy
   const gateway = new ChannelGateway(client, hooks);
 
   // The gateway tracks the runtime, but no route can deliver an approval.
+  // Another client (TUI, aya-chat) may be subscribed and answer it.
   await gateway.registerRuntime(TEST_RUNTIME, []);
   client.emit(controlRequest("ctrl-nowhere"));
   await Bun.sleep(0);
 
   expect(controlRequestEvents).toEqual([]);
-  expect(client.submittedInputs).toEqual([
-    {
-      runtime: TEST_RUNTIME,
-      payload: {
-        kind: "approval_response",
-        request_id: "ctrl-nowhere",
-        decision: {
-          behavior: "deny",
-          message: expect.stringContaining(
-            "approval could not be delivered to any channel",
-          ),
-        },
-      },
-    },
-  ]);
-  expect(logs.some((line) => line.includes("ctrl-nowhere"))).toBe(true);
+  expect(client.submittedInputs).toEqual([]);
+  expect(
+    logs.filter(
+      (line) => line.includes("ctrl-nowhere") && line.includes("pending"),
+    ),
+  ).toHaveLength(1);
   gateway.close();
 });
 
-test("a host that finds no route makes the gateway deny the request", async () => {
+test("an approval left pending replays to a route that becomes deliverable", async () => {
   const client = new FakeClient();
+  const phone = makeSource({ channel: "telegram", chatId: "phone" });
+  let deliverable: typeof phone | null = phone;
   const { hooks, controlRequestEvents } = makeHooks({
-    resolveUnroutedControlSource: () => null,
+    resolveUnroutedControlSource: () => deliverable,
   });
   const gateway = new ChannelGateway(client, hooks);
+  await gateway.registerRuntime(TEST_RUNTIME, [phone]);
+  expect(client.startedRuntimes).toHaveLength(1);
 
-  await gateway.registerRuntime(TEST_RUNTIME, [makeSource()]);
-  client.emit(controlRequest("ctrl-host-none"));
+  // The phone adapter is down when a bridge turn asks for approval.
+  deliverable = null;
+  client.emit(controlRequest("ctrl-while-down"));
+  await Bun.sleep(0);
+  expect(controlRequestEvents).toEqual([]);
+  expect(approvalResponses(client)).toEqual([]);
+
+  // The adapter is back; the route refresh registers the conversation again
+  // (an unchanged route would otherwise be skipped), which makes the App
+  // Server replay the pending approval.
+  deliverable = phone;
+  const registered = await gateway.registerRuntime(
+    TEST_RUNTIME,
+    [phone],
+    undefined,
+    { ifUnregistered: true },
+  );
+  expect(registered).toBe(true);
+  expect(client.startedRuntimes).toHaveLength(2);
+  expect(
+    (client.startedRuntimes[1] as Record<string, unknown>).recover_approvals,
+  ).toBe(true);
+  expect(client.startedRuntimes[1]?.mode).toBeUndefined();
+  client.emit(controlRequest("ctrl-while-down"));
   await Bun.sleep(0);
 
-  expect(controlRequestEvents).toEqual([]);
-  expect(approvalResponses(client)).toEqual([
-    {
-      kind: "approval_response",
-      request_id: "ctrl-host-none",
-      decision: {
-        behavior: "deny",
-        message: expect.stringContaining(
-          "approval could not be delivered to any channel",
-        ),
-      },
-    },
-  ]);
+  expect(
+    controlRequestEvents.map((event) => [event.requestId, event.source]),
+  ).toEqual([["ctrl-while-down", phone]]);
+  expect(approvalResponses(client)).toEqual([]);
   gateway.close();
 });
 

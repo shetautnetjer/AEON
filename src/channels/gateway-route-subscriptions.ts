@@ -42,9 +42,13 @@ function errorMessage(error: unknown): string {
  * has not registered yet, through the same runtime_start a channel message
  * uses (recover_approvals, so pending approvals replay). It passes no
  * permission mode, so subscribing never changes a conversation's mode, and
- * sends no input. When a conversation it subscribed loses its last route it is
- * released through the gateway's idle-runtime cleanup: the gateway stops
- * tracking it and drops its tools. The App Server has no unsubscribe, so the
+ * sends no input. A conversation whose registration an undeliverable approval
+ * invalidated (see routeControlRequest) counts as unregistered, so a route
+ * that becomes deliverable again gets that approval replayed.
+ *
+ * When a conversation it subscribed loses its last route it is released
+ * through the gateway's idle-runtime cleanup: the gateway stops tracking it
+ * and drops its tools. The App Server has no unsubscribe, so the
  * connection stays subscribed until it closes; the gateway ignores control
  * requests for conversations it does not track.
  *

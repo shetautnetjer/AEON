@@ -1,22 +1,12 @@
-import type {
-  ApprovalResponseBody,
-  RuntimeScope,
-} from "@/types/app-server-protocol";
+import type { RuntimeScope } from "@/types/app-server-protocol";
 import { sourceRouteKey } from "./gateway-sources";
 import type { ChannelTurnSource } from "./types";
-
-/**
- * Denial sent for a control request that no channel route can deliver. Without
- * it the listener turn would wait on an approval nobody can see.
- */
-export const UNDELIVERABLE_CONTROL_REQUEST_MESSAGE =
-  "Denied automatically: approval could not be delivered to any channel bound to this conversation, so nobody could answer it. Tell the user what you wanted to do instead.";
 
 export type ControlRequestRouting =
   | { kind: "deliver"; source: ChannelTurnSource }
   /** The active turn spans several chats; the gateway does not pick one. */
   | { kind: "ambiguous" }
-  /** No route can deliver the request; the gateway denies it. */
+  /** No route can deliver the request; the gateway leaves it pending. */
   | { kind: "undeliverable" };
 
 function singleChat(
@@ -40,8 +30,8 @@ function singleChat(
  *   host resolves one (the local gateway picks the most recently created
  *   enabled route), otherwise the runtime's routed sources when they name a
  *   single chat.
- * - With no deliverable route the result is `undeliverable` and the gateway
- *   denies the request rather than leave the turn waiting forever.
+ * - With no deliverable route the result is `undeliverable`. The gateway
+ *   leaves the request pending; see `routeControlRequest`.
  */
 export function resolveControlRequestRouting(options: {
   activeSources: readonly ChannelTurnSource[];
@@ -76,8 +66,15 @@ interface ControlRequestRoutingHooks {
 
 /**
  * Resolve a control request's channel source for the gateway. Returns the
- * source to deliver to, or null after logging an ambiguous request or denying
- * an undeliverable one through `deny`.
+ * source to deliver to, or null after logging a request it cannot deliver.
+ *
+ * An undeliverable request is not denied: the gateway is a separate App Server
+ * client and cannot see whether another client (the TUI, aya-chat) is
+ * subscribed to the conversation and can answer it. The App Server keeps the
+ * request pending, and every runtime_start with recover_approvals replays it.
+ * Clearing the conversation's registration signature makes the gateway's next
+ * registration (route refresh, channel message) run runtime_start again, so a
+ * route that becomes deliverable later receives the request.
  */
 export function routeControlRequest(options: {
   requestId: string;
@@ -85,7 +82,7 @@ export function routeControlRequest(options: {
   activeSources: readonly ChannelTurnSource[];
   routedSources: readonly ChannelTurnSource[];
   hooks: ControlRequestRoutingHooks;
-  deny: (response: ApprovalResponseBody) => Promise<boolean>;
+  registration: { registrationSignature: string | null };
 }): ChannelTurnSource | null {
   const { hooks, requestId, runtime } = options;
   const routing = resolveControlRequestRouting({
@@ -105,22 +102,9 @@ export function routeControlRequest(options: {
     hooks.debugLog?.(`Control request ${where} spans several chats`);
     return null;
   }
-  hooks.debugLog?.(`No channel route for control request ${where}; denying`);
-  void options
-    .deny({
-      request_id: requestId,
-      decision: {
-        behavior: "deny",
-        message: UNDELIVERABLE_CONTROL_REQUEST_MESSAGE,
-      },
-    })
-    .then(
-      (accepted) => {
-        if (!accepted) hooks.debugLog?.(`Denial of ${where} was not accepted`);
-      },
-      (error: unknown) => {
-        hooks.debugLog?.(`Denying ${where} failed: ${String(error)}`);
-      },
-    );
+  hooks.debugLog?.(
+    `No channel route for control request ${where}; leaving it pending for other clients`,
+  );
+  options.registration.registrationSignature = null;
   return null;
 }

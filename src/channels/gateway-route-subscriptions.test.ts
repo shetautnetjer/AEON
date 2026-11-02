@@ -11,6 +11,7 @@ import {
   makeDelivery,
   makeHooks,
   makeSource,
+  makeTurnFinished,
   TEST_RUNTIME,
 } from "./gateway-test-support";
 import { createRoutedRuntimeRegistrationRefresher } from "./routed-runtime-registration";
@@ -243,5 +244,38 @@ test("a failed subscription is logged and retried on the next refresh", async ()
   expect(ctx.controlRequestEvents.map((event) => event.requestId)).toEqual([
     "ctrl-retry",
   ]);
+  ctx.close();
+});
+
+test("an approval raised while the phone route is down replays when it returns", async () => {
+  const ctx = setup();
+  await ctx.gateway.submit(
+    makeDelivery({ sources: [ctx.route], clientMessageId: "cm-phone" }),
+  );
+  ctx.client.emit(makeTurnFinished("end_turn"));
+  await Bun.sleep(0);
+  await ctx.refresh();
+  expect(ctx.client.startedRuntimes).toHaveLength(1);
+
+  // The adapter stops; a bridge turn on the phone conversation asks for
+  // approval. No route can deliver it, and the TUI may still answer it.
+  ctx.setRoutes([]);
+  emitToSubscribers(ctx.client, controlRequest("ctrl-down"));
+  await Bun.sleep(0);
+  await ctx.refresh();
+  expect(ctx.controlRequestEvents).toEqual([]);
+  expect(ctx.client.submittedInputs).toHaveLength(1); // the phone message only
+
+  // The adapter is back: the refresh registers again and the App Server
+  // replays the still-pending approval to the gateway.
+  ctx.setRoutes([ctx.route]);
+  await ctx.refresh();
+  expect(ctx.client.startedRuntimes).toHaveLength(2);
+  emitToSubscribers(ctx.client, controlRequest("ctrl-down"));
+  await Bun.sleep(0);
+  expect(
+    ctx.controlRequestEvents.map((event) => [event.requestId, event.source]),
+  ).toEqual([["ctrl-down", ctx.route]]);
+  expect(ctx.client.submittedInputs).toHaveLength(1);
   ctx.close();
 });

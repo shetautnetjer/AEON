@@ -88,7 +88,7 @@ export interface ChannelGatewayHooks {
   onLifecycle(event: ChannelTurnLifecycleEvent): void | Promise<void>;
   onProgress(event: ChannelTurnProgressEvent): void | Promise<void>;
   onControlRequest(event: ChannelControlRequestEvent): void | Promise<void>;
-  /** Route approvals of turns no channel message started; null = deny. */
+  /** Route approvals of turns no channel message started; null = none. */
   resolveUnroutedControlSource?(
     runtime: RuntimeScope,
     routedSources: ChannelTurnSource[],
@@ -983,7 +983,7 @@ export class ChannelGateway {
       activeSources: state.active?.routingSources ?? [],
       routedSources: state.routedSources,
       hooks: this.hooks,
-      deny: (response) => this.submitApprovalResponse(state.runtime, response),
+      registration: state,
     });
     if (!source) return;
     void this.enqueueHook(state, () =>
