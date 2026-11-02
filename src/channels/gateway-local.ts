@@ -31,6 +31,7 @@ import {
   buildChannelCurrentModelUnavailableMessage,
 } from "./commands";
 import { ChannelGateway, type ChannelGatewayDelivery } from "./gateway-core";
+import { createRoutedRuntimePublisher } from "./gateway-route-subscriptions";
 import { buildGatewayMessageChannelTool } from "./message-channel-gateway-tool";
 import { getChannelDisplayName } from "./plugin-registry";
 import {
@@ -292,11 +293,10 @@ export async function startLocalChannelGateway(
       registry,
       channelNames: options.channelNames,
       buildTool: buildGatewayMessageChannelTool,
-      publisher: {
-        getKnownRuntimes: () => gateway.getKnownRuntimes(),
-        publish: (updates, routedSources) =>
-          gateway.updateRoutedRuntimeTools(updates, routedSources),
-      },
+      publisher: createRoutedRuntimePublisher({
+        gateway,
+        logger: options.logger,
+      }),
       logger: options.logger,
     });
   registry.setMessageHandler((delivery) => {

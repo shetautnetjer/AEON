@@ -19,6 +19,7 @@ import type {
 } from "@/types/app-server-protocol";
 import { routeControlRequest } from "./gateway-control-routing";
 import {
+  channelTagsForSources,
   sourceLifecycleKey,
   uniqueLifecycleSources,
   uniqueRoutedSources,
@@ -149,10 +150,6 @@ function hasAgentRuntime<
   T extends { runtime?: RuntimeScope<string | null> | null },
 >(value: T): value is T & { runtime: RuntimeScope } {
   return !!value.runtime?.agent_id;
-}
-
-function channelTagsForSources(sources: ChannelTurnSource[]): string[] {
-  return [...new Set(sources.map((source) => `channel:${source.channel}`))];
 }
 
 function stopReasonFromDelta(
@@ -482,13 +479,16 @@ export class ChannelGateway {
     return true;
   }
 
+  /** Resolves false when `ifUnregistered` finds a registration. */
   async registerRuntime(
     runtime: RuntimeScope,
     sources: ChannelTurnSource[] = [],
     defaultPermissionMode?: ChannelDefaultPermissionMode,
-  ): Promise<void> {
+    options: { ifUnregistered?: boolean } = {},
+  ): Promise<boolean> {
     const state = this.getState(runtime);
-    await this.enqueueRegistration(async () => {
+    return await this.enqueueRegistration(async () => {
+      if (options.ifUnregistered && state.registrationSignature) return false;
       this.setRoutedSources(runtime, sources);
       await this.performRuntimeRegistration(state, {
         runtime,
@@ -497,6 +497,7 @@ export class ChannelGateway {
         clientMessageId: "recovered",
         ...(defaultPermissionMode ? { defaultPermissionMode } : {}),
       });
+      return true;
     });
   }
 
