@@ -535,10 +535,18 @@ function resolveQueuePumpTransport(
         isListenerTransportOpen(connection.writer),
     );
     // Only client-sent input waits for a subscriber. Process-originated work
-    // (cron, task notifications) has no client waiting to receive its echo.
+    // (cron, task notifications) has no client waiting to receive its echo,
+    // and neither has process-owned input: the in-process OpenAI-compat bridge
+    // observes its own turn, so it would otherwise wait forever on a
+    // conversation no WebSocket client has subscribed to.
     const hasClientInput = runtime.queueRuntime
       .peekReady()
-      .some((item) => item.source === "user");
+      .some(
+        (item) =>
+          item.source === "user" &&
+          runtime.queuedMessagesByItemId.get(item.id)?.processOwnedTurn !==
+            true,
+      );
     if (
       !localConnection &&
       hasClientInput &&

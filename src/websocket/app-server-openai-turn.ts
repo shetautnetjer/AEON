@@ -185,6 +185,28 @@ function extractReasoningText(delta: unknown): string {
   return extractDeltaText(delta);
 }
 
+/** The listener input one bridge request dispatches. */
+export function createBridgeIncomingMessage(
+  params: Pick<RunTurnParams, "agentId" | "conversationId" | "messages">,
+): ListenerIncomingMessage {
+  return {
+    type: "message",
+    agentId: params.agentId,
+    conversationId: params.conversationId,
+    // Each HTTP request settles from its own turn: batching two requests
+    // would strand the second observer (only the first OTID survives a
+    // merged batch) and answer the first with both prompts.
+    noCoalesce: true,
+    // This request's output is owned by the in-process HTTP bridge, so the
+    // turn must not block waiting for a relay WebSocket client to attach.
+    processOwnedTurn: true,
+    // HTTP clients cannot surface Letta Code's interactive overlays. Keep
+    // those tools out so the agent asks in ordinary assistant text.
+    excludeInteractiveTools: true,
+    messages: params.messages,
+  };
+}
+
 async function runTurnViaListenerRuntime(
   params: RunTurnParams,
 ): Promise<TurnOutcome> {
@@ -362,22 +384,7 @@ async function runTurnViaListenerRuntime(
       OPENAI_TURN_TIMEOUT_MS,
     );
 
-    const incoming: ListenerIncomingMessage = {
-      type: "message",
-      agentId: params.agentId,
-      conversationId: params.conversationId,
-      // Each HTTP request settles from its own turn: batching two requests
-      // would strand the second observer (only the first OTID survives a
-      // merged batch) and answer the first with both prompts.
-      noCoalesce: true,
-      // This request's output is owned by the in-process HTTP bridge, so the
-      // turn must not block waiting for a relay WebSocket client to attach.
-      processOwnedTurn: true,
-      // HTTP clients cannot surface Letta Code's interactive overlays. Keep
-      // those tools out so the agent asks in ordinary assistant text.
-      excludeInteractiveTools: true,
-      messages: params.messages,
-    };
+    const incoming = createBridgeIncomingMessage(params);
     try {
       dispatchInboundMessageWhenReady({
         listener,
