@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { getBoundLocalChannelIds } from "@/channels/bound-routes";
 import { settingsManager } from "@/settings-manager";
 import type { StreamDelta } from "@/types/protocol_v2";
 import {
@@ -185,6 +186,29 @@ function extractReasoningText(delta: unknown): string {
   return extractDeltaText(delta);
 }
 
+/**
+ * No interactive approver exists on this surface, so bridge conversations run
+ * unrestricted (Hermes-style: the API is opt-in and bearer-gated and exposes
+ * the agent's full toolset). Approvals that still arise finish the HTTP
+ * request with an explanatory reply instead of hanging it.
+ *
+ * A conversation bound to a channel route (the phone thread) keeps its own
+ * mode: its approvals go to that channel as approval cards, and forcing
+ * unrestricted would silently switch them off there too.
+ */
+export function applyBridgePermissionMode(
+  listener: ListenerRuntime,
+  agentId: string,
+  conversationId: string,
+): void {
+  if (getBoundLocalChannelIds({ agentId, conversationId }).length > 0) return;
+  getOrCreateConversationPermissionModeStateRef(
+    listener,
+    agentId,
+    conversationId,
+  ).mode = "unrestricted";
+}
+
 /** The listener input one bridge request dispatches. */
 export function createBridgeIncomingMessage(
   params: Pick<RunTurnParams, "agentId" | "conversationId" | "messages">,
@@ -216,15 +240,7 @@ async function runTurnViaListenerRuntime(
     params.agentId,
     params.conversationId,
   );
-  // No interactive approver exists on this surface, so bridge conversations
-  // run unrestricted (Hermes-style: the API is opt-in and bearer-gated and
-  // exposes the agent's full toolset). Approvals that still arise finish the
-  // turn with an explanatory reply instead of hanging.
-  getOrCreateConversationPermissionModeStateRef(
-    listener,
-    params.agentId,
-    params.conversationId,
-  ).mode = "unrestricted";
+  applyBridgePermissionMode(listener, params.agentId, params.conversationId);
   // The bridge is a process-originated producer, not a websocket client.
   // Scoped frames reach explicit conversation subscribers and the observer
   // below; they must never inherit an arbitrary app-server connection.
