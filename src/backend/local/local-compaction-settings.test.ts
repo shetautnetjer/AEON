@@ -34,10 +34,12 @@ describe("localCompactionSettingsForStorage", () => {
     ).toEqual({ model: "anthropic/claude-haiku-5-5" });
   });
 
-  test("does not store Letta Code's default cloud summary model alone", () => {
-    expect(
-      localCompactionSettingsForStorage({ model: "letta/auto" }),
-    ).toBeUndefined();
+  test("stores a non-local model too, so it can clear a configured one", () => {
+    // Storing replaces the agent's settings: { model: "letta/auto" } replaces
+    // { model: "anthropic/claude-haiku-5-5" }, and resolution then ignores it.
+    const stored = localCompactionSettingsForStorage({ model: "letta/auto" });
+    expect(stored).toEqual({ model: "letta/auto" });
+    expect(resolveLocalCompactionSettings(stored).model).toBeUndefined();
   });
 
   test("keeps the existing local keys and null", () => {

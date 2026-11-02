@@ -14,6 +14,7 @@ import {
 import { LocalPiModelsRuntime } from "@/backend/dev/pi-models-runtime";
 import { resolvePiRequestHeaders } from "@/backend/dev/pi-request-headers";
 import { estimateLocalMessagesTokens } from "@/backend/local/local-context-estimate";
+import { debugWarn } from "@/utils/debug";
 import { isRecord } from "@/utils/type-guards";
 import type { LocalMessage } from "./local-message";
 import { resolveAvailableLocalModelForTurn } from "./local-model-config";
@@ -475,6 +476,11 @@ async function runGenerateText(
       if (isContextWindowOverflowError(error) || input.abortSignal?.aborted) {
         throw error;
       }
+      debugWarn(
+        "compaction",
+        `summary model ${summaryModel} failed; writing the summary with the agent's model ${input.agent.model}`,
+        error instanceof Error ? error.message : String(error),
+      );
     }
   }
   return runGenerateTextWithModel(input, transcript, defaultPrompt, {

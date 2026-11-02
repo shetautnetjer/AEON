@@ -8,9 +8,9 @@ import {
 } from "./compaction";
 
 /**
- * Local-backend compaction settings: parse, validate, decide what to store and
- * resolve what one compaction uses. Moved out of local-backend.ts (pure
- * functions, no backend state) so the summary-model setting has a home.
+ * Local-backend compaction settings: parse and validate a settings value,
+ * decide what to store on the agent, and resolve the settings one compaction
+ * uses (mode, prompt, clip size, sliding-window share and summary model).
  */
 export type LocalCompactionSettingsRecord = Record<string, unknown>;
 
@@ -80,7 +80,10 @@ export function localCompactionSettingsForStorage(
     hasOwn(settings, "prompt") ||
     hasOwn(settings, "clip_chars") ||
     hasOwn(settings, "sliding_window_percentage") ||
-    localSummaryModelHandle(settings.model) !== undefined;
+    // Any model value is stored, including letta/auto: storing replaces the
+    // agent's settings, so sending a non-local model is how a configured
+    // summary model is cleared back to "the agent's own model".
+    hasOwn(settings, "model");
   if (!hasLocalSetting) return undefined;
 
   return { ...settings };
