@@ -240,19 +240,23 @@ export interface ReflectionMemoryWorktreeFinalizeResult {
    * repair worker it launches for the conflict left in progress.
    */
   repairToken?: string;
+  /**
+   * Set on `repair_started` once its repair worker has finished: whether the
+   * reflection's commits are now on the parent's HEAD.
+   */
+  repairLanded?: boolean;
 }
 
 export function reflectionIntegrationConsumesTranscript(
   result: ReflectionMemoryWorktreeFinalizeResult,
 ): boolean {
-  // `repair_started` also consumes: the reflection's commits are the in-flight
-  // merge's second parent on the kept branch, and post-turn sync relaunches
-  // repair for a lingering MERGE_HEAD, so a retry reflection would only
-  // duplicate the same memories.
+  // A repaired merge consumes only once the reflection's commits are on the
+  // parent's HEAD. A repair that did not land them is marked attempted and is
+  // not relaunched for the same conflict, so the transcript stays retryable.
   return (
     result.status === "merged" ||
     result.status === "no_changes" ||
-    result.status === "repair_started"
+    (result.status === "repair_started" && result.repairLanded === true)
   );
 }
 
@@ -539,8 +543,14 @@ export async function finalizeReflectionMemoryWorktreeUnlocked(
     };
   }
 
+  // A merge left in progress can have an empty porcelain status (every file
+  // resolved to HEAD, not yet committed). Treat it like uncommitted changes:
+  // never start a second merge on top of it, which could claim or abort it.
   const parentStatus = await getStatusPorcelain(worktree.parentMemoryDir);
-  if (parentStatus.length > 0) {
+  if (
+    parentStatus.length > 0 ||
+    (await hasUnfinishedMerge(worktree.parentMemoryDir))
+  ) {
     await cleanupWorktreeAndBranch(
       worktree.parentMemoryDir,
       worktree.worktreeDir,
@@ -672,8 +682,9 @@ export async function finalizeReflectionMemoryWorktreeUnlocked(
     // Only an actual unfinished merge (MERGE_HEAD) can be handed to the repair
     // worker: its sync proceeds only on a conflict. Git can also refuse the
     // merge before starting it (e.g. merge.ff=only on diverged branches),
-    // leaving a clean checkout; claiming repair then would consume the
-    // transcript and lose the reflection, so that keeps the retry path.
+    // leaving a clean checkout; claiming repair then would hand the worker
+    // nothing to merge and strand the reflection branch, so that keeps the
+    // retry path.
     const claim = (await hasUnfinishedMerge(worktree.parentMemoryDir))
       ? await claimReflectionMergeRepair(
           worktree.parentMemoryDir,
@@ -813,11 +824,73 @@ export async function abortReflectionMergeRepair(
   });
 }
 
+/**
+ * Record whether a `repair_started` result's commits landed once its repair
+ * worker has finished: the reflection branch head (captured before the
+ * merge; the worker deletes the branch) must be an ancestor of the parent's
+ * HEAD. Anything else (unresolved, aborted, or rewritten) has not landed.
+ */
+export async function settleReflectionMergeRepair(
+  result: ReflectionMemoryWorktreeFinalizeResult,
+): Promise<ReflectionMemoryWorktreeFinalizeResult> {
+  const landed =
+    !!result.head &&
+    !!(await tryRunGit(result.parentMemoryDir, [
+      "merge-base",
+      "--is-ancestor",
+      result.head,
+      "HEAD",
+    ]));
+  debugLog(
+    "memfs-git",
+    "reflection merge repair settled branch=%s head=%s landed=%s",
+    result.reflectionBranch,
+    result.head ?? "<none>",
+    String(landed),
+  );
+  return { ...result, repairLanded: landed };
+}
+
+/**
+ * After a repair that did not land: if the parent is still mid-merge on this
+ * reflection's own head, abort that merge so the checkout is clean again.
+ * Its attempt is "done", so nothing relaunches it; left alone, update
+ * workers would defer and retries would see parent_dirty until someone
+ * resolved it by hand. Never touches a merge of anything else. The branch is
+ * kept and the transcript stays retryable.
+ */
+export async function abortUnlandedReflectionMerge(
+  result: ReflectionMemoryWorktreeFinalizeResult,
+): Promise<void> {
+  if (result.repairLanded !== false || !result.head) return;
+  const head = result.head;
+  await withMemoryOperation(result.parentMemoryDir, async () => {
+    const mergeHead = await tryRunGit(result.parentMemoryDir, [
+      "rev-parse",
+      "-q",
+      "--verify",
+      "MERGE_HEAD",
+    ]);
+    if (mergeHead?.stdout.trim() !== head) return;
+    await tryRunGit(result.parentMemoryDir, ["merge", "--abort"]);
+    debugLog(
+      "memfs-git",
+      "reflection merge repair did not land; aborted its own merge branch=%s",
+      result.reflectionBranch,
+    );
+  });
+}
+
 export type MemoryWorkerWorktreeOutcome =
   | { status: "merged"; commitCount: number; head: string }
   | { status: "no_changes" }
   | { status: "discarded" }
   | { status: "merge_conflict"; commitCount: number; branchName: string }
+  | {
+      status: "deferred_merge_in_progress";
+      commitCount: number;
+      branchName: string;
+    }
   | { status: "failed"; error: string };
 
 /**
@@ -828,7 +901,10 @@ export type MemoryWorkerWorktreeOutcome =
  * parent's own changes is aborted and the branch is kept so nothing is lost.
  * Unlike reflection, a dirty parent does not block the merge: Git refuses only
  * when the parent's uncommitted files overlap the worker's commits, and that
- * surfaces as a conflict here.
+ * surfaces as a conflict here. A merge already in progress in the parent (a
+ * reflection handed to its repair worker) is never touched: the worker's
+ * branch is kept and the outcome is deferred, since aborting would discard
+ * that merge.
  */
 export async function integrateMemoryWorkerWorktree(
   worktree: ReflectionMemoryWorktree,
@@ -865,6 +941,13 @@ export async function integrateMemoryWorkerWorktree(
       "--force",
       worktree.worktreeDir,
     ]);
+  }
+  if (await hasUnfinishedMerge(worktree.parentMemoryDir)) {
+    return {
+      status: "deferred_merge_in_progress",
+      commitCount,
+      branchName: worktree.branchName,
+    };
   }
   const merged = await tryRunGit(worktree.parentMemoryDir, [
     "merge",

@@ -8,6 +8,7 @@ import { syncPendingMemoryCommitsAfterTurn } from "@/agent/memory-git";
 import { withMemoryOperation } from "@/agent/memory-operation";
 import {
   abortReflectionMergeRepair,
+  abortUnlandedReflectionMerge,
   buildReflectionMemoryScope,
   createReflectionMemoryWorktree,
   finalizeReflectionMemoryWorktree,
@@ -18,6 +19,7 @@ import {
   reflectionIntegrationConsumesTranscript,
   reflectionIntegrationShouldRecompile,
   reflectionMemoryParentHasChanges,
+  settleReflectionMergeRepair,
 } from "@/agent/memory-worktree";
 import { getSubagents } from "@/agent/subagent-state";
 import { getBackend } from "@/backend";
@@ -439,7 +441,9 @@ function getReflectionCompletionMessage(
     case "merge_conflict":
       return "Tried to reflect, but memory updates conflicted with newer changes; will retry later.";
     case "repair_started":
-      return "Reflection's memory updates overlapped newer changes; a repair worker is merging them.";
+      return integration.repairLanded
+        ? "Reflection's memory updates overlapped newer changes; a repair worker merged them."
+        : "Reflection's memory updates overlapped newer changes and the repair worker did not merge them; will retry later.";
     case "dirty_uncommitted":
       return "Tried to reflect, but memory changes were not committed cleanly; will retry later.";
     case "failed": {
@@ -609,11 +613,12 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
           params.claimConflictRepair ?? claimMemoryConflictRepair,
       });
   // The conflict stays in progress in the parent checkout; hand it to the
-  // repair worker with the token claimed under the finalize lease. When no
-  // worker can be launched, undo the handoff so the repo is not left
-  // mid-merge with nothing working on it.
+  // repair worker with the token claimed under the finalize lease and wait
+  // for it, so the transcript is consumed only if the reflection's commits
+  // then landed on the parent's HEAD. When no worker can be launched, undo
+  // the handoff so the repo is not left mid-merge with nothing working on it.
   if (integration.status === "repair_started") {
-    const repairLaunched = await launchReflectionMergeRepair(
+    const repairRan = await launchReflectionMergeRepair(
       {
         agentId: params.agentId,
         conversationId: params.conversationId,
@@ -622,9 +627,10 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
       },
       { spawnMemoryRepair: params.spawnMemoryRepair },
     );
-    if (!repairLaunched) {
-      integration = await abortReflectionMergeRepair(integration);
-    }
+    integration = repairRan
+      ? await settleReflectionMergeRepair(integration)
+      : await abortReflectionMergeRepair(integration);
+    if (repairRan) await abortUnlandedReflectionMerge(integration);
   }
   const completionSuccess =
     params.subagentSuccess &&

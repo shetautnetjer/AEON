@@ -13,8 +13,10 @@ import {
   buildReflectionIntegrationMemoryScope,
   createReflectionMemoryWorktree,
   finalizeReflectionMemoryWorktree,
+  integrateMemoryWorkerWorktree,
   reflectionIntegrationConsumesTranscript,
   reflectionMemoryParentHasChanges,
+  settleReflectionMergeRepair,
 } from "@/agent/memory-worktree";
 
 let tempDir: string;
@@ -183,10 +185,9 @@ describe("reflection memory worktrees", () => {
 
     expect(result.status).toBe("repair_started");
     expect(result.repairToken).toBe("repair-token-1");
-    // The transcript is consumed: the commits are safe as the in-flight
-    // merge's second parent, and post-turn sync re-repairs a lingering
-    // MERGE_HEAD, so a retry reflection would only duplicate memories.
-    expect(reflectionIntegrationConsumesTranscript(result)).toBe(true);
+    // Not consumed yet: the commits are only on the kept branch until the
+    // repair worker lands the merge on main.
+    expect(reflectionIntegrationConsumesTranscript(result)).toBe(false);
     expect(claims).toEqual([{ memoryDir, kind: "conflict" }]);
 
     // The merge is left in progress for the repair worker: the branch is its
@@ -238,7 +239,7 @@ describe("reflection memory worktrees", () => {
     ).toBe("");
   });
 
-  test("a concluded repair merge consumes the transcript and leaves no reflection branch", async () => {
+  test("a repair merge consumes the transcript only once it lands, leaving no reflection branch", async () => {
     const worktree = await createReflectionMemoryWorktree({
       parentMemoryDir: memoryDir,
     });
@@ -264,10 +265,12 @@ describe("reflection memory worktrees", () => {
     });
     expect(result.status).toBe("repair_started");
 
-    // The transcript counts as consumed: the reflection's commits are the
-    // merge's second parent on the kept branch, and post-turn sync re-repairs
-    // a lingering MERGE_HEAD, so no retry reflection runs over it.
-    expect(reflectionIntegrationConsumesTranscript(result)).toBe(true);
+    // Not consumed while the merge is still in progress: the commits are not
+    // on main yet.
+    expect(reflectionIntegrationConsumesTranscript(result)).toBe(false);
+    const unresolved = await settleReflectionMergeRepair(result);
+    expect(unresolved.repairLanded).toBe(false);
+    expect(reflectionIntegrationConsumesTranscript(unresolved)).toBe(false);
 
     // The repair worker does what its prompt instructs: resolve keeping both
     // sides, commit the merge, delete the reflection branch.
@@ -275,6 +278,12 @@ describe("reflection memory worktrees", () => {
     git(memoryDir, ["add", "persona.md"]);
     git(memoryDir, ["commit", "--no-edit"]);
     git(memoryDir, ["branch", "-D", worktree.branchName]);
+
+    // Landed: the reflection head is an ancestor of HEAD even though its
+    // branch is gone, so the transcript is consumed now.
+    const landed = await settleReflectionMergeRepair(result);
+    expect(landed.repairLanded).toBe(true);
+    expect(reflectionIntegrationConsumesTranscript(landed)).toBe(true);
 
     expect(readFileSync(join(memoryDir, "persona.md"), "utf-8")).toBe(
       "base\nparent\nreflection\n",
@@ -308,6 +317,39 @@ describe("reflection memory worktrees", () => {
     expect(
       git(memoryDir, ["branch", "--list", "letta/reflection/*"]).trim(),
     ).toBe("");
+  });
+
+  test("a memory worker's merge is deferred while another merge is in progress", async () => {
+    // Leave the parent mid-merge on a conflict.
+    git(memoryDir, ["checkout", "-b", "other"]);
+    writeMemoryFile("persona.md", "other\n");
+    git(memoryDir, ["commit", "-am", "other"]);
+    git(memoryDir, ["checkout", "main"]);
+    writeMemoryFile("persona.md", "main\n");
+    git(memoryDir, ["commit", "-am", "main"]);
+    expect(() => git(memoryDir, ["merge", "other"])).toThrow();
+    const mergeHeadPath = join(memoryDir, ".git", "MERGE_HEAD");
+    const mergeHead = readFileSync(mergeHeadPath, "utf-8");
+    const status = git(memoryDir, ["status", "--porcelain"]);
+
+    const worktree = await createReflectionMemoryWorktree({
+      parentMemoryDir: memoryDir,
+      label: "memory-worker",
+    });
+    writeFileSync(join(worktree.worktreeDir, "update.md"), "update\n");
+    git(worktree.worktreeDir, ["add", "update.md"]);
+    git(worktree.worktreeDir, ["commit", "-m", "update"]);
+
+    expect(await integrateMemoryWorkerWorktree(worktree)).toEqual({
+      status: "deferred_merge_in_progress",
+      commitCount: 1,
+      branchName: worktree.branchName,
+    });
+    expect(readFileSync(mergeHeadPath, "utf-8")).toBe(mergeHead);
+    expect(git(memoryDir, ["status", "--porcelain"])).toBe(status);
+    expect(
+      git(memoryDir, ["branch", "--list", worktree.branchName]).trim(),
+    ).toBe(worktree.branchName);
   });
 
   test("finalizing sweeps merged reflection branches but keeps the rest", async () => {
@@ -450,6 +492,44 @@ describe("reflection memory worktrees", () => {
     expect(
       git(memoryDir, ["branch", "--list", worktree.branchName]).trim(),
     ).toContain(worktree.branchName);
+  });
+
+  test("a merge in progress with a clean status is left alone, not claimed or aborted", async () => {
+    // Mid-merge with every file resolved to HEAD and staged: porcelain is
+    // empty but MERGE_HEAD remains.
+    git(memoryDir, ["checkout", "-b", "other"]);
+    writeMemoryFile("persona.md", "other\n");
+    git(memoryDir, ["commit", "-am", "other"]);
+    git(memoryDir, ["checkout", "main"]);
+    writeMemoryFile("persona.md", "main\n");
+    git(memoryDir, ["commit", "-am", "main"]);
+    expect(() => git(memoryDir, ["merge", "other"])).toThrow();
+    git(memoryDir, ["checkout", "--ours", "persona.md"]);
+    git(memoryDir, ["add", "persona.md"]);
+    expect(git(memoryDir, ["status", "--porcelain"])).toBe("");
+    const mergeHeadPath = join(memoryDir, ".git", "MERGE_HEAD");
+    const mergeHead = readFileSync(mergeHeadPath, "utf-8");
+
+    const worktree = await createReflectionMemoryWorktree({
+      parentMemoryDir: memoryDir,
+    });
+    writeFileSync(join(worktree.worktreeDir, "reflection.md"), "dream\n");
+    git(worktree.worktreeDir, ["add", "reflection.md"]);
+    git(worktree.worktreeDir, ["commit", "-m", "reflection"]);
+
+    let claimed = false;
+    const result = await finalizeReflectionMemoryWorktree(worktree, {
+      shouldMerge: true,
+      claimConflictRepair: async () => {
+        claimed = true;
+        return { status: "claimed", token: "t" };
+      },
+    });
+
+    expect(result.status).toBe("parent_dirty");
+    expect(reflectionIntegrationConsumesTranscript(result)).toBe(false);
+    expect(claimed).toBe(false);
+    expect(readFileSync(mergeHeadPath, "utf-8")).toBe(mergeHead);
   });
 
   test("cleans up when parent memory is dirty so the transcript can retry", async () => {
