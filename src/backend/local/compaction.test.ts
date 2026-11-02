@@ -179,3 +179,146 @@ describe("local compaction summarizer options", () => {
     }
   });
 });
+
+describe("local compaction summary model", () => {
+  const messages: LocalMessage[] = [
+    {
+      id: "ui-msg-1",
+      role: "user",
+      content: "please summarize this conversation",
+      timestamp: Date.now(),
+    },
+  ];
+  const agent = {
+    id: "agent-local-1",
+    name: "Local",
+    description: null,
+    system: "",
+    tags: [],
+    model: "anthropic/claude-opus-4-8",
+    model_settings: { provider_type: "anthropic" },
+  };
+
+  async function withAnthropicProvider(
+    run: (storageDir: string) => Promise<void>,
+  ): Promise<void> {
+    const storageDir = await mkdtemp(join(tmpdir(), "local-compaction-"));
+    try {
+      await createOrUpdateLocalProvider({
+        storageDir,
+        providerType: "anthropic",
+        providerName: "lc-anthropic",
+        apiKey: "secret-key",
+      });
+      await run(storageDir);
+    } finally {
+      await rm(storageDir, { recursive: true, force: true });
+    }
+  }
+
+  function failedAssistantMessage(): AssistantMessage {
+    return {
+      ...summaryAssistantMessage(),
+      content: [],
+      stopReason: "error",
+      errorMessage: "provider unavailable",
+    };
+  }
+
+  test("writes the summary with the configured summary model", async () => {
+    await withAnthropicProvider(async (storageDir) => {
+      const modelIds: string[] = [];
+      const summary = await summarizeLocalMessagesAll({
+        conversationId: "conv-summary-model",
+        agent,
+        messages,
+        summaryModel: "anthropic/claude-sonnet-4-6",
+        localProviderAuthStorageDir: storageDir,
+        complete: async (model) => {
+          modelIds.push(model.id);
+          return summaryAssistantMessage();
+        },
+      });
+      expect(summary).toBe("summary of prior work");
+      expect(modelIds).toEqual(["claude-sonnet-4-6"]);
+    });
+  });
+
+  test("falls back to the agent's model when the summary model fails", async () => {
+    await withAnthropicProvider(async (storageDir) => {
+      const modelIds: string[] = [];
+      const summary = await summarizeLocalMessagesAll({
+        conversationId: "conv-summary-model-fallback",
+        agent,
+        messages,
+        summaryModel: "anthropic/claude-sonnet-4-6",
+        localProviderAuthStorageDir: storageDir,
+        complete: async (model) => {
+          modelIds.push(model.id);
+          return model.id === "claude-sonnet-4-6"
+            ? failedAssistantMessage()
+            : summaryAssistantMessage();
+        },
+      });
+      expect(summary).toBe("summary of prior work");
+      expect(modelIds).toEqual(["claude-sonnet-4-6", "claude-opus-4-8"]);
+    });
+  });
+
+  test("falls back to the agent's model when the summary model cannot be resolved", async () => {
+    await withAnthropicProvider(async (storageDir) => {
+      const modelIds: string[] = [];
+      await summarizeLocalMessagesAll({
+        conversationId: "conv-summary-model-unknown",
+        agent,
+        messages,
+        summaryModel: "nonexistent-provider/no-such-model",
+        localProviderAuthStorageDir: storageDir,
+        complete: async (model) => {
+          modelIds.push(model.id);
+          return summaryAssistantMessage();
+        },
+      });
+      expect(modelIds).toEqual(["claude-opus-4-8"]);
+    });
+  });
+
+  test("does not fall back after an abort", async () => {
+    await withAnthropicProvider(async (storageDir) => {
+      const controller = new AbortController();
+      const modelIds: string[] = [];
+      const run = summarizeLocalMessagesAll({
+        conversationId: "conv-summary-model-abort",
+        agent,
+        messages,
+        summaryModel: "anthropic/claude-sonnet-4-6",
+        abortSignal: controller.signal,
+        localProviderAuthStorageDir: storageDir,
+        complete: async (model) => {
+          modelIds.push(model.id);
+          controller.abort();
+          return { ...failedAssistantMessage(), stopReason: "aborted" };
+        },
+      });
+      await expect(run).rejects.toThrow();
+      expect(modelIds).toEqual(["claude-sonnet-4-6"]);
+    });
+  });
+
+  test("uses only the agent's model when no summary model is set", async () => {
+    await withAnthropicProvider(async (storageDir) => {
+      const modelIds: string[] = [];
+      await summarizeLocalMessagesAll({
+        conversationId: "conv-no-summary-model",
+        agent,
+        messages,
+        localProviderAuthStorageDir: storageDir,
+        complete: async (model) => {
+          modelIds.push(model.id);
+          return summaryAssistantMessage();
+        },
+      });
+      expect(modelIds).toEqual(["claude-opus-4-8"]);
+    });
+  });
+});
