@@ -9,10 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  claimMemoryConflictRepair,
-  completeMemoryConflictRepair,
-} from "@/agent/memory-conflict-repair";
+import { completeMemoryConflictRepair } from "@/agent/memory-conflict-repair";
 import { claimMemoryOperation } from "@/agent/memory-operation";
 import {
   createReflectionMemoryWorktree,
@@ -531,16 +528,47 @@ describe("reflection worktree completion messaging", () => {
     expect(result.completionMessage).toBe(
       "Reflection's memory updates overlapped newer changes and the repair worker did not merge them; will retry later.",
     );
-    // The same conflict is not relaunched automatically, which is why the
-    // transcript must stay retryable rather than be consumed.
-    expect((await claimMemoryConflictRepair(memoryDir)).status).toBe(
-      "attempted",
-    );
-    // Nothing was aborted: the merge and the reflection branch remain.
-    expect(existsSync(join(memoryDir, ".git", "MERGE_HEAD"))).toBe(true);
+    // Its own unfinished merge is aborted so the checkout is not stuck mid-merge
+    // (update workers would defer forever), but the reflection branch is kept
+    // and the transcript stays retryable.
+    expect(existsSync(join(memoryDir, ".git", "MERGE_HEAD"))).toBe(false);
+    expect(git(memoryDir, ["status", "--porcelain"]).trim()).toBe("");
     expect(
       git(memoryDir, ["branch", "--list", worktree.branchName]).trim(),
     ).toBe(worktree.branchName);
+    recordReflectionIntegrationRetry(
+      "agent-test",
+      result.integration,
+      true,
+      "manual",
+    );
+  });
+
+  test("a repair that leaves someone else's merge in progress is not aborted", async () => {
+    const worktree = await conflictingReflection();
+    // The worker aborts the reflection's merge, then leaves a different merge
+    // in progress (MERGE_HEAD is not this reflection's head).
+    const spawnMemoryRepair = repairWorker(async (args) => {
+      git(memoryDir, ["merge", "--abort"]);
+      git(memoryDir, ["checkout", "-b", "other", "HEAD~1"]);
+      writeParentMemoryFile("persona.md", "base\nother\n");
+      git(memoryDir, ["commit", "-am", "other"]);
+      git(memoryDir, ["checkout", "main"]);
+      expect(() => git(memoryDir, ["merge", "other"])).toThrow();
+      await completeMemoryConflictRepair(
+        memoryDir,
+        args.memoryRepairToken ?? "",
+      );
+      return false;
+    });
+    const result = await finalizeLaunch(worktree, true, {
+      spawnMemoryRepair,
+    });
+
+    expect(result.integration.repairLanded).toBe(false);
+    expect(result.completionSuccess).toBe(false);
+    const mergeHead = git(memoryDir, ["rev-parse", "MERGE_HEAD"]).trim();
+    expect(mergeHead).toBe(git(memoryDir, ["rev-parse", "other"]).trim());
     recordReflectionIntegrationRetry(
       "agent-test",
       result.integration,

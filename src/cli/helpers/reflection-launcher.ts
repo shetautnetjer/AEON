@@ -8,6 +8,7 @@ import { syncPendingMemoryCommitsAfterTurn } from "@/agent/memory-git";
 import { withMemoryOperation } from "@/agent/memory-operation";
 import {
   abortReflectionMergeRepair,
+  abortUnlandedReflectionMerge,
   buildReflectionMemoryScope,
   createReflectionMemoryWorktree,
   finalizeReflectionMemoryWorktree,
@@ -629,6 +630,7 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
     integration = repairRan
       ? await settleReflectionMergeRepair(integration)
       : await abortReflectionMergeRepair(integration);
+    if (repairRan) await abortUnlandedReflectionMerge(integration);
   }
   const completionSuccess =
     params.subagentSuccess &&

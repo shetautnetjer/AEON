@@ -851,6 +851,36 @@ export async function settleReflectionMergeRepair(
   return { ...result, repairLanded: landed };
 }
 
+/**
+ * After a repair that did not land: if the parent is still mid-merge on this
+ * reflection's own head, abort that merge so the checkout is clean again.
+ * Its attempt is "done", so nothing relaunches it; left alone, update
+ * workers would defer and retries would see parent_dirty until someone
+ * resolved it by hand. Never touches a merge of anything else. The branch is
+ * kept and the transcript stays retryable.
+ */
+export async function abortUnlandedReflectionMerge(
+  result: ReflectionMemoryWorktreeFinalizeResult,
+): Promise<void> {
+  if (result.repairLanded !== false || !result.head) return;
+  const head = result.head;
+  await withMemoryOperation(result.parentMemoryDir, async () => {
+    const mergeHead = await tryRunGit(result.parentMemoryDir, [
+      "rev-parse",
+      "-q",
+      "--verify",
+      "MERGE_HEAD",
+    ]);
+    if (mergeHead?.stdout.trim() !== head) return;
+    await tryRunGit(result.parentMemoryDir, ["merge", "--abort"]);
+    debugLog(
+      "memfs-git",
+      "reflection merge repair did not land; aborted its own merge branch=%s",
+      result.reflectionBranch,
+    );
+  });
+}
+
 export type MemoryWorkerWorktreeOutcome =
   | { status: "merged"; commitCount: number; head: string }
   | { status: "no_changes" }
