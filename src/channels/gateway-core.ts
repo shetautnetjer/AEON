@@ -17,9 +17,9 @@ import type {
   StreamDeltaMessage,
   WsProtocolMessage,
 } from "@/types/app-server-protocol";
+import { routeControlRequest } from "./gateway-control-routing";
 import {
   sourceLifecycleKey,
-  sourceRouteKey,
   uniqueLifecycleSources,
   uniqueRoutedSources,
 } from "./gateway-sources";
@@ -87,6 +87,12 @@ export interface ChannelGatewayHooks {
   onLifecycle(event: ChannelTurnLifecycleEvent): void | Promise<void>;
   onProgress(event: ChannelTurnProgressEvent): void | Promise<void>;
   onControlRequest(event: ChannelControlRequestEvent): void | Promise<void>;
+  /** Route approvals of turns no channel message started; null = deny. */
+  resolveUnroutedControlSource?(
+    runtime: RuntimeScope,
+    routedSources: ChannelTurnSource[],
+  ): ChannelTurnSource | null;
+  debugLog?(message: string): void;
   createRichDraft?(options: {
     batchId: string;
     sources: ChannelTurnSource[];
@@ -969,13 +975,15 @@ export class ChannelGateway {
       }),
     );
     if (!state) return;
-    const sources = state.active?.routingSources ?? [];
     state.replayedControlRequestIds.add(message.request_id);
-    const sourceScopes = new Map(
-      sources.map((source) => [sourceRouteKey(source), source]),
-    );
-    if (sourceScopes.size !== 1) return;
-    const source = [...sourceScopes.values()][0];
+    const source = routeControlRequest({
+      requestId: message.request_id,
+      runtime: state.runtime,
+      activeSources: state.active?.routingSources ?? [],
+      routedSources: state.routedSources,
+      hooks: this.hooks,
+      deny: (response) => this.submitApprovalResponse(state.runtime, response),
+    });
     if (!source) return;
     void this.enqueueHook(state, () =>
       this.hooks.onControlRequest({

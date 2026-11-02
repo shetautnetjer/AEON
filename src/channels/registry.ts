@@ -270,6 +270,49 @@ export class ChannelRegistry {
   resolveRoutedTurnSources(): ChannelTurnSource[] {
     const sources: ChannelTurnSource[] = [];
     const seen = new Set<string>();
+    for (const { source } of this.deliverableRoutes()) {
+      const key = `${source.channel}:${source.accountId}:${source.chatId}:${source.threadId ?? ""}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      sources.push(source);
+    }
+    return sources;
+  }
+
+  /**
+   * Channel source for an approval raised by a turn no channel message
+   * started (task notification, cron, mod continuation, bridge turn): the
+   * most recently created enabled, outbound-enabled route bound to this
+   * conversation on a running adapter, i.e. a row `letta channels route list`
+   * shows. Ties keep the first route in adapter and store order. Null when no
+   * route can deliver it.
+   */
+  resolveControlRequestSourceForScope(
+    agentId: string,
+    conversationId: string,
+  ): ChannelTurnSource | null {
+    let newest: { route: ChannelRoute; source: ChannelTurnSource } | null =
+      null;
+    for (const candidate of this.deliverableRoutes()) {
+      if (
+        candidate.source.agentId !== agentId ||
+        candidate.source.conversationId !== conversationId
+      ) {
+        continue;
+      }
+      if (!newest || candidate.route.createdAt > newest.route.createdAt) {
+        newest = candidate;
+      }
+    }
+    return newest?.source ?? null;
+  }
+
+  private *deliverableRoutes(): Generator<{
+    route: ChannelRoute;
+    source: ChannelTurnSource;
+  }> {
     for (const adapter of this.adapters.values()) {
       if (!adapter.isRunning()) continue;
       const channel = adapter.channelId ?? adapter.id;
@@ -278,23 +321,20 @@ export class ChannelRegistry {
         if (route.enabled === false || route.outboundEnabled === false) {
           continue;
         }
-        const key = `${channel}:${accountId}:${route.chatId}:${route.threadId ?? ""}`;
-        if (seen.has(key)) {
-          continue;
-        }
-        seen.add(key);
-        sources.push({
-          channel,
-          accountId,
-          chatId: route.chatId,
-          chatType: route.chatType,
-          threadId: route.threadId ?? null,
-          agentId: route.agentId,
-          conversationId: route.conversationId,
-        });
+        yield {
+          route,
+          source: {
+            channel,
+            accountId,
+            chatId: route.chatId,
+            chatType: route.chatType,
+            threadId: route.threadId ?? null,
+            agentId: route.agentId,
+            conversationId: route.conversationId,
+          },
+        };
       }
     }
-    return sources;
   }
 
   async dispatchTurnLifecycleEvent(

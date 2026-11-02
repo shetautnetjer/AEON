@@ -128,6 +128,72 @@ describe("ChannelRegistry lifecycle", () => {
     ]);
   });
 
+  test("unrouted approvals use the conversation's most recently created deliverable route", () => {
+    const registry = new ChannelRegistry();
+    registry.registerAdapter({
+      id: "slack:acct-slack-2",
+      channelId: "slack",
+      accountId: "acct-slack-2",
+      name: "Slack",
+      start: async () => {},
+      stop: async () => {},
+      isRunning: () => true,
+      sendMessage: async () => ({ messageId: "msg-1" }),
+      sendDirectReply: async () => {},
+    });
+    const route = {
+      accountId: "acct-slack-2",
+      chatType: "channel" as const,
+      agentId: "agent-1",
+      conversationId: "conv-1",
+      enabled: true,
+    };
+    addRoute("slack", {
+      ...route,
+      chatId: "C-older",
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+    addRoute("slack", {
+      ...route,
+      chatId: "C-newest",
+      createdAt: "2026-11-01T00:00:00.000Z",
+    });
+    // Newer but not deliverable: disabled, outbound off, other conversation.
+    addRoute("slack", {
+      ...route,
+      chatId: "C-disabled",
+      enabled: false,
+      createdAt: "2026-11-02T00:00:00.000Z",
+    });
+    addRoute("slack", {
+      ...route,
+      chatId: "C-silent",
+      outboundEnabled: false,
+      createdAt: "2026-11-02T00:00:00.000Z",
+    });
+    addRoute("slack", {
+      ...route,
+      chatId: "C-other",
+      conversationId: "conv-2",
+      createdAt: "2026-11-02T00:00:00.000Z",
+    });
+
+    expect(
+      registry.resolveControlRequestSourceForScope("agent-1", "conv-1"),
+    ).toEqual({
+      channel: "slack",
+      accountId: "acct-slack-2",
+      chatId: "C-newest",
+      chatType: "channel",
+      threadId: null,
+      agentId: "agent-1",
+      conversationId: "conv-1",
+    });
+    expect(
+      registry.resolveControlRequestSourceForScope("agent-1", "conv-unbound"),
+    ).toBeNull();
+  });
+
   test("route-derived sources require a running adapter and outbound route", () => {
     let running = false;
     const registry = new ChannelRegistry();

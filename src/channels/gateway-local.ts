@@ -16,6 +16,7 @@ import type {
   ServiceCommandResponse,
   ServiceEvent,
 } from "@/types/service-protocol";
+import { debugLog } from "@/utils/debug";
 import { createChannelRichDraftStreamer } from "./channel-rich-draft-streamer";
 import {
   type RuntimeCommandClient,
@@ -278,6 +279,12 @@ export async function startLocalChannelGateway(
     onLifecycle: (event) => registry.dispatchTurnLifecycleEvent(event),
     onProgress: (event) => registry.dispatchTurnProgressEvent(event),
     onControlRequest: (event) => registry.registerPendingControlRequest(event),
+    resolveUnroutedControlSource: (runtime) =>
+      registry.resolveControlRequestSourceForScope(
+        runtime.agent_id,
+        runtime.conversation_id,
+      ),
+    debugLog: (message) => debugLog("channels", `[ChannelGateway] ${message}`),
   });
 
   const routedRuntimeRegistrationRefresher =
