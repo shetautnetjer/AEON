@@ -543,8 +543,14 @@ export async function finalizeReflectionMemoryWorktreeUnlocked(
     };
   }
 
+  // A merge left in progress can have an empty porcelain status (every file
+  // resolved to HEAD, not yet committed). Treat it like uncommitted changes:
+  // never start a second merge on top of it, which could claim or abort it.
   const parentStatus = await getStatusPorcelain(worktree.parentMemoryDir);
-  if (parentStatus.length > 0) {
+  if (
+    parentStatus.length > 0 ||
+    (await hasUnfinishedMerge(worktree.parentMemoryDir))
+  ) {
     await cleanupWorktreeAndBranch(
       worktree.parentMemoryDir,
       worktree.worktreeDir,
