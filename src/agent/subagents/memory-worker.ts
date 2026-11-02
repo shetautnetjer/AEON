@@ -208,6 +208,13 @@ async function runUpdate(
         result,
         `Memory changes conflict with the checkout; ${outcome.commitCount} commit(s) kept on ${outcome.branchName}`,
       );
+    // Not done: another merge is still in progress in the checkout. Nothing
+    // was merged, aborted or synced; the commits wait on the branch.
+    case "deferred_merge_in_progress":
+      return failed(
+        result,
+        `Memory checkout has a merge in progress; ${outcome.commitCount} commit(s) kept on ${outcome.branchName} to merge once it completes`,
+      );
     case "failed":
       return failed(result, outcome.error);
     default:
