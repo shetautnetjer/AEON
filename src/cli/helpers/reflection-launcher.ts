@@ -1,3 +1,4 @@
+import { claimMemoryConflictRepair } from "@/agent/memory-conflict-repair";
 import {
   getScopedMemoryFilesystemRoot,
   isLettaCloud,
@@ -6,7 +7,7 @@ import { detectMemoryFormat } from "@/agent/memory-format";
 import { syncPendingMemoryCommitsAfterTurn } from "@/agent/memory-git";
 import { withMemoryOperation } from "@/agent/memory-operation";
 import {
-  buildReflectionIntegrationMemoryScope,
+  abortReflectionMergeRepair,
   buildReflectionMemoryScope,
   createReflectionMemoryWorktree,
   finalizeReflectionMemoryWorktree,
@@ -35,8 +36,12 @@ import { finalizeAutoReflectionCompletion } from "@/cli/helpers/reflection-compl
 import { classifyReflectionConfigurationError } from "@/cli/helpers/reflection-configuration-error";
 import {
   buildReflectionIntegrationConversationTitle,
-  buildReflectionIntegrationPrompt,
+  REFLECTION_AGENT_ID_WAIT_MS,
+  type ReflectionIntegrationOutcome,
+  type RunExplicitReflectionIntegration,
+  runExplicitReflectionIntegration,
 } from "@/cli/helpers/reflection-integration";
+import { launchReflectionMergeRepair } from "@/cli/helpers/reflection-merge-repair";
 import {
   isReflectionRetryDeferred,
   recordReflectionIntegrationRetry,
@@ -50,6 +55,7 @@ import {
 import { isAutoReflectionEnabled } from "@/reflection-settings";
 import { type ReflectionWorktreeCleanupOutcome, telemetry } from "@/telemetry";
 import { maybeSendReflectionThresholdFeedback } from "@/telemetry/reflection-threshold-feedback";
+import type { SpawnBackgroundSubagentTaskArgs } from "@/tools/impl/task";
 import { debugLog, debugWarn } from "@/utils/debug";
 
 export const AUTO_REFLECTION_DESCRIPTION = "Reflect on recent conversations";
@@ -68,9 +74,6 @@ export function getReflectionFinalizationContext(agentId: string) {
     ...getReflectionMergeLaunchOptions(agentId),
   } as const;
 }
-
-/** Max background wait for the reflection subagent's agent ID before emitting `reflection_start` (previously 1s inline, timed out ~100% of the time). */
-export const REFLECTION_AGENT_ID_WAIT_MS = 30_000;
 
 const reservedReflectionAgentIds = new Set<string>();
 const pendingReflectionLaunches = new Map<string, ReflectionLaunchOptions>();
@@ -145,6 +148,7 @@ function getReflectionWorktreeCleanupOutcome(
       integrationStatus:
         | "parent_dirty"
         | "merge_conflict"
+        | "repair_started"
         | "dirty_uncommitted"
         | "failed";
     }
@@ -154,6 +158,11 @@ function getReflectionWorktreeCleanupOutcome(
       return { outcome: "parent_dirty", integrationStatus: "parent_dirty" };
     case "merge_conflict":
       return { outcome: "merge_conflict", integrationStatus: "merge_conflict" };
+    case "repair_started":
+      return {
+        outcome: "merge_repair",
+        integrationStatus: "repair_started",
+      };
     case "dirty_uncommitted":
       return {
         outcome: "reflection_worktree_dirty",
@@ -429,6 +438,8 @@ function getReflectionCompletionMessage(
       return "Tried to reflect, but parent memory had uncommitted changes; will retry later.";
     case "merge_conflict":
       return "Tried to reflect, but memory updates conflicted with newer changes; will retry later.";
+    case "repair_started":
+      return "Reflection's memory updates overlapped newer changes; a repair worker is merging them.";
     case "dirty_uncommitted":
       return "Tried to reflect, but memory changes were not committed cleanly; will retry later.";
     case "failed": {
@@ -445,82 +456,6 @@ function getReflectionCompletionMessage(
         : `Reflection failed: ${configurationError.message} Fix the reflection model configuration, then use /reflect to retry.`;
     }
   }
-}
-
-interface ReflectionIntegrationOutcome {
-  success: boolean;
-  error?: string;
-  conversationId?: string;
-}
-
-type RunExplicitReflectionIntegration = typeof runExplicitReflectionIntegration;
-
-async function runExplicitReflectionIntegration(params: {
-  agentId: string;
-  conversationId: string;
-  worktree: ReflectionMemoryWorktree;
-  instructions?: string;
-  reflectionSubagentId?: string;
-}): Promise<ReflectionIntegrationOutcome> {
-  const {
-    spawnBackgroundSubagentTask,
-    waitForBackgroundSubagentConversationId,
-  } = await import("@/tools/impl/task");
-  return await new Promise<ReflectionIntegrationOutcome>((resolve) => {
-    try {
-      const { subagentId } = spawnBackgroundSubagentTask({
-        subagentType: "general-purpose",
-        displayType: "reflection integration",
-        prompt: buildReflectionIntegrationPrompt({
-          worktree: params.worktree,
-          instructions: params.instructions,
-          reflectionSubagentId: params.reflectionSubagentId,
-        }),
-        description: "Integrate reflection memory changes",
-        existingAgentId: params.agentId,
-        memoryScope: buildReflectionIntegrationMemoryScope(params.worktree),
-        parentScope: {
-          agentId: params.agentId,
-          conversationId: params.conversationId,
-        },
-        silentCompletion: true,
-        onComplete: (result) => {
-          resolve({
-            success: result.success,
-            error: result.success
-              ? undefined
-              : (result.error ?? "Reflection integration did not complete"),
-            conversationId: result.conversationId,
-          });
-        },
-      });
-      void waitForBackgroundSubagentConversationId(
-        subagentId,
-        REFLECTION_AGENT_ID_WAIT_MS,
-      )
-        .then(async (conversationId) => {
-          if (!conversationId) return;
-          await getBackend().updateConversation(conversationId, {
-            summary: buildReflectionIntegrationConversationTitle(
-              params.reflectionSubagentId,
-            ),
-          });
-        })
-        .catch((error) => {
-          debugWarn(
-            "memory",
-            `Failed to title reflection integration conversation: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
-          );
-        });
-    } catch (error) {
-      resolve({
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
 }
 
 export async function prepareReflectionMemoryWorktreeLaunch(params: {
@@ -575,6 +510,14 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
   mergePolicy?: "auto" | "explicit";
   mergeInstructions?: string;
   runExplicitIntegration?: RunExplicitReflectionIntegration;
+  actingUserId?: string | null;
+  /**
+   * Claims a conflicted auto merge for the repair worker under the finalize
+   * lease; injectable for tests. Defaults to the real attempt marker.
+   */
+  claimConflictRepair?: typeof claimMemoryConflictRepair;
+  /** Spawns the repair worker for a claimed merge conflict; injectable for tests. */
+  spawnMemoryRepair?: (args: SpawnBackgroundSubagentTaskArgs) => unknown;
   /** Pushes the integration merge; the integration child cannot while the lease is held. */
   syncIntegratedMemory?: typeof syncPendingMemoryCommitsAfterTurn;
   updateIntegrationConversation?: (
@@ -626,7 +569,7 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
   // Explicit integration, its verification and the push happen under one
   // lease: releasing between them would let another process's post-turn sync
   // pull --rebase and rewrite the merge before ancestry is checked.
-  const integration = explicitIntegration
+  let integration = explicitIntegration
     ? await withMemoryOperation(params.worktree.parentMemoryDir, async () => {
         integrationRun = await (
           params.runExplicitIntegration ?? runExplicitReflectionIntegration
@@ -660,10 +603,29 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
         }
         return result;
       })
-    : await finalizeReflectionMemoryWorktree(
-        params.worktree,
-        finalizeOptions(),
-      );
+    : await finalizeReflectionMemoryWorktree(params.worktree, {
+        ...finalizeOptions(),
+        claimConflictRepair:
+          params.claimConflictRepair ?? claimMemoryConflictRepair,
+      });
+  // The conflict stays in progress in the parent checkout; hand it to the
+  // repair worker with the token claimed under the finalize lease. When no
+  // worker can be launched, undo the handoff so the repo is not left
+  // mid-merge with nothing working on it.
+  if (integration.status === "repair_started") {
+    const repairLaunched = await launchReflectionMergeRepair(
+      {
+        agentId: params.agentId,
+        conversationId: params.conversationId,
+        actingUserId: params.actingUserId,
+        integration,
+      },
+      { spawnMemoryRepair: params.spawnMemoryRepair },
+    );
+    if (!repairLaunched) {
+      integration = await abortReflectionMergeRepair(integration);
+    }
+  }
   const completionSuccess =
     params.subagentSuccess &&
     reflectionIntegrationConsumesTranscript(integration);
@@ -924,6 +886,7 @@ export async function launchReflectionSubagent(
             model: reflectionModel,
             mergePolicy: reflectionSettings.merge,
             mergeInstructions: reflectionSettings.mergeInstructions,
+            actingUserId: options.actingUserId,
             telemetryContext: { triggerSource },
             recompileByConversation,
             recompileQueuedByConversation,

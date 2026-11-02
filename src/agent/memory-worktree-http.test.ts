@@ -122,10 +122,9 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  if (server)
-    await new Promise<void>((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve())),
-    );
+  // Restore the environment before closing the server: a listen failure must
+  // not leave the test gitconfig (with its signing override) behind for
+  // other test files in the same worker.
   await settingsManager.reset();
   __testSetBackend(null);
   for (const key of Object.keys(process.env)) {
@@ -133,6 +132,8 @@ afterEach(async () => {
   }
   Object.assign(process.env, savedEnv);
   rmSync(root, { recursive: true, force: true });
+  if (server)
+    await new Promise<void>((resolve) => server.close(() => resolve()));
 });
 
 async function makeReflection() {
