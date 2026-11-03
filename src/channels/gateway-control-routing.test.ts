@@ -15,7 +15,9 @@ import {
 // route, never a group chat where anyone could answer them. With
 // no deliverable route the gateway must not deny them: it cannot see whether
 // another client (TUI, aya-chat) is subscribed and can answer, so it leaves
-// them pending and replays them once a route can deliver them.
+// them pending and replays them once a route can deliver them. (The local
+// host denies one still unseen after a time limit; see
+// gateway-approval-timeouts.test.ts.)
 
 function controlRequest(requestId: string): WsProtocolMessage {
   return {

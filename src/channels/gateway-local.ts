@@ -30,6 +30,7 @@ import {
   buildChannelCurrentModelMessage,
   buildChannelCurrentModelUnavailableMessage,
 } from "./commands";
+import { createLocalApprovalRouting } from "./gateway-approval-timeouts";
 import { ChannelGateway, type ChannelGatewayDelivery } from "./gateway-core";
 import { createRoutedRuntimePublisher } from "./gateway-route-subscriptions";
 import { buildGatewayMessageChannelTool } from "./message-channel-gateway-tool";
@@ -238,6 +239,12 @@ export async function startLocalChannelGateway(
   }
 
   let gateway: ChannelGateway;
+  const approvals = createLocalApprovalRouting({
+    registry,
+    submitApprovalResponse: (runtime, response) =>
+      gateway.submitApprovalResponse(runtime, response),
+    logger: options.logger,
+  });
   gateway = new ChannelGateway(client, {
     createRichDraft: ({ batchId, sources }) => {
       const streamer = createChannelRichDraftStreamer({ batchId, sources });
@@ -279,12 +286,7 @@ export async function startLocalChannelGateway(
     },
     onLifecycle: (event) => registry.dispatchTurnLifecycleEvent(event),
     onProgress: (event) => registry.dispatchTurnProgressEvent(event),
-    onControlRequest: (event) => registry.registerPendingControlRequest(event),
-    resolveUnroutedControlSource: (runtime) =>
-      registry.resolveControlRequestSourceForScope(
-        runtime.agent_id,
-        runtime.conversation_id,
-      ),
+    ...approvals.hooks,
     debugLog: (message) => debugLog("channels", `[ChannelGateway] ${message}`),
   });
 
@@ -331,7 +333,7 @@ export async function startLocalChannelGateway(
     if (!runtime.agent_id || !runtime.conversation_id) {
       return Promise.resolve(false);
     }
-    return gateway.submitApprovalResponse(
+    return approvals.submitAnswer(
       {
         agent_id: runtime.agent_id,
         conversation_id: runtime.conversation_id,
@@ -666,6 +668,7 @@ export async function startLocalChannelGateway(
     close: async () => {
       unsubscribeRouteChanges();
       routedRuntimeRegistrationRefresher.close();
+      approvals.close();
       try {
         await registry.stopAll();
       } finally {

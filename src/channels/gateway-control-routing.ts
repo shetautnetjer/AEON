@@ -64,11 +64,17 @@ export function resolveControlRequestRouting(options: {
 }
 
 /** The `ChannelGatewayHooks` members control-request routing consults. */
-interface ControlRequestRoutingHooks {
+export interface ControlRequestRoutingHooks {
+  /** Route approvals of turns no channel message started; null = none. */
   resolveUnroutedControlSource?(
     runtime: RuntimeScope,
     routedSources: ChannelTurnSource[],
   ): ChannelTurnSource | null;
+  /** No route can show this request; the host may time it out. */
+  onUndeliverableControlRequest?(
+    requestId: string,
+    runtime: RuntimeScope,
+  ): void;
   debugLog?(message: string): void;
 }
 
@@ -77,13 +83,15 @@ interface ControlRequestRoutingHooks {
  * source to deliver to (marked `routedByFallback` when the turn had none), or
  * null after logging a request it cannot deliver.
  *
- * An undeliverable request is not denied: the gateway is a separate App Server
- * client and cannot see whether another client (the TUI, aya-chat) is
+ * An undeliverable request is not denied here: the gateway is a separate App
+ * Server client and cannot see whether another client (the TUI, aya-chat) is
  * subscribed to the conversation and can answer it. The App Server keeps the
  * request pending, and every runtime_start with recover_approvals replays it.
  * Clearing the conversation's registration signature makes the gateway's next
  * registration (route refresh, channel message) run runtime_start again, so a
- * route that becomes deliverable later receives the request.
+ * route that becomes deliverable later receives the request. The host hears
+ * about it through `onUndeliverableControlRequest`; the local gateway denies it
+ * if it is still unseen after a time limit (gateway-approval-timeouts.ts).
  */
 export function routeControlRequest(options: {
   requestId: string;
@@ -119,5 +127,6 @@ export function routeControlRequest(options: {
     `No channel route for control request ${where}; leaving it pending for other clients`,
   );
   options.registration.registrationSignature = null;
+  hooks.onUndeliverableControlRequest?.(requestId, runtime);
   return null;
 }

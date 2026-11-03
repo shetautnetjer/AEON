@@ -503,10 +503,11 @@ export class ChannelRegistry {
     return this.controls.getAll();
   }
 
+  /** Resolves false when the prompt could not be shown. */
   async registerPendingControlRequest(
     event: ChannelControlRequestEvent,
-  ): Promise<void> {
-    await this.controls.register(event);
+  ): Promise<boolean> {
+    return this.controls.register(event);
   }
 
   async redeliverPendingControlRequest(requestId: string): Promise<boolean> {

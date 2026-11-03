@@ -17,7 +17,10 @@ import type {
   StreamDeltaMessage,
   WsProtocolMessage,
 } from "@/types/app-server-protocol";
-import { routeControlRequest } from "./gateway-control-routing";
+import {
+  type ControlRequestRoutingHooks,
+  routeControlRequest,
+} from "./gateway-control-routing";
 import {
   channelTagsForSources,
   sourceLifecycleKey,
@@ -75,7 +78,7 @@ export type ChannelGatewayHandoffDelivery = Omit<
   "content"
 >;
 
-export interface ChannelGatewayHooks {
+export interface ChannelGatewayHooks extends ControlRequestRoutingHooks {
   buildExternalTool(
     runtime: RuntimeScope,
     sources: ChannelTurnSource[],
@@ -88,12 +91,6 @@ export interface ChannelGatewayHooks {
   onLifecycle(event: ChannelTurnLifecycleEvent): void | Promise<void>;
   onProgress(event: ChannelTurnProgressEvent): void | Promise<void>;
   onControlRequest(event: ChannelControlRequestEvent): void | Promise<void>;
-  /** Route approvals of turns no channel message started; null = none. */
-  resolveUnroutedControlSource?(
-    runtime: RuntimeScope,
-    routedSources: ChannelTurnSource[],
-  ): ChannelTurnSource | null;
-  debugLog?(message: string): void;
   createRichDraft?(options: {
     batchId: string;
     sources: ChannelTurnSource[];

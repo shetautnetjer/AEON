@@ -119,14 +119,17 @@ export class ChannelControlRequests {
     return this.coordinator.handleNativeResponse(input);
   }
 
-  async register(event: ChannelControlRequestEvent): Promise<void> {
+  /** Resolves false when the prompt could not be shown. */
+  async register(event: ChannelControlRequestEvent): Promise<boolean> {
     try {
       await this.coordinator.register(event);
+      return true;
     } catch (error) {
       console.error(
         `[Channels] Failed to deliver control request prompt for ${event.source.channel}/${event.source.accountId ?? LEGACY_CHANNEL_ACCOUNT_ID}:`,
         error instanceof Error ? error.message : error,
       );
+      return false;
     }
   }
 
