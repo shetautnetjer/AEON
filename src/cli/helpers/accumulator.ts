@@ -14,6 +14,11 @@ import {
 import { clampRawToolReturn } from "@/tools/impl/tool-return-clamp";
 import { debugLog } from "@/utils/debug";
 import { isRecord } from "@/utils/type-guards";
+import { formatRetryEventStatusLines } from "./accumulator-status";
+import { extractTextPart } from "./accumulator-text";
+
+export { extractTextPart } from "./accumulator-text";
+
 import { extractCompactionSummary } from "./compaction-utils";
 import type { ContextTracker } from "./context-tracker";
 import { MAX_CONTEXT_HISTORY } from "./context-tracker";
@@ -390,50 +395,6 @@ function ensure<T extends Line>(b: Buffers, id: string, make: () => T): T {
   return created;
 }
 
-function numericEventDataValue(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined;
-}
-
-function stringEventDataValue(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0
-    ? value.trim()
-    : undefined;
-}
-
-function formatRetryDelay(delayMs: number): string {
-  if (delayMs < 1000) return `${Math.max(0, Math.round(delayMs))}ms`;
-  return `${Math.round(delayMs / 1000)}s`;
-}
-
-function formatRetryEventStatusLines(
-  eventData: Record<string, unknown>,
-): string[] {
-  const attempt = numericEventDataValue(eventData.attempt);
-  const maxAttempts = numericEventDataValue(eventData.max_attempts);
-  const delayMs = numericEventDataValue(eventData.delay_ms);
-  const message = stringEventDataValue(eventData.message);
-
-  const metadata: string[] = [];
-  if (attempt !== undefined) {
-    metadata.push(
-      maxAttempts !== undefined
-        ? `attempt ${attempt}/${maxAttempts}`
-        : `attempt ${attempt}`,
-    );
-  }
-  if (delayMs !== undefined) {
-    metadata.push(`in ${formatRetryDelay(delayMs)}`);
-  }
-
-  return [
-    `Provider stream error, retrying${
-      metadata.length > 0 ? ` (${metadata.join(", ")})` : ""
-    }${message ? `: ${message}` : ""}`,
-  ];
-}
-
 export function upsertStatusLine(
   b: Buffers,
   id: string,
@@ -637,25 +598,6 @@ function diagnoseOrphanedTool(
 }
 
 type ToolCallLine = Extract<Line, { kind: "tool_call" }>;
-
-// Flatten common SDK "parts" → text
-function getStringProp(obj: Record<string, unknown>, key: string) {
-  const v = obj[key];
-  return typeof v === "string" ? v : undefined;
-}
-
-export function extractTextPart(v: unknown): string {
-  if (typeof v === "string") return v;
-  if (Array.isArray(v)) {
-    return v
-      .map((p) => (isRecord(p) ? (getStringProp(p, "text") ?? "") : ""))
-      .join("");
-  }
-  if (isRecord(v)) {
-    return getStringProp(v, "text") ?? getStringProp(v, "delta") ?? "";
-  }
-  return "";
-}
 
 function markCompactionCompleted(ctx?: ContextTracker): void {
   if (!ctx) return;
@@ -928,6 +870,7 @@ export function onChunk(
   b: Buffers,
   chunk: StreamingChunk,
   ctx?: ContextTracker,
+  options?: { presentationOnly?: boolean },
 ) {
   // Skip processing if stream was interrupted mid-turn. handleInterrupt already
   // rendered the cancellation state, so we should ignore any buffered chunks
@@ -1062,7 +1005,20 @@ export function onChunk(
       // User input is rendered optimistically before the request. Only consume
       // echoed user messages that reconcile one of those existing rows; other
       // echoes are harness-injected context, not new user-visible input.
-      if (!mappedLineId) break;
+      if (!mappedLineId) {
+        if (options?.presentationOnly) {
+          b.byId.set(lineId, {
+            kind: "user",
+            id: lineId,
+            text: rawText,
+            messageId,
+            otid,
+          });
+          if (!b.order.includes(lineId)) b.order.push(lineId);
+          if (otid) b.userLineIdByOtid.set(otid, lineId);
+        }
+        break;
+      }
 
       const line = b.byId.get(mappedLineId);
       if (line?.kind === "user") {
@@ -1171,7 +1127,11 @@ export function onChunk(
         if (argsText) toolInfo.toolArgs += argsText;
         b.serverToolCalls.set(toolCallId, toolInfo);
 
-        if (toolInfo.toolName && !toolInfo.preToolUseTriggered) {
+        if (
+          !options?.presentationOnly &&
+          toolInfo.toolName &&
+          !toolInfo.preToolUseTriggered
+        ) {
           toolInfo.preToolUseTriggered = true;
           let parsedArgs: Record<string, unknown> = {};
           try {
@@ -1283,21 +1243,26 @@ export function onChunk(
             b.lastReasoning = undefined;
             b.lastAssistantMessage = undefined;
 
-            runPostToolUseHooks(
-              serverToolInfo.toolName,
-              parsedArgs,
-              {
-                status: status === "success" ? "success" : "error",
-                output: resultText,
-              },
-              toolCallId,
-              undefined,
-              b.agentId,
-              precedingReasoning,
-              precedingAssistantMessage,
-            ).catch((error) => {
-              debugLog("hooks", "PostToolUse hook error (accumulator)", error);
-            });
+            if (!options?.presentationOnly)
+              runPostToolUseHooks(
+                serverToolInfo.toolName,
+                parsedArgs,
+                {
+                  status: status === "success" ? "success" : "error",
+                  output: resultText,
+                },
+                toolCallId,
+                undefined,
+                b.agentId,
+                precedingReasoning,
+                precedingAssistantMessage,
+              ).catch((error) => {
+                debugLog(
+                  "hooks",
+                  "PostToolUse hook error (accumulator)",
+                  error,
+                );
+              });
 
             b.serverToolCalls.delete(toolCallId);
           }
@@ -1466,7 +1431,7 @@ export function onChunk(
         }));
 
         // Fire PreCompact hooks when server-side auto-compaction starts
-        if (eventType === "compaction") {
+        if (eventType === "compaction" && !options?.presentationOnly) {
           runPreCompactHooks(
             ctx?.lastContextTokens,
             undefined, // max_context_length not available here

@@ -49,7 +49,7 @@ function normalizeLineEndings(s: string): string {
   return s.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
-function removeSystemContextBlocks(text: string): string {
+export function removeSystemContextBlocks(text: string): string {
   return stripSkillContentBlocks(
     text
       .replace(

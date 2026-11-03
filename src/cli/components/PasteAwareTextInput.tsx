@@ -49,6 +49,9 @@ interface PasteAwareTextInputProps {
    * Called when an image paste fails (e.g., image too large).
    */
   onPasteError?: (message: string) => void;
+  /** Reject a draft before it is committed to the input's internal display. */
+  rejectDraft?: (value: string) => boolean;
+  onRejectedDraft?: () => void;
 }
 
 function countLines(text: string): number {
@@ -131,6 +134,8 @@ export function PasteAwareTextInput({
   onBangAtEmpty,
   onBackspaceAtEmpty,
   onPasteError,
+  rejectDraft,
+  onRejectedDraft,
 }: PasteAwareTextInputProps) {
   const { internal_eventEmitter } = useStdin();
   const [displayValue, setDisplayValue] = useState(value);
@@ -201,6 +206,18 @@ export function PasteAwareTextInput({
       caretOffsetRef.current = nextCaret;
     }
   }, [value, displayValue]);
+
+  const rejectBeforeDisplay = (candidate: string): boolean => {
+    if (!rejectDraft?.(candidate.replaceAll("\u001b", ""))) return false;
+    displayValueRef.current = "";
+    caretOffsetRef.current = 0;
+    setDisplayValue("");
+    setActualValue("");
+    setNudgeCursorOffset(0);
+    onChange("");
+    onRejectedDraft?.();
+    return true;
+  };
 
   // Intercept paste events and macOS fallback for image clipboard imports
   useInput(
@@ -278,6 +295,12 @@ export function PasteAwareTextInput({
             0,
             Math.min(caretOffsetRef.current, displayValue.length),
           );
+          if (
+            rejectBeforeDisplay(
+              displayValue.slice(0, at) + text + displayValue.slice(at),
+            )
+          )
+            return;
           const isLarge = countLines(text) > 5 || text.length > 500;
           if (isLarge) {
             const pasteId = allocatePaste(text);
@@ -608,6 +631,7 @@ export function PasteAwareTextInput({
   }, [internal_eventEmitter]);
 
   const handleChange = (newValue: string) => {
+    if (rejectBeforeDisplay(newValue)) return;
     // Bash mode entry: intercept "!" typed on empty input BEFORE updating state
     // This prevents any flicker since we never commit the "!" to displayValue
     if (displayValue === "" && newValue === "!") {

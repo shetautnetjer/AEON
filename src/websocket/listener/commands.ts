@@ -27,6 +27,7 @@ import type { ModCommand } from "@/mods/types";
 import { markPostCompactionContextRemindersPending } from "@/reminders/state";
 import { settingsManager } from "@/settings-manager";
 import { trackBoundaryError } from "@/telemetry/error-reporting";
+import { attachedControlName } from "@/types/attached-control-commands";
 import type {
   ExecuteCommandCommand,
   SlashCommandEndMessage,
@@ -34,6 +35,11 @@ import type {
   StreamDelta,
 } from "@/types/protocol_v2";
 import { debugLog } from "@/utils/debug";
+import { isAttachedConfigurationCommand } from "./attached-configuration-commands";
+import {
+  isAttachedControlCommand,
+  runAttachedControlCommand,
+} from "./attached-control-commands";
 import { markSecretsReminderRefreshPending } from "./commands/secrets";
 import { getConversationWorkingDirectory } from "./cwd";
 import {
@@ -92,6 +98,38 @@ export async function handleExecuteCommand(
   };
 
   const trimmedArgs = command.args?.trim();
+  // Inspections and configuration panels belong to the requesting client,
+  // not to the shared conversation transcript (which may have other readers).
+  if (isAttachedControlCommand(command.command_id)) {
+    try {
+      const output = await runAttachedControlCommand(
+        command.command_id,
+        trimmedArgs ?? "",
+        conversationRuntime,
+      );
+      emitExecuteCommandResponse(socket, command, { success: true, output });
+      if (
+        isAttachedConfigurationCommand(
+          attachedControlName(command.command_id) ?? "",
+        )
+      ) {
+        try {
+          emitDeviceStatusUpdate(socket, conversationRuntime, scope);
+        } catch {
+          debugLog(
+            "commands",
+            "Attached command completed; status refresh failed",
+          );
+        }
+      }
+    } catch (error) {
+      emitExecuteCommandResponse(socket, command, {
+        success: false,
+        output: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return;
+  }
   const input = trimmedArgs
     ? `/${command.command_id} ${trimmedArgs}`
     : `/${command.command_id}`;

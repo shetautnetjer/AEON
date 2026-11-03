@@ -2,7 +2,6 @@
 // In-memory settings manager that loads once and provides sync access
 
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -33,6 +32,10 @@ import type {
   StoredReflectionSettings,
 } from "./reflection-settings";
 import { getRuntimeContext } from "./runtime-context";
+import {
+  readSettingsObjectSync,
+  readStartupBackendSettings,
+} from "./settings-startup-read";
 import { trackBoundaryError } from "./telemetry/error-reporting";
 import type { ToolsetPreference } from "./tools/toolset-types";
 import type { ClientPreferences } from "./types/client-preferences";
@@ -359,15 +362,6 @@ class SettingsManager {
     this.secureTokensCache = {};
   }
 
-  private readJsonObjectSync(path: string): Record<string, unknown> {
-    if (!exists(path)) return {};
-    try {
-      return JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
-    } catch {
-      return {};
-    }
-  }
-
   /**
    * Whether the settings manager has been initialized.
    */
@@ -379,8 +373,18 @@ class SettingsManager {
    * Initialize the settings manager (loads from disk)
    * Should be called once at app startup
    */
-  async initialize(): Promise<void> {
+  async initialize(options: { readOnly?: boolean } = {}): Promise<void> {
     if (this.initialized) return;
+
+    // Attached presentation needs preferences, without token migration or disk writes.
+    if (options.readOnly) {
+      this.settings = {
+        ...DEFAULT_SETTINGS,
+        ...readSettingsObjectSync(this.getSettingsPath()),
+      };
+      this.initialized = true;
+      return;
+    }
 
     const settingsPath = this.getSettingsPath();
     let shouldRollbackAutoConversationTitles = false;
@@ -2065,18 +2069,7 @@ class SettingsManager {
    * create defaults, mark dirty keys, and perform migrations/writes.
    */
   readStartupBackendSettingsSync(): StartupBackendSettings {
-    const raw = this.readJsonObjectSync(this.getSettingsPath());
-    const mode = raw.preferredBackendMode;
-    const env = raw.env;
-    const envBaseUrl =
-      env && typeof env === "object" && !Array.isArray(env)
-        ? (env as Record<string, unknown>).LETTA_BASE_URL
-        : undefined;
-    return {
-      preferredBackendMode:
-        mode === "api" || mode === "local" ? mode : undefined,
-      envBaseUrl: typeof envBaseUrl === "string" ? envBaseUrl : undefined,
-    };
+    return readStartupBackendSettings(this.getSettingsPath());
   }
 }
 

@@ -67,7 +67,8 @@ export function SlashCommandAutocomplete({
   agentId,
   workingDirectory: _workingDirectory = process.cwd(),
   modCommands = {},
-}: AutocompleteProps) {
+  attachedCommands,
+}: AutocompleteProps & { attachedCommands?: CommandMatch[] }) {
   const columns = useTerminalWidth();
   const terminalRows = useTerminalRows();
   const [customCommands, setCustomCommands] = useState<CommandMatch[]>([]);
@@ -75,6 +76,7 @@ export function SlashCommandAutocomplete({
 
   // Load custom commands once on mount
   useEffect(() => {
+    if (attachedCommands !== undefined) return;
     import("@/cli/commands/custom.js").then(({ getCustomCommands }) => {
       getCustomCommands().then((customs) => {
         const matches: CommandMatch[] = customs.map((cmd) => ({
@@ -86,10 +88,11 @@ export function SlashCommandAutocomplete({
         setCustomCommands(matches);
       });
     });
-  }, []);
+  }, [attachedCommands]);
 
   // Load user-invocable skills for slash-command autocomplete.
   useEffect(() => {
+    if (attachedCommands !== undefined) return;
     let cancelled = false;
     (async () => {
       try {
@@ -127,10 +130,11 @@ export function SlashCommandAutocomplete({
     return () => {
       cancelled = true;
     };
-  }, [agentId]);
+  }, [agentId, attachedCommands]);
 
   // Check pin status to conditionally show/hide pin/unpin commands
   const allCommands = useMemo(() => {
+    if (attachedCommands !== undefined) return attachedCommands;
     let builtins = _allCommands;
 
     if (agentId) {
@@ -188,7 +192,7 @@ export function SlashCommandAutocomplete({
       ...customCommands,
       ...visibleSkillCommands,
     ].sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
-  }, [agentId, modCommands, customCommands, skillCommands]);
+  }, [agentId, modCommands, customCommands, skillCommands, attachedCommands]);
 
   const queryInfo = useMemo(
     () => extractSearchQuery(currentInput, cursorPosition),

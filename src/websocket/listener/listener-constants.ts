@@ -1,3 +1,8 @@
+import {
+  ATTACHED_CONTROL_NAMES,
+  attachedControlId,
+} from "@/types/attached-control-commands";
+
 /**
  * Commands that can be dispatched by a remote client (e.g. letta-cloud desktop)
  * via the `execute_command` WebSocket message type.
@@ -5,6 +10,9 @@
  * Kept in a standalone file to avoid circular imports between commands.ts
  * and protocol-outbound.ts.
  */
+export const ATTACHED_CONTROL_COMMANDS: readonly string[] =
+  ATTACHED_CONTROL_NAMES.map(attachedControlId);
+
 export const SUPPORTED_REMOTE_COMMANDS: readonly string[] = [
   "browser_device_mcp_oauth",
   // `clear` / `clear-messages` were removed: the remote clear corrupted the
@@ -25,4 +33,5 @@ export const SUPPORTED_REMOTE_COMMANDS: readonly string[] = [
   // execute_command — so it has no case in handleExecuteCommand.
   "secret",
   "monitor_stop",
+  ...ATTACHED_CONTROL_COMMANDS,
 ];

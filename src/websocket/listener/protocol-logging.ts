@@ -1,4 +1,5 @@
 import { debugLog } from "@/utils/debug";
+import { ATTACHED_CONTROL_COMMANDS } from "./listener-constants";
 import type { StartListenerOptions } from "./types";
 
 export function logV2Command(
@@ -180,6 +181,13 @@ export function summarizeV2Command(parsed: unknown): string {
       "resume_interrupted_turn",
       "force_device_status",
     ]) {
+      if (
+        key === "args" &&
+        parsed.type === "execute_command" &&
+        typeof parsed.command_id === "string" &&
+        ATTACHED_CONTROL_COMMANDS.includes(parsed.command_id)
+      )
+        continue;
       pushField(fields, key, parsed[key]);
     }
   }
@@ -215,7 +223,15 @@ export function summarizeV2Command(parsed: unknown): string {
   }
   if (parsed.type === "execute_command") {
     pushField(fields, "command_id", parsed.command_id);
-    pushField(fields, "args", parsed.args);
+    if (
+      typeof parsed.command_id === "string" &&
+      ATTACHED_CONTROL_COMMANDS.includes(parsed.command_id)
+    ) {
+      if (typeof parsed.args === "string")
+        fields.push(`args_bytes=${Buffer.byteLength(parsed.args)}`);
+    } else {
+      pushField(fields, "args", parsed.args);
+    }
   }
 
   return fields.length > 0
