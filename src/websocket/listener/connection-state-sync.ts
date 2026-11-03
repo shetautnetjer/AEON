@@ -88,12 +88,16 @@ export async function completeInitialConnectionStartup(
     return false;
   }
   if (!isCurrent()) return false;
-  for (const runtime of listener.conversationRuntimes.values()) {
-    replayPendingApprovalRequestsToConnection(
-      runtime,
-      options.connectionId,
-      connection,
-    );
+  // App-server clients start unsubscribed and must select a scope with sync.
+  // Relay reconnects retain the existing initial-state replay behavior.
+  if (startupOptions.emitInitialState !== false) {
+    for (const runtime of listener.conversationRuntimes.values()) {
+      replayPendingApprovalRequestsToConnection(
+        runtime,
+        options.connectionId,
+        connection,
+      );
+    }
   }
   if (!isCurrent()) return false;
   if (startupOptions.updateReconnectState) {

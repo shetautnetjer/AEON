@@ -76,12 +76,8 @@ test("observer attaches to an active conversation without changing its state", a
     settingsManager.setMemfsEnabled(agent.id, false);
     handle = await startAppServer({ listen: "ws://127.0.0.1:0" });
     owner = new WebSocket(handle.controlUrl);
-    observer = new WebSocket(handle.controlUrl);
     const observed: Record<string, unknown>[] = [];
-    observer.on("message", (raw) =>
-      observed.push(JSON.parse(String(raw)) as Record<string, unknown>),
-    );
-    await Promise.all([open(owner), open(observer)]);
+    await open(owner);
     const started = response(owner, "start-owner");
     owner.send(
       JSON.stringify({
@@ -154,6 +150,31 @@ test("observer attaches to an active conversation without changing its state", a
       },
     );
     void approval.catch(() => {});
+    const other = await backend.createConversation({ agent_id: agent.id });
+    observer = new WebSocket(handle.controlUrl);
+    observer.on("message", (raw) =>
+      observed.push(JSON.parse(String(raw)) as Record<string, unknown>),
+    );
+    await open(observer);
+    const unrelatedSync = response(observer, "unrelated-sync");
+    observer.send(
+      JSON.stringify({
+        type: "sync",
+        request_id: "unrelated-sync",
+        runtime: { agent_id: agent.id, conversation_id: other.id },
+        recover_approvals: false,
+        resume_interrupted_turn: false,
+      }),
+    );
+    expect((await unrelatedSync).success).toBe(true);
+    expect(
+      observed.some(
+        (frame) =>
+          frame.type === "control_request" &&
+          frame.request_id === "fixture-approval",
+      ),
+    ).toBe(false);
+    expect(runtime.pendingApprovalResolvers.size).toBe(1);
     const retrieval = response(observer, "retrieve-existing");
     observer.send(
       JSON.stringify({
