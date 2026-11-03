@@ -124,3 +124,19 @@ test("a route whose channel account is disabled or missing does not count as cha
   routes = [{ ...PHONE_ROUTE, accountId: "acct-phone" }];
   expect(modeAfterBridgeTurn(createRuntime(), "conv-phone")).toBe("standard");
 });
+
+test("the bridge reports whether the conversation's approvals go to a channel", () => {
+  // The HTTP reply for an approval says it is pending on the channel only
+  // when it is; otherwise it says this API cannot approve.
+  routes = [PHONE_ROUTE];
+  expect(
+    applyBridgePermissionMode(createRuntime(), "agent-1", "conv-phone"),
+  ).toBe(true);
+  expect(
+    applyBridgePermissionMode(createRuntime(), "agent-1", "conv-terminal"),
+  ).toBe(false);
+  accounts = [{ ...PHONE_ACCOUNT, enabled: false }];
+  expect(
+    applyBridgePermissionMode(createRuntime(), "agent-1", "conv-phone"),
+  ).toBe(false);
+});

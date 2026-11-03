@@ -196,19 +196,22 @@ function extractReasoningText(delta: unknown): string {
  * channel account keeps its own mode: its approvals go to that channel as
  * approval cards, and forcing unrestricted would silently switch them off
  * there too. A route on a disabled account does not count; no gateway serves
- * it.
+ * it. Returns true for such a channel-routed conversation.
  */
 export function applyBridgePermissionMode(
   listener: ListenerRuntime,
   agentId: string,
   conversationId: string,
-): void {
-  if (getServedLocalChannelIds({ agentId, conversationId }).length > 0) return;
+): boolean {
+  if (getServedLocalChannelIds({ agentId, conversationId }).length > 0) {
+    return true;
+  }
   getOrCreateConversationPermissionModeStateRef(
     listener,
     agentId,
     conversationId,
   ).mode = "unrestricted";
+  return false;
 }
 
 /** The listener input one bridge request dispatches. */
@@ -242,7 +245,11 @@ async function runTurnViaListenerRuntime(
     params.agentId,
     params.conversationId,
   );
-  applyBridgePermissionMode(listener, params.agentId, params.conversationId);
+  const channelRouted = applyBridgePermissionMode(
+    listener,
+    params.agentId,
+    params.conversationId,
+  );
   // The bridge is a process-originated producer, not a websocket client.
   // Scoped frames reach explicit conversation subscribers and the observer
   // below; they must never inherit an arbitrary app-server connection.
@@ -316,8 +323,9 @@ async function runTurnViaListenerRuntime(
         const status = (message as { loop_status?: { status?: string } })
           .loop_status?.status;
         if (status === "WAITING_ON_APPROVAL") {
-          const note =
-            "The agent attempted a tool call that requires interactive approval, which this API does not support.";
+          const note = channelRouted
+            ? "The agent's tool call is waiting for approval on this conversation's channel."
+            : "The agent attempted a tool call that requires interactive approval, which this API does not support.";
           toolTracker?.failPending(note);
           if (!text) {
             text = note;
