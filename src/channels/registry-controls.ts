@@ -1,5 +1,6 @@
 import type { ApprovalResponseBody } from "@/types/protocol_v2";
-import { LEGACY_CHANNEL_ACCOUNT_ID } from "./accounts";
+import { isChannelSenderExplicitlyAllowed } from "./access-control";
+import { getChannelAccount, LEGACY_CHANNEL_ACCOUNT_ID } from "./accounts";
 import { parseChannelBangCommand, parseChannelSlashCommand } from "./commands";
 import {
   ChannelControlRequestCoordinator,
@@ -85,6 +86,20 @@ export class ChannelControlRequests {
       },
       remove: (requestId) => {
         removePersistedPendingControlRequest(requestId);
+      },
+      isAllowedFallbackAnswerer: (event, senderId) => {
+        const account = getChannelAccount(
+          event.source.channel,
+          event.source.accountId ?? LEGACY_CHANNEL_ACCOUNT_ID,
+        );
+        return (
+          !!account &&
+          isChannelSenderExplicitlyAllowed({
+            account,
+            channelId: event.source.channel,
+            senderId,
+          })
+        );
       },
     });
     this.coordinator.restore(listPersistedPendingControlRequests());

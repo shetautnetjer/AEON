@@ -70,7 +70,11 @@ function setup(
   } = {},
 ) {
   __testOverrideLoadRoutes(() => null);
-  const route = makeSource({ channel: "telegram", chatId: "phone" });
+  const route = makeSource({
+    channel: "telegram",
+    chatId: "phone",
+    chatType: "direct",
+  });
   let routes = options.routes ?? [route];
   const client = options.client ?? new FakeClient();
   const collector = makeHooks({

@@ -11,7 +11,8 @@ import {
 
 // Control requests raised by turns that no channel message started (task
 // notifications, cron, mod continuations, OpenAI-compat bridge turns) carry no
-// active routing source. They must reach the conversation's bound route. With
+// active routing source. They must reach the conversation's bound direct-chat
+// route, never a group chat where anyone could answer them. With
 // no deliverable route the gateway must not deny them: it cannot see whether
 // another client (TUI, aya-chat) is subscribed and can answer, so it leaves
 // them pending and replays them once a route can deliver them.
@@ -47,7 +48,11 @@ test("control request from a turn without a channel source goes to the conversat
   const client = new FakeClient();
   const { hooks, controlRequestEvents } = makeHooks();
   const gateway = new ChannelGateway(client, hooks);
-  const routeSource = makeSource({ channel: "telegram", chatId: "phone" });
+  const routeSource = makeSource({
+    channel: "telegram",
+    chatId: "phone",
+    chatType: "direct",
+  });
 
   // Routed but idle: no channel message is active (e.g. a task-notification turn).
   await gateway.registerRuntime(TEST_RUNTIME, [routeSource]);
@@ -57,14 +62,23 @@ test("control request from a turn without a channel source goes to the conversat
   expect(controlRequestEvents).toHaveLength(1);
   expect(controlRequestEvents[0]?.requestId).toBe("ctrl-unrouted");
   expect(controlRequestEvents[0]?.source).toEqual(routeSource);
+  expect(controlRequestEvents[0]?.routedByFallback).toBe(true);
   expect(approvalResponses(client)).toEqual([]);
   gateway.close();
 });
 
 test("the host's route choice wins for a control request without a channel source", async () => {
   const client = new FakeClient();
-  const older = makeSource({ channel: "telegram", chatId: "older" });
-  const newest = makeSource({ channel: "telegram", chatId: "newest" });
+  const older = makeSource({
+    channel: "telegram",
+    chatId: "older",
+    chatType: "direct",
+  });
+  const newest = makeSource({
+    channel: "telegram",
+    chatId: "newest",
+    chatType: "direct",
+  });
   const seen: unknown[] = [];
   const { hooks, controlRequestEvents } = makeHooks({
     resolveUnroutedControlSource: (runtime, routedSources) => {
@@ -82,6 +96,38 @@ test("the host's route choice wins for a control request without a channel sourc
     { runtime: TEST_RUNTIME, routedSources: [older, newest] },
   ]);
   expect(controlRequestEvents.map((event) => event.source)).toEqual([newest]);
+  gateway.close();
+});
+
+test("a group route never receives an approval from a turn without a channel source", async () => {
+  // Anyone in a group chat could answer it. A route that records no chat type
+  // is not trusted to be a direct chat either.
+  const group = makeSource({ chatId: "-100-group", chatType: "channel" });
+  const untyped = makeSource({ chatId: "untyped" });
+  for (const hooksOverride of [
+    {},
+    { resolveUnroutedControlSource: () => group },
+    { resolveUnroutedControlSource: () => untyped },
+  ]) {
+    const client = new FakeClient();
+    const { hooks, controlRequestEvents } = makeHooks(hooksOverride);
+    const gateway = new ChannelGateway(client, hooks);
+    await gateway.registerRuntime(TEST_RUNTIME, [group, untyped]);
+    client.emit(controlRequest("ctrl-group"));
+    await Bun.sleep(0);
+    expect(controlRequestEvents).toEqual([]);
+    gateway.close();
+  }
+
+  // The same conversation's direct chat still gets it.
+  const client = new FakeClient();
+  const dm = makeSource({ chatId: "dm", chatType: "direct" });
+  const { hooks, controlRequestEvents } = makeHooks();
+  const gateway = new ChannelGateway(client, hooks);
+  await gateway.registerRuntime(TEST_RUNTIME, [group, dm]);
+  client.emit(controlRequest("ctrl-dm"));
+  await Bun.sleep(0);
+  expect(controlRequestEvents.map((event) => event.source)).toEqual([dm]);
   gateway.close();
 });
 
@@ -111,7 +157,11 @@ test("control request without any deliverable route is left pending, not denied"
 
 test("an approval left pending replays to a route that becomes deliverable", async () => {
   const client = new FakeClient();
-  const phone = makeSource({ channel: "telegram", chatId: "phone" });
+  const phone = makeSource({
+    channel: "telegram",
+    chatId: "phone",
+    chatType: "direct",
+  });
   let deliverable: typeof phone | null = phone;
   const { hooks, controlRequestEvents } = makeHooks({
     resolveUnroutedControlSource: () => deliverable,
@@ -171,6 +221,7 @@ test("a channel-started turn still routes its approval to the turn's own source"
   expect(controlRequestEvents.map((event) => event.source)).toEqual([
     turnSource,
   ]);
+  expect(controlRequestEvents[0]?.routedByFallback).toBeUndefined();
   expect(approvalResponses(client)).toEqual([]);
   gateway.close();
 });

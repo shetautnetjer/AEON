@@ -977,7 +977,7 @@ export class ChannelGateway {
     );
     if (!state) return;
     state.replayedControlRequestIds.add(message.request_id);
-    const source = routeControlRequest({
+    const routed = routeControlRequest({
       requestId: message.request_id,
       runtime: state.runtime,
       activeSources: state.active?.routingSources ?? [],
@@ -985,12 +985,12 @@ export class ChannelGateway {
       hooks: this.hooks,
       registration: state,
     });
-    if (!source) return;
+    if (!routed) return;
     void this.enqueueHook(state, () =>
       this.hooks.onControlRequest({
         requestId: message.request_id,
         kind: "generic_tool_approval",
-        source,
+        ...routed,
         toolName: message.request.tool_name,
         input: message.request.input,
       }),

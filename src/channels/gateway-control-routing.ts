@@ -1,9 +1,9 @@
 import type { RuntimeScope } from "@/types/app-server-protocol";
 import { sourceRouteKey } from "./gateway-sources";
-import type { ChannelTurnSource } from "./types";
+import type { ChannelControlRequestEvent, ChannelTurnSource } from "./types";
 
 export type ControlRequestRouting =
-  | { kind: "deliver"; source: ChannelTurnSource }
+  | { kind: "deliver"; source: ChannelTurnSource; fallback: boolean }
   /** The active turn spans several chats; the gateway does not pick one. */
   | { kind: "ambiguous" }
   /** No route can deliver the request; the gateway leaves it pending. */
@@ -19,6 +19,11 @@ function singleChat(
   return [...scopes.values()][0] ?? null;
 }
 
+/** Only a direct chat may take a fallback approval; untyped routes do not. */
+function isDirectChat(source: ChannelTurnSource | null): boolean {
+  return source?.chatType === "direct";
+}
+
 /**
  * Decide where a channel gateway sends a control request (tool approval).
  *
@@ -26,10 +31,11 @@ function singleChat(
  *   turn spans several chats it stays undelivered, as before.
  * - A turn no channel message started (task notification, cron, mod
  *   continuation, OpenAI-compat bridge turn) has no routing source, so it
- *   falls back to the conversation's bound route: the host's choice when the
- *   host resolves one (the local gateway picks the most recently created
- *   enabled route), otherwise the runtime's routed sources when they name a
- *   single chat.
+ *   falls back to the conversation's bound direct-chat route: the host's
+ *   choice when the host resolves one (the local gateway picks the most
+ *   recently created enabled DM route), otherwise the runtime's routed DM
+ *   sources when they name a single chat. A group chat never gets one, since
+ *   nobody there asked for it and anyone could answer.
  * - With no deliverable route the result is `undeliverable`. The gateway
  *   leaves the request pending; see `routeControlRequest`.
  */
@@ -42,16 +48,18 @@ export function resolveControlRequestRouting(options: {
 }): ControlRequestRouting {
   const active = singleChat(options.activeSources);
   if (active === "several") return { kind: "ambiguous" };
-  if (active) return { kind: "deliver", source: active };
+  if (active) return { kind: "deliver", source: active, fallback: false };
 
   if (options.resolveFallback) {
     const source = options.resolveFallback([...options.routedSources]);
-    return source ? { kind: "deliver", source } : { kind: "undeliverable" };
+    return source && isDirectChat(source)
+      ? { kind: "deliver", source, fallback: true }
+      : { kind: "undeliverable" };
   }
-  const routed = singleChat(options.routedSources);
+  const routed = singleChat(options.routedSources.filter(isDirectChat));
   if (routed === "several") return { kind: "ambiguous" };
   return routed
-    ? { kind: "deliver", source: routed }
+    ? { kind: "deliver", source: routed, fallback: true }
     : { kind: "undeliverable" };
 }
 
@@ -66,7 +74,8 @@ interface ControlRequestRoutingHooks {
 
 /**
  * Resolve a control request's channel source for the gateway. Returns the
- * source to deliver to, or null after logging a request it cannot deliver.
+ * source to deliver to (marked `routedByFallback` when the turn had none), or
+ * null after logging a request it cannot deliver.
  *
  * An undeliverable request is not denied: the gateway is a separate App Server
  * client and cannot see whether another client (the TUI, aya-chat) is
@@ -83,7 +92,7 @@ export function routeControlRequest(options: {
   routedSources: readonly ChannelTurnSource[];
   hooks: ControlRequestRoutingHooks;
   registration: { registrationSignature: string | null };
-}): ChannelTurnSource | null {
+}): Pick<ChannelControlRequestEvent, "source" | "routedByFallback"> | null {
   const { hooks, requestId, runtime } = options;
   const routing = resolveControlRequestRouting({
     activeSources: options.activeSources,
@@ -95,7 +104,11 @@ export function routeControlRequest(options: {
         }
       : {}),
   });
-  if (routing.kind === "deliver") return routing.source;
+  if (routing.kind === "deliver") {
+    return routing.fallback
+      ? { source: routing.source, routedByFallback: true }
+      : { source: routing.source };
+  }
 
   const where = `${requestId} (${runtime.agent_id}:${runtime.conversation_id})`;
   if (routing.kind === "ambiguous") {

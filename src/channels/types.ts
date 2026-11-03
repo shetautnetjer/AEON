@@ -183,6 +183,12 @@ export interface ChannelControlRequestEvent {
   requestId: string;
   kind: ChannelControlRequestKind;
   source: ChannelTurnSource;
+  /**
+   * The turn had no channel source, so the gateway sent the request to the
+   * conversation's bound direct chat. No sender asked for it; only an allowed
+   * or paired sender may answer.
+   */
+  routedByFallback?: true;
   toolName: string;
   input: Record<string, unknown>;
 }

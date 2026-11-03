@@ -284,10 +284,11 @@ export class ChannelRegistry {
   /**
    * Channel source for an approval raised by a turn no channel message
    * started (task notification, cron, mod continuation, bridge turn): the
-   * most recently created enabled, outbound-enabled route bound to this
-   * conversation on a running adapter, i.e. a row `letta channels route list`
-   * shows. Ties keep the first route in adapter and store order. Null when no
-   * route can deliver it.
+   * most recently created enabled, outbound-enabled direct-chat route bound to
+   * this conversation on a running adapter, i.e. a row `letta channels route
+   * list` shows. Group routes and routes that record no chat type are skipped:
+   * anyone in a group could answer. Ties keep the first route in adapter and
+   * store order. Null when no route can deliver it.
    */
   resolveControlRequestSourceForScope(
     agentId: string,
@@ -298,7 +299,8 @@ export class ChannelRegistry {
     for (const candidate of this.deliverableRoutes()) {
       if (
         candidate.source.agentId !== agentId ||
-        candidate.source.conversationId !== conversationId
+        candidate.source.conversationId !== conversationId ||
+        candidate.source.chatType !== "direct"
       ) {
         continue;
       }

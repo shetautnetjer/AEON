@@ -217,6 +217,27 @@ export function evaluateChannelSenderAccess(
   return "deny";
 }
 
+/**
+ * Whether the operator explicitly allowed this sender: the allow-all env flag,
+ * the effective allowlist (`*` included), or pairing. Unlike
+ * `evaluateChannelSenderAccess`, an open DM or group policy does not count, so
+ * chat membership alone never passes.
+ */
+export function isChannelSenderExplicitlyAllowed(
+  input: Omit<ChannelSenderAccessInput, "chatType">,
+): boolean {
+  const { account, channelId, senderId } = input;
+  return (
+    isChannelAllowAllUsersEnabled(channelId) ||
+    allowlistMatches(
+      channelId,
+      effectiveAllowedUsers(account, channelId),
+      senderId,
+    ) ||
+    (!!senderId && isPairedApproved(channelId, senderId, account.accountId))
+  );
+}
+
 const ACCESS_DENIED_NOUNS: Record<string, string> = {
   slack: "Slack app",
   discord: "Discord bot",

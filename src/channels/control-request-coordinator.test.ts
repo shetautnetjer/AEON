@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { ApprovalResponseBody } from "@/types/protocol_v2";
 import {
   ChannelControlRequestCoordinator,
+  type ChannelControlRequestCoordinatorOptions,
   type ChannelControlRequestInboundInput,
 } from "./control-request-coordinator";
 import type { ChannelControlRequestEvent } from "./types";
@@ -55,6 +56,7 @@ function inbound(
 
 function createHarness(
   responseResult: "handled" | "expired" | "unavailable" = "handled",
+  extraOptions: Partial<ChannelControlRequestCoordinatorOptions> = {},
 ) {
   const prompts: ChannelControlRequestEvent[] = [];
   const reprompts: string[] = [];
@@ -78,6 +80,7 @@ function createHarness(
     remove: async (requestId) => {
       removed.push(requestId);
     },
+    ...extraOptions,
   });
   return { coordinator, prompts, reprompts, responses, persisted, removed };
 }
@@ -186,5 +189,94 @@ describe("ChannelControlRequestCoordinator", () => {
     expect(harness.removed).toEqual(["request-1"]);
     expect(harness.coordinator.has("request-1")).toBe(false);
     expect(harness.coordinator.has("request-2")).toBe(true);
+  });
+
+  // An approval from a turn no channel message started is routed to the
+  // conversation's direct chat and names no sender. Only an allowed or paired
+  // sender may answer it.
+  function fallbackApproval(): ChannelControlRequestEvent {
+    const { senderId: _sender, ...source } = questionEvent().source;
+    return questionEvent({
+      kind: "generic_tool_approval",
+      toolName: "Bash",
+      input: { command: "ls" },
+      routedByFallback: true,
+      source: { ...source, channel: "telegram", chatType: "direct" },
+    });
+  }
+
+  const approve = {
+    request_id: "request-1",
+    decision: { behavior: "allow" as const },
+  };
+
+  test("refuses a fallback approval from a sender who is not allowed", async () => {
+    const asked: string[] = [];
+    const harness = createHarness("handled", {
+      isAllowedFallbackAnswerer: (_event, senderId) => {
+        asked.push(senderId);
+        return senderId === "owner";
+      },
+    });
+    await harness.coordinator.register(fallbackApproval());
+
+    expect(
+      await harness.coordinator.handleNativeResponse({
+        requestId: "request-1",
+        response: approve,
+        senderId: "stranger",
+        channel: "telegram",
+        accountId: "account-1",
+        chatId: "channel-1",
+        threadId: "thread-1",
+      }),
+    ).toBe("forbidden");
+    expect(
+      await harness.coordinator.tryHandleInbound(
+        inbound({ channel: "telegram", senderId: "stranger", text: "yes" }),
+      ),
+    ).toBe(false);
+
+    expect(asked).toEqual(["stranger", "stranger"]);
+    expect(harness.responses).toEqual([]);
+    expect(harness.coordinator.has("request-1")).toBe(true);
+  });
+
+  test("accepts a fallback approval from an allowed sender", async () => {
+    const harness = createHarness("handled", {
+      isAllowedFallbackAnswerer: (_event, senderId) => senderId === "owner",
+    });
+    await harness.coordinator.register(fallbackApproval());
+    expect(
+      await harness.coordinator.handleNativeResponse({
+        requestId: "request-1",
+        response: approve,
+        senderId: "owner",
+        channel: "telegram",
+        accountId: "account-1",
+        chatId: "channel-1",
+        threadId: "thread-1",
+      }),
+    ).toBe("handled");
+
+    await harness.coordinator.register(fallbackApproval());
+    expect(
+      await harness.coordinator.tryHandleInbound(
+        inbound({ channel: "telegram", senderId: "owner", text: "yes" }),
+      ),
+    ).toBe(true);
+    expect(harness.responses).toHaveLength(2);
+  });
+
+  test("refuses a fallback approval when the host cannot check answerers", async () => {
+    const harness = createHarness();
+    await harness.coordinator.register(fallbackApproval());
+
+    expect(
+      await harness.coordinator.tryHandleInbound(
+        inbound({ channel: "telegram", senderId: "owner", text: "yes" }),
+      ),
+    ).toBe(false);
+    expect(harness.responses).toEqual([]);
   });
 });

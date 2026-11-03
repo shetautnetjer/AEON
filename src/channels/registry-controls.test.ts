@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { __testOverrideLoadChannelAccounts } from "@/channels/accounts";
+import {
+  __testOverrideLoadChannelAccounts,
+  clearChannelAccountStores,
+} from "@/channels/accounts";
+import {
+  __testOverrideLoadPairingStore,
+  __testOverrideSavePairingStore,
+  clearPairingStores,
+} from "@/channels/pairing";
 import {
   __testOverrideLoadPendingControlRequestStore,
   __testOverrideSavePendingControlRequestStore,
@@ -387,6 +395,134 @@ describe("pending channel control requests", () => {
       },
     ]);
     expect(registry.hasPendingControlRequest(baseEvent.requestId)).toBe(false);
+  });
+
+  test("an approval routed to the conversation's DM by fallback accepts only allowed or paired senders", async () => {
+    // dmPolicy "open" lets anyone in the DM talk to the agent, but answering
+    // an approval nobody in the chat asked for needs an explicit grant.
+    __testOverrideLoadChannelAccounts((channelId) =>
+      channelId === "telegram"
+        ? [
+            {
+              channel: "telegram",
+              accountId: "acct-tg",
+              enabled: true,
+              token: "test-token",
+              binding: { agentId: "agent-1", conversationId: null },
+              dmPolicy: "open",
+              allowedUsers: ["owner"],
+              createdAt: "2026-11-01T00:00:00.000Z",
+              updatedAt: "2026-11-01T00:00:00.000Z",
+            },
+          ]
+        : [],
+    );
+    __testOverrideLoadPairingStore((channelId) =>
+      channelId === "telegram"
+        ? {
+            pending: [],
+            approved: [
+              {
+                accountId: "acct-tg",
+                senderId: "paired",
+                approvedAt: "2026-11-01T00:00:00.000Z",
+              },
+            ],
+          }
+        : null,
+    );
+    __testOverrideSavePairingStore(() => {});
+    addRoute("telegram", {
+      accountId: "acct-tg",
+      chatId: "7945451305",
+      chatType: "direct",
+      agentId: "agent-1",
+      conversationId: "conv-1",
+      enabled: true,
+      createdAt: "2026-11-01T00:00:00.000Z",
+    });
+    try {
+      const registry = new ChannelRegistry();
+      const adapter: ChannelAdapter = {
+        id: "telegram:acct-tg",
+        channelId: "telegram",
+        accountId: "acct-tg",
+        name: "Telegram",
+        start: async () => {},
+        stop: async () => {},
+        isRunning: () => true,
+        sendMessage: async () => ({ messageId: "msg-1" }),
+        sendDirectReply: async () => {},
+        handleControlRequestEvent: async () => {},
+      };
+      registry.registerAdapter(adapter);
+      registry.setMessageHandler(() => {});
+      const approvalResponses: unknown[] = [];
+      registry.setApprovalResponseHandler(async (params) => {
+        approvalResponses.push(params);
+        return true;
+      });
+      const event: ChannelControlRequestEvent = {
+        requestId: "req-fallback",
+        kind: "generic_tool_approval",
+        routedByFallback: true,
+        source: {
+          channel: "telegram",
+          accountId: "acct-tg",
+          chatId: "7945451305",
+          chatType: "direct",
+          threadId: null,
+          agentId: "agent-1",
+          conversationId: "conv-1",
+        },
+        toolName: "Bash",
+        input: { command: "ls" },
+      };
+      const nativeAnswer = (requestId: string, senderId: string) =>
+        adapter.onControlResponse?.({
+          requestId,
+          senderId,
+          channel: "telegram",
+          accountId: "acct-tg",
+          chatId: "7945451305",
+          threadId: null,
+          response: { request_id: requestId, decision: { behavior: "allow" } },
+        });
+      const textAnswer = (senderId: string) =>
+        adapter.onMessage?.({
+          channel: "telegram",
+          accountId: "acct-tg",
+          chatId: "7945451305",
+          chatType: "direct",
+          senderId,
+          text: "yes",
+          timestamp: Date.now(),
+          messageId: "m-1",
+        });
+
+      await registry.registerPendingControlRequest(event);
+      expect(await nativeAnswer("req-fallback", "stranger")).toBe("forbidden");
+      await textAnswer("stranger");
+      expect(approvalResponses).toEqual([]);
+      expect(registry.hasPendingControlRequest("req-fallback")).toBe(true);
+
+      expect(await nativeAnswer("req-fallback", "owner")).toBe("handled");
+      expect(registry.hasPendingControlRequest("req-fallback")).toBe(false);
+
+      await registry.registerPendingControlRequest({
+        ...event,
+        requestId: "req-fallback-2",
+      });
+      await textAnswer("paired");
+      expect(approvalResponses).toHaveLength(2);
+      expect(registry.hasPendingControlRequest("req-fallback-2")).toBe(false);
+    } finally {
+      __testOverrideLoadChannelAccounts(null);
+      __testOverrideLoadPairingStore(null);
+      __testOverrideSavePairingStore(null);
+      clearChannelAccountStores();
+      clearPairingStores();
+    }
   });
 
   test("Slack thread text stays queued steering input while a native approval is pending", async () => {

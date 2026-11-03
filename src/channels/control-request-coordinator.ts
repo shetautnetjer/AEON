@@ -40,6 +40,14 @@ export interface ChannelControlRequestCoordinatorOptions {
   ): Promise<ChannelControlRequestResponseDeliveryResult>;
   persist(event: ChannelControlRequestEvent): Promise<void> | void;
   remove(requestId: string): Promise<void> | void;
+  /**
+   * Whether `senderId` may answer a `routedByFallback` request (it names no
+   * sender). Without this hook such requests cannot be answered here.
+   */
+  isAllowedFallbackAnswerer?(
+    event: ChannelControlRequestEvent,
+    senderId: string,
+  ): boolean;
 }
 
 function getChannelControlRequestScopeKey(params: {
@@ -116,7 +124,7 @@ export class ChannelControlRequestCoordinator {
       (source.accountId ?? "default") !== (input.accountId ?? "default") ||
       source.chatId !== input.chatId ||
       (source.threadId ?? null) !== (input.threadId ?? null) ||
-      (source.senderId && source.senderId !== input.senderId)
+      !this.mayAnswer(pending.event, input.senderId)
     ) {
       return "forbidden";
     }
@@ -144,12 +152,7 @@ export class ChannelControlRequestCoordinator {
       this.requestIdByScope.delete(getChannelControlRequestScopeKey(input));
       return false;
     }
-    if (
-      pending.event.source.senderId &&
-      pending.event.source.senderId !== input.senderId
-    ) {
-      return false;
-    }
+    if (!this.mayAnswer(pending.event, input.senderId)) return false;
     if (
       input.channel === "slack" &&
       pending.event.kind === "generic_tool_approval"
@@ -215,6 +218,16 @@ export class ChannelControlRequestCoordinator {
   clearAll(): void {
     this.pendingById.clear();
     this.requestIdByScope.clear();
+  }
+
+  /** The initiating sender; for a fallback request, an allowed one. */
+  private mayAnswer(
+    event: ChannelControlRequestEvent,
+    senderId: string,
+  ): boolean {
+    if (event.source.senderId) return event.source.senderId === senderId;
+    if (!event.routedByFallback) return true;
+    return this.options.isAllowedFallbackAnswerer?.(event, senderId) ?? false;
   }
 
   private remember(

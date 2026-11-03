@@ -143,7 +143,7 @@ describe("ChannelRegistry lifecycle", () => {
     });
     const route = {
       accountId: "acct-slack-2",
-      chatType: "channel" as const,
+      chatType: "direct" as const,
       agentId: "agent-1",
       conversationId: "conv-1",
       enabled: true,
@@ -184,13 +184,68 @@ describe("ChannelRegistry lifecycle", () => {
       channel: "slack",
       accountId: "acct-slack-2",
       chatId: "C-newest",
-      chatType: "channel",
+      chatType: "direct",
       threadId: null,
       agentId: "agent-1",
       conversationId: "conv-1",
     });
     expect(
       registry.resolveControlRequestSourceForScope("agent-1", "conv-unbound"),
+    ).toBeNull();
+  });
+
+  test("unrouted approvals use only a direct-chat route, never a group route", () => {
+    const registry = new ChannelRegistry();
+    registry.registerAdapter({
+      id: "telegram:acct-tg",
+      channelId: "telegram",
+      accountId: "acct-tg",
+      name: "Telegram",
+      start: async () => {},
+      stop: async () => {},
+      isRunning: () => true,
+      sendMessage: async () => ({ messageId: "msg-1" }),
+      sendDirectReply: async () => {},
+    });
+    const route = {
+      accountId: "acct-tg",
+      agentId: "agent-1",
+      conversationId: "conv-1",
+      enabled: true,
+    };
+    addRoute("telegram", {
+      ...route,
+      chatId: "7945451305",
+      chatType: "direct",
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+    // Newer, but anyone in a group could answer, and a route that does not
+    // record its chat type cannot be trusted to be a DM.
+    addRoute("telegram", {
+      ...route,
+      chatId: "-1003904563283",
+      chatType: "channel",
+      createdAt: "2026-11-01T00:00:00.000Z",
+    });
+    addRoute("telegram", {
+      ...route,
+      chatId: "7945451306",
+      createdAt: "2026-11-02T00:00:00.000Z",
+    });
+
+    expect(
+      registry.resolveControlRequestSourceForScope("agent-1", "conv-1"),
+    ).toMatchObject({ chatId: "7945451305", chatType: "direct" });
+
+    addRoute("telegram", {
+      ...route,
+      chatId: "7945451305",
+      chatType: "direct",
+      enabled: false,
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+    expect(
+      registry.resolveControlRequestSourceForScope("agent-1", "conv-1"),
     ).toBeNull();
   });
 
