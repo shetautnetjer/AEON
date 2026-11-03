@@ -163,6 +163,61 @@ async function sync(
 }
 
 describe("sync replay on a teleport source", () => {
+  test("observer sync preserves an existing recovered continuation without starting it", async () => {
+    const { runtime, transport } = connectRuntime();
+    const recovered = {
+      agentId: scope.agent_id,
+      conversationId: scope.conversation_id,
+      autoDecisions: [
+        {
+          type: "deny" as const,
+          approval: sourceYieldedApproval,
+          reason: "stale",
+        },
+      ],
+      allApprovals: [sourceYieldedApproval],
+    };
+    runtime.recoveredApprovalState = recovered;
+    const processed: IncomingMessage[] = [];
+    await replaySyncStateForRuntime(
+      runtime.listener,
+      transport as never,
+      scope,
+      {
+        recoverApprovals: false,
+        resumeInterruptedTurn: false,
+        forceDeviceStatus: true,
+        connectionId: "cloud-relay",
+        scheduleWarmupsAfterSync: () => {},
+        recoveredContinuationDependencies: {
+          canRecover: async () => true,
+          acquireRecoveryClaim: async () => null,
+          ensureSecretsHydrated: async () => {},
+          ensureModAdapters: async () => [],
+          prepareToolExecutionContext: async () =>
+            ({
+              toolset: "codex",
+              toolsetPreference: "auto",
+              preparedToolContext: {
+                contextId: "test",
+                loadedToolNames: [],
+                clientTools: [],
+                clientSkills: [],
+              },
+            }) as never,
+          executeApprovalBatch: (async () => []) as never,
+        },
+        processIncomingMessage: async (message) => {
+          processed.push(message);
+        },
+      },
+    );
+    await Bun.sleep(10);
+    expect(processed).toHaveLength(0);
+    expect(runtime.turnLifecycle.kind).toBe("idle");
+    expect(runtime.recoveredApprovalState).toBe(recovered);
+  });
+
   test("independent sync callers do not deny the successfully yielded tool", async () => {
     const { runtime, transport } = connectRuntime();
     const processed: IncomingMessage[] = [];

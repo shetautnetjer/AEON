@@ -72,6 +72,8 @@ export async function replaySyncStateForRuntime(
   // lease; sync must not start a competing turn during either side of a
   // teleport.
   if (
+    (opts?.recoverApprovals !== false ||
+      opts?.resumeInterruptedTurn === true) &&
     syncScopedRuntime.recoveredApprovalState &&
     (syncScopedRuntime.recoveredApprovalState.autoDecisions?.length ?? 0) > 0
   ) {

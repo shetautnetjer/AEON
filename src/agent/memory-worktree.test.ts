@@ -134,7 +134,11 @@ describe("reflection memory worktrees", () => {
     const worktree = await createReflectionMemoryWorktree({
       parentMemoryDir: memoryDir,
     });
-    writeFileSync(join(worktree.worktreeDir, "notes.md"), "reflection\n", "utf-8");
+    writeFileSync(
+      join(worktree.worktreeDir, "notes.md"),
+      "reflection\n",
+      "utf-8",
+    );
     git(worktree.worktreeDir, ["add", "notes.md"]);
     git(worktree.worktreeDir, ["commit", "-m", "reflection"]);
     writeMemoryFile("persona.md", "parent\n");

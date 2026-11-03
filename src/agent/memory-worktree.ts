@@ -1,5 +1,4 @@
 import { execFile as execFileCb } from "node:child_process";
-import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
@@ -12,6 +11,10 @@ import type {
 import { runGit as runMemoryGit } from "@/agent/memory-git";
 import { GIT_DISABLE_COMMIT_SIGNING_ARGS } from "@/agent/memory-git-signing";
 import { withMemoryOperation } from "@/agent/memory-operation";
+import {
+  buildReflectionWorktreeId,
+  summarizeReflectionCommitSubject,
+} from "@/agent/memory-worktree-naming";
 import { getMemfsServerUrl } from "@/backend/api/memfs-git-proxy";
 import { debugLog, debugWarn } from "@/utils/debug";
 
@@ -77,22 +80,6 @@ function normalizeGitPath(path: string, cwd: string): string {
   const trimmed = path.trim();
   if (!trimmed) return trimmed;
   return isAbsolute(trimmed) ? trimmed : resolve(cwd, trimmed);
-}
-
-function buildReflectionWorktreeId(now: Date = new Date()): string {
-  const timestamp = now
-    .toISOString()
-    .replace(/[^0-9]/g, "")
-    .slice(0, 14);
-  return `${timestamp}-${randomUUID().slice(0, 8)}`;
-}
-
-function summarizeReflectionCommitSubject(subject: string): string {
-  const summary = subject
-    .trim()
-    .replace(/^[a-z]+(?:\([^)]+\))?!?:\s*/i, "")
-    .trim();
-  return summary || "reflection memory updates";
 }
 
 async function buildReflectionMergeMessage(
