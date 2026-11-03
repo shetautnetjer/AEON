@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getBoundLocalChannelIds } from "@/channels/bound-routes";
+import { getServedLocalChannelIds } from "@/channels/bound-routes";
 import { settingsManager } from "@/settings-manager";
 import type { StreamDelta } from "@/types/protocol_v2";
 import {
@@ -192,16 +192,18 @@ function extractReasoningText(delta: unknown): string {
  * the agent's full toolset). Approvals that still arise finish the HTTP
  * request with an explanatory reply instead of hanging it.
  *
- * A conversation bound to a channel route (the phone thread) keeps its own
- * mode: its approvals go to that channel as approval cards, and forcing
- * unrestricted would silently switch them off there too.
+ * A conversation bound to a channel route (the phone thread) on an enabled
+ * channel account keeps its own mode: its approvals go to that channel as
+ * approval cards, and forcing unrestricted would silently switch them off
+ * there too. A route on a disabled account does not count; no gateway serves
+ * it.
  */
 export function applyBridgePermissionMode(
   listener: ListenerRuntime,
   agentId: string,
   conversationId: string,
 ): void {
-  if (getBoundLocalChannelIds({ agentId, conversationId }).length > 0) return;
+  if (getServedLocalChannelIds({ agentId, conversationId }).length > 0) return;
   getOrCreateConversationPermissionModeStateRef(
     listener,
     agentId,

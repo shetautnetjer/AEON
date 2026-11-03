@@ -729,6 +729,34 @@ export function getChannelAccount(
   return account ? cloneAccount(account) : null;
 }
 
+/**
+ * Whether accounts.json enables this account. Reads the file directly, without
+ * loading this process's account cache (which may hold hydrated secrets), for
+ * a process that does not run the channel gateway. False when the file or the
+ * account is missing or unreadable.
+ */
+export function isChannelAccountEnabledOnDisk(
+  channelId: string,
+  accountId: string,
+): boolean {
+  let accounts: Array<Partial<ChannelAccount>> = [];
+  if (loadAccountsOverride) {
+    accounts = loadAccountsOverride(channelId) ?? [];
+  } else {
+    try {
+      const parsed = JSON.parse(
+        readFileSync(getChannelAccountsPath(channelId), "utf-8"),
+      ) as Partial<ChannelAccountStore> | null;
+      accounts = Array.isArray(parsed?.accounts) ? parsed.accounts : [];
+    } catch {
+      return false;
+    }
+  }
+  return accounts.some(
+    (account) => account?.accountId === accountId && !!account.enabled,
+  );
+}
+
 export async function getChannelAccountWithSecrets(
   channelId: string,
   accountId: string,

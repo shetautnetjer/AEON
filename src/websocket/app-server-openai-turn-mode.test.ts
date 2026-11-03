@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import {
+  __testOverrideLoadChannelAccounts,
+  clearChannelAccountStores,
+  LEGACY_CHANNEL_ACCOUNT_ID,
+} from "@/channels/accounts";
 import { __testOverrideLoadRoutes, clearAllRoutes } from "@/channels/routing";
-import type { ChannelRoute } from "@/channels/types";
+import { getLocalChannelTeleportError } from "@/channels/teleport-guard";
+import type { ChannelAccount, ChannelRoute } from "@/channels/types";
 import { applyBridgePermissionMode } from "@/websocket/app-server-openai-turn";
 import { createRuntime } from "@/websocket/listener/lifecycle";
 import { getOrCreateConversationPermissionModeStateRef } from "@/websocket/listener/permission-mode";
@@ -19,18 +25,37 @@ const PHONE_ROUTE: ChannelRoute = {
   createdAt: "2026-11-01T00:00:00.000Z",
 };
 
+const PHONE_ACCOUNT = {
+  channel: "telegram",
+  accountId: LEGACY_CHANNEL_ACCOUNT_ID,
+  enabled: true,
+  token: "test-token",
+  binding: { agentId: "agent-1", conversationId: null },
+  dmPolicy: "pairing",
+  allowedUsers: [],
+  createdAt: "2026-11-01T00:00:00.000Z",
+  updatedAt: "2026-11-01T00:00:00.000Z",
+} satisfies ChannelAccount;
+
 let routes: ChannelRoute[] = [];
+let accounts: ChannelAccount[] = [];
 
 beforeEach(() => {
   routes = [];
+  accounts = [PHONE_ACCOUNT];
   __testOverrideLoadRoutes((channelId) =>
     channelId === "telegram" ? routes : [],
+  );
+  __testOverrideLoadChannelAccounts((channelId) =>
+    channelId === "telegram" ? accounts : [],
   );
 });
 
 afterEach(() => {
   __testOverrideLoadRoutes(null);
+  __testOverrideLoadChannelAccounts(null);
   clearAllRoutes();
+  clearChannelAccountStores();
 });
 
 function modeAfterBridgeTurn(
@@ -70,4 +95,32 @@ test("a route that cannot deliver approvals does not count as channel-routed", (
   expect(modeAfterBridgeTurn(createRuntime(), "conv-phone")).toBe(
     "unrestricted",
   );
+});
+
+test("a route whose channel account is disabled or missing does not count as channel-routed", () => {
+  // No gateway serves a disabled account, so its approvals could never be
+  // shown; the bridge must behave as for an unrouted conversation.
+  routes = [PHONE_ROUTE];
+  accounts = [{ ...PHONE_ACCOUNT, enabled: false }];
+  expect(modeAfterBridgeTurn(createRuntime(), "conv-phone")).toBe(
+    "unrestricted",
+  );
+  accounts = [];
+  expect(modeAfterBridgeTurn(createRuntime(), "conv-phone")).toBe(
+    "unrestricted",
+  );
+  // Teleport still refuses to move the channel-bound conversation.
+  expect(
+    getLocalChannelTeleportError({
+      agentId: "agent-1",
+      conversationId: "conv-phone",
+    }),
+  ).toContain("bound to telegram");
+
+  accounts = [
+    { ...PHONE_ACCOUNT, enabled: false },
+    { ...PHONE_ACCOUNT, accountId: "acct-phone" },
+  ];
+  routes = [{ ...PHONE_ROUTE, accountId: "acct-phone" }];
+  expect(modeAfterBridgeTurn(createRuntime(), "conv-phone")).toBe("standard");
 });
