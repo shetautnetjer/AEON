@@ -72,18 +72,22 @@ export function WelcomeScreen({
   continueSession,
   agentState,
   startupHasAvailableLocalModels = true,
+  attachedContext,
 }: {
   loadingState: LoadingState;
   continueSession?: boolean;
   agentState?: Letta.AgentState | null;
   startupHasAvailableLocalModels?: boolean;
+  attachedContext?: { workingDirectory: string | null };
 }) {
   // Keep hook call for potential future responsive behavior
   useTerminalWidth();
-  const cwd = process.cwd();
+  const cwd = attachedContext
+    ? attachedContext.workingDirectory
+    : process.cwd();
   const version = getVersion();
 
-  const tildePath = toTildePath(cwd);
+  const tildePath = cwd ? toTildePath(cwd) : "Working directory not advertised";
 
   // Get model display name (pretty name if available, otherwise last part of handle)
   // Build full model handle from llm_config (model_endpoint_type/model) like App.tsx does
@@ -92,10 +96,12 @@ export function WelcomeScreen({
     llmConfig?.model_endpoint_type && llmConfig?.model
       ? `${llmConfig.model_endpoint_type}/${llmConfig.model}`
       : (llmConfig?.model ?? null);
-  const startupModelDisplayOverride = getStartupModelDisplayOverride({
-    isLocalBackend: isLocalBackendEnabled(),
-    startupHasAvailableLocalModels,
-  });
+  const startupModelDisplayOverride = attachedContext
+    ? null
+    : getStartupModelDisplayOverride({
+        isLocalBackend: isLocalBackendEnabled(),
+        startupHasAvailableLocalModels,
+      });
   const model =
     startupModelDisplayOverride ??
     (fullModel
@@ -103,28 +109,31 @@ export function WelcomeScreen({
       : undefined);
 
   // Get auth method - use sync check for env vars, async only for keychain
-  const initialAuth = getInitialAuthMethod();
+  const initialAuth = attachedContext ? null : getInitialAuthMethod();
   const [authMethod, setAuthMethod] = useState<
     "local" | "url" | "api-key" | "oauth"
   >(initialAuth ?? "oauth");
 
   useEffect(() => {
     // Only run async check if env vars didn't determine auth method
-    if (!initialAuth) {
+    if (!attachedContext && !initialAuth) {
       getAuthMethod().then(setAuthMethod);
     }
-  }, [initialAuth]);
-  const authDisplay =
-    authMethod === "local"
+  }, [initialAuth, attachedContext]);
+  const authDisplay = attachedContext
+    ? "Attached service"
+    : authMethod === "local"
       ? "Local"
       : authMethod === "url"
         ? process.env.LETTA_BASE_URL || "Custom URL"
         : "Cloud";
 
   // Check if memfs (context repositories) is enabled for this agent
-  const memfsEnabled = agentState?.id
-    ? settingsManager.isMemfsEnabled(agentState.id)
-    : true; // Don't warn while agent is still loading
+  const memfsEnabled = attachedContext
+    ? true
+    : agentState?.id
+      ? settingsManager.isMemfsEnabled(agentState.id)
+      : true; // Don't warn while agent is still loading
 
   return (
     <Box flexDirection="row" marginTop={1}>

@@ -4,7 +4,10 @@ import type { ModelReasoningEffort } from "@/agent/model";
 import { AgentInfoBar } from "./AgentInfoBar";
 import { FileAutocomplete } from "./FileAutocomplete";
 import { SlashCommandAutocomplete } from "./SlashCommandAutocomplete";
-import type { ModCommandAutocompleteItem } from "./types/autocomplete";
+import type {
+  CommandMatch,
+  ModCommandAutocompleteItem,
+} from "./types/autocomplete";
 
 interface InputAssistProps {
   currentInput: string;
@@ -22,6 +25,7 @@ interface InputAssistProps {
   workingDirectory?: string;
   conversationId?: string;
   modCommands?: Record<string, ModCommandAutocompleteItem>;
+  attachedCommands?: CommandMatch[];
 }
 
 /**
@@ -46,8 +50,10 @@ export function InputAssist({
   workingDirectory,
   conversationId,
   modCommands,
+  attachedCommands,
 }: InputAssistProps) {
-  const showFileAutocomplete = currentInput.includes("@");
+  const showFileAutocomplete =
+    attachedCommands === undefined && currentInput.includes("@");
   const showCommandAutocomplete =
     !showFileAutocomplete && currentInput.startsWith("/");
 
@@ -88,15 +94,18 @@ export function InputAssist({
           agentId={agentId}
           workingDirectory={workingDirectory}
           modCommands={modCommands}
+          attachedCommands={attachedCommands}
         />
-        <AgentInfoBar
-          agentId={agentId}
-          agentName={agentName}
-          currentModel={currentModel}
-          currentReasoningEffort={currentReasoningEffort}
-          serverUrl={serverUrl}
-          conversationId={conversationId}
-        />
+        {attachedCommands === undefined && (
+          <AgentInfoBar
+            agentId={agentId}
+            agentName={agentName}
+            currentModel={currentModel}
+            currentReasoningEffort={currentReasoningEffort}
+            serverUrl={serverUrl}
+            conversationId={conversationId}
+          />
+        )}
       </Box>
     );
   }

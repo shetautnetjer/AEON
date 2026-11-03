@@ -30,7 +30,6 @@ import {
   bytesToTokens,
   formatCompact,
   formatElapsedLabel,
-  formatModeLabel,
 } from "@/cli/helpers/format";
 import { CLI_GLYPHS } from "@/cli/helpers/glyphs";
 import {
@@ -59,6 +58,12 @@ import { settingsManager } from "@/settings-manager";
 import type { QueuedMessage } from "@/utils/message-queue-bridge";
 import { colors } from "./colors";
 import { InputAssist } from "./InputAssist";
+import {
+  StatuslineBashModeHint,
+  StatuslineModeHint,
+  StatuslineQueuedMessageHint,
+  StatuslineQueueModeChangedHint,
+} from "./input-statusline-hints";
 import { ModPanelRow, renderModPanelLines } from "./ModPanelRow";
 import { PasteAwareTextInput } from "./PasteAwareTextInput";
 import { QueuedMessages } from "./QueuedMessages";
@@ -70,6 +75,7 @@ import {
 import { StreamingStatusSpinner } from "./spinners/StreamingStatusSpinner.js";
 import { Text } from "./Text";
 import { handleTranscriptDisplayShortcut } from "./transcript-display-state";
+import type { CommandMatch } from "./types/autocomplete";
 
 // Window for double-escape to clear input
 const ESC_CLEAR_WINDOW_MS = 2500;
@@ -191,78 +197,6 @@ function StatuslinePreemptionView({
     case "confirm-clear":
       return <Text dimColor>Press Esc again to clear</Text>;
   }
-}
-
-function StatuslineBashModeHint() {
-  return (
-    <Text>
-      <Text color={colors.bash.prompt}>⏵⏵ bash mode</Text>
-      <Text color={colors.bash.prompt} dimColor>
-        {" "}
-        (backspace to exit)
-      </Text>
-    </Text>
-  );
-}
-
-function StatuslineModeHint({
-  modeName,
-  modeColor,
-  modeGlyph,
-  showExitHint,
-}: {
-  modeName: string;
-  modeColor: string;
-  modeGlyph?: string | null;
-  showExitHint: boolean;
-}) {
-  return (
-    <Text>
-      <Text color={modeColor}>{formatModeLabel(modeName, modeGlyph)}</Text>
-      <Text color={modeColor} dimColor>
-        {" "}
-        (shift+tab to {showExitHint ? "exit" : "cycle"})
-      </Text>
-    </Text>
-  );
-}
-
-function StatuslineQueuedMessageHint({
-  queueMode,
-  deferModeSupported,
-}: {
-  queueMode: "immediate" | "defer";
-  deferModeSupported: boolean;
-}) {
-  return (
-    <Text dimColor>
-      {deferModeSupported
-        ? queueMode === "defer"
-          ? "press ↑ to edit queued message · ctrl+d to release queue"
-          : "press ↑ to edit queued message · ctrl+d to hold queue until done"
-        : "press ↑ to edit queued message"}
-    </Text>
-  );
-}
-
-function StatuslineQueueModeChangedHint({
-  queueMode,
-  deferModeSupported,
-}: {
-  queueMode: "immediate" | "defer";
-  deferModeSupported: boolean;
-}) {
-  if (!deferModeSupported) {
-    return null;
-  }
-
-  return (
-    <Text dimColor>
-      {queueMode === "defer"
-        ? "queue held until done · ctrl+d to release"
-        : "queue sends as soon as possible · ctrl+d to hold"}
-    </Text>
-  );
 }
 
 function StatuslineTransientHintView({
@@ -820,6 +754,10 @@ export function Input({
   inputEnabled = true,
   collapseInputWhenDisabled = false,
   permissionMode: externalMode,
+  remotePermissionMode = false,
+  attachedCommands,
+  rejectDraft,
+  onRejectedDraft,
   onPermissionModeChange,
   onExit,
   onInterrupt,
@@ -871,6 +809,11 @@ export function Input({
   inputEnabled?: boolean;
   collapseInputWhenDisabled?: boolean;
   permissionMode?: PermissionMode;
+  /** The owner is remote; never mutate local permission state or optimistically change its display. */
+  remotePermissionMode?: boolean;
+  attachedCommands?: CommandMatch[];
+  rejectDraft?: (draft: string) => boolean;
+  onRejectedDraft?: () => void;
   onPermissionModeChange?: (mode: PermissionMode) => void;
   onExit?: () => void;
   onInterrupt?: () => void;
@@ -1431,11 +1374,16 @@ export function Input({
       ];
       const currentIndex = modes.indexOf(currentMode);
       const nextIndex = (currentIndex + 1) % modes.length;
-      const nextMode = modes[nextIndex] ?? "unrestricted";
+      const nextMode =
+        remotePermissionMode && currentMode === "strict"
+          ? "standard"
+          : (modes[nextIndex] ?? "unrestricted");
 
-      // Update both singleton and local state
-      permissionMode.setMode(nextMode);
-      setCurrentMode(nextMode);
+      // The attached client waits for authoritative remote status before updating.
+      if (!remotePermissionMode) {
+        permissionMode.setMode(nextMode);
+        setCurrentMode(nextMode);
+      }
 
       // Notify parent of mode change
       if (onPermissionModeChange) {
@@ -1731,15 +1679,45 @@ export function Input({
     [value, releaseDiscardedDraftPlaceholders],
   );
 
+  // Once a sensitive command is rejected, discard subsequent input until an
+  // explicit reset; a terminal paste can arrive in more than one read.
+  const rejectedDraftRef = useRef(false);
+  const rejectSensitiveDraft = useCallback(
+    (draft: string) => rejectedDraftRef.current || !!rejectDraft?.(draft),
+    [rejectDraft],
+  );
+  const noteRejectedDraft = useCallback(() => {
+    if (!rejectedDraftRef.current) onRejectedDraft?.();
+    rejectedDraftRef.current = true;
+  }, [onRejectedDraft]);
+  useInput(
+    (_input, key) => {
+      if (
+        rejectedDraftRef.current &&
+        (key.escape || key.return) &&
+        !(key as unknown as { isPasted?: boolean }).isPasted
+      ) {
+        rejectedDraftRef.current = false;
+      }
+    },
+    { isActive: interactionEnabled },
+  );
+
   // Edits only note placeholders that left the draft: a kill-buffer yank or a
   // retyped bracket can restore them, so the release boundaries above free
   // them later, once no live holder references them.
   const handleDraftChange = useCallback(
     (nextValue: string) => {
+      if (rejectSensitiveDraft(nextValue)) {
+        draftDiscards.noteEdit(value, "");
+        setValue("");
+        noteRejectedDraft();
+        return;
+      }
       draftDiscards.noteEdit(value, nextValue);
       setValue(nextValue);
     },
-    [value, draftDiscards],
+    [value, draftDiscards, rejectSensitiveDraft, noteRejectedDraft],
   );
 
   // Get display name and color for permission mode
@@ -1969,6 +1947,8 @@ export function Input({
                   onBangAtEmpty={handleBangAtEmpty}
                   onBackspaceAtEmpty={handleBackspaceAtEmpty}
                   onPasteError={onPasteError}
+                  rejectDraft={rejectDraft ? rejectSensitiveDraft : undefined}
+                  onRejectedDraft={noteRejectedDraft}
                 />
               </Box>
             </Box>
@@ -2005,6 +1985,7 @@ export function Input({
                 workingDirectory={process.cwd()}
                 conversationId={conversationId}
                 modCommands={modAdapter.registry?.commands}
+                attachedCommands={attachedCommands}
               />
             )}
 
@@ -2059,6 +2040,9 @@ export function Input({
     handleBangAtEmpty,
     handleBackspaceAtEmpty,
     onPasteError,
+    rejectDraft,
+    rejectSensitiveDraft,
+    noteRejectedDraft,
     currentCursorPosition,
     handleFileAutocompleteApply,
     handleCommandSelect,
@@ -2086,6 +2070,7 @@ export function Input({
     subagentLifecycleSnapshot,
     subagentLifecycleTick,
     modAdapter,
+    attachedCommands,
 
     promptChar,
     promptVisualWidth,

@@ -6,6 +6,7 @@ import { colors } from "./colors";
 import { OverlayShell } from "./OverlayShell";
 import { TabBar } from "./TabBar";
 import { Text } from "./Text";
+import type { CommandMatch } from "./types/autocomplete";
 
 const PAGE_SIZE = 10;
 
@@ -25,9 +26,10 @@ interface ShortcutItem {
 
 interface HelpDialogProps {
   onClose: () => void;
+  attachedCommands?: CommandMatch[];
 }
 
-export function HelpDialog({ onClose }: HelpDialogProps) {
+export function HelpDialog({ onClose, attachedCommands }: HelpDialogProps) {
   const [activeTab, setActiveTab] = useState<HelpTab>("commands");
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -35,6 +37,7 @@ export function HelpDialog({ onClose }: HelpDialogProps) {
 
   // Load custom commands once on mount
   useEffect(() => {
+    if (attachedCommands !== undefined) return;
     import("@/cli/commands/custom.js").then(({ getCustomCommands }) => {
       getCustomCommands().then((customs) => {
         setCustomCommands(
@@ -46,10 +49,16 @@ export function HelpDialog({ onClose }: HelpDialogProps) {
         );
       });
     });
-  }, []);
+  }, [attachedCommands]);
 
   // Get all non-hidden commands, sorted by order (includes custom commands)
   const allCommands = useMemo<CommandItem[]>(() => {
+    if (attachedCommands !== undefined)
+      return attachedCommands.map((item) => ({
+        name: item.cmd,
+        description: item.desc,
+        order: item.order ?? 100,
+      }));
     const builtins = Object.entries(commands)
       .filter(([_, cmd]) => !cmd.hidden)
       .map(([name, cmd]) => ({
@@ -58,18 +67,26 @@ export function HelpDialog({ onClose }: HelpDialogProps) {
         order: cmd.order ?? 100,
       }));
     return [...builtins, ...customCommands].sort((a, b) => a.order - b.order);
-  }, [customCommands]);
+  }, [customCommands, attachedCommands]);
 
   // Keyboard shortcuts
   const shortcuts = useMemo<ShortcutItem[]>(() => {
     return [
       { keys: "/", description: "Open command autocomplete" },
-      { keys: "@", description: "Open file autocomplete" },
+      ...(attachedCommands === undefined
+        ? [{ keys: "@", description: "Open file autocomplete" }]
+        : []),
       {
         keys: "Esc",
         description: "Cancel dialog / clear input (double press)",
       },
-      { keys: "Tab", description: "Autocomplete command or file path" },
+      {
+        keys: "Tab",
+        description:
+          attachedCommands === undefined
+            ? "Autocomplete command or file path"
+            : "Autocomplete command",
+      },
       { keys: "↓", description: "Navigate down / next command in history" },
       { keys: "↑", description: "Navigate up / previous command in history" },
       { keys: "Shift+Enter", description: "Insert newline (multi-line input)" },
@@ -80,7 +97,7 @@ export function HelpDialog({ onClose }: HelpDialogProps) {
       },
       { keys: "Ctrl+V", description: "Paste content or image" },
     ];
-  }, []);
+  }, [attachedCommands]);
 
   const cycleTab = useCallback(() => {
     setActiveTab((current) => {

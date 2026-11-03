@@ -81,6 +81,10 @@ export async function runSubcommand(argv: string[]): Promise<number | null> {
   }
 
   switch (command) {
+    case "attach": {
+      const { runAttachSubcommand } = await import("./attach");
+      return runAttachSubcommand(rest);
+    }
     case "version":
       return runVersionSubcommand();
     case "update":
