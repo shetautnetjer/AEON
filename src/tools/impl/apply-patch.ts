@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
+import { withMemoryEditLease } from "@/agent/memory-edit-lease";
 import { getCurrentWorkingDirectory } from "@/runtime-context";
 import { readUtf8TextStrict, writeUtf8Text } from "@/utils/text-files";
 import { validateRequiredParams } from "./validation.js";
@@ -85,6 +86,27 @@ export async function apply_patch(
 
   const cwd = getCurrentWorkingDirectory();
   verifyNoDuplicatePaths(cwd, operations);
+  // A patch that touches the agent's memory checkout runs under its lease, so
+  // a memory worker or another edit can't write those files in between.
+  return withMemoryEditLease(patchTargetPaths(cwd, operations), () =>
+    applyOperations(cwd, operations),
+  );
+}
+
+function patchTargetPaths(cwd: string, operations: FileOperation[]): string[] {
+  return operations.flatMap((op) =>
+    op.kind === "update"
+      ? [op.fromPath, ...(op.toPath ? [op.toPath] : [])].map((p) =>
+          resolvePatchPath(cwd, p),
+        )
+      : [resolvePatchPath(cwd, op.path)],
+  );
+}
+
+async function applyOperations(
+  cwd: string,
+  operations: FileOperation[],
+): Promise<ApplyPatchResult> {
   const affected: AffectedPaths = { added: [], modified: [], deleted: [] };
 
   for (const op of operations) {
