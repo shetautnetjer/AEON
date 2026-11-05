@@ -23,22 +23,22 @@ const LEASE_OPTIONS: FileLockOptions = {
 };
 
 /**
- * Serialize the harness-owned writers of a memory checkout across local
- * processes: memory workers, conflict repair, reflection integration, and
- * post-turn sync. The primary agent's own edits are not routed through this
- * lock; the prompts ask it to wait for a worker it launched, and workers stage
- * only the files they change so concurrent edits degrade to a Git conflict.
+ * Serialize the writers of a memory checkout across local processes: memory
+ * workers, conflict repair, reflection integration, post-turn sync, and the
+ * primary agent's own Edit, Write and ApplyPatch calls on files inside the
+ * checkout (see `withMemoryEditLease`, which waits a bounded time).
  *
  * Returns a release function, or null when the checkout is owned by another
- * running process and `wait` is false.
+ * running process and neither `wait` nor `timeoutMs` lets the call wait it out.
  */
 export async function claimMemoryOperation(
   memoryDir: string,
-  options: { wait?: boolean; signal?: AbortSignal } = {},
+  options: { wait?: boolean; timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<(() => Promise<void>) | null> {
   return tryAcquireFileLock(await getMemoryOperationPath(memoryDir), {
     ...LEASE_OPTIONS,
-    timeoutMs: options.wait ? Number.POSITIVE_INFINITY : 0,
+    timeoutMs:
+      options.timeoutMs ?? (options.wait ? Number.POSITIVE_INFINITY : 0),
     signal: options.signal,
   });
 }

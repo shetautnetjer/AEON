@@ -89,8 +89,9 @@ export async function runMemoryWorker(
   const recompile = async () => {
     // Memory is committed and synced at this point; a failed prompt refresh
     // is worth a warning but must not report the worker as failed. Running
-    // it under the checkout lock is safe because the primary's tools never
-    // take this lock, so its active turn cannot be waiting on us.
+    // it under the checkout lock is safe because the primary's file tools
+    // wait for this lock only a bounded time (withMemoryEditLease), so its
+    // active turn cannot stay blocked on us.
     try {
       if (deps.recompile || getBackend().capabilities.promptRecompile) {
         await (deps.recompile ?? recompileAgentSystemPrompt)(

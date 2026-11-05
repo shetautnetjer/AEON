@@ -1,3 +1,4 @@
+import { withMemoryEditLease } from "@/agent/memory-edit-lease";
 import { getCurrentWorkingDirectory } from "@/runtime-context";
 import { expandFilePath } from "@/utils/file-path";
 import { readUtf8TextStrict, writeUtf8Text } from "@/utils/text-files";
@@ -117,7 +118,21 @@ export function unescapeOverEscapedString(input: string): string {
   );
 }
 
+/**
+ * Edit a file. Inside the agent's memory checkout the read and the write run
+ * under the memory lease, so a memory worker or another edit can't write the
+ * same file in between and have its change silently dropped.
+ */
 export async function edit(args: EditArgs): Promise<EditResult> {
+  if (typeof args?.file_path !== "string") return editUnlocked(args);
+  const resolvedPath = expandFilePath(
+    args.file_path,
+    getCurrentWorkingDirectory(),
+  );
+  return withMemoryEditLease(resolvedPath, () => editUnlocked(args));
+}
+
+async function editUnlocked(args: EditArgs): Promise<EditResult> {
   validateRequiredParams(
     args,
     ["file_path", "old_string", "new_string"],
