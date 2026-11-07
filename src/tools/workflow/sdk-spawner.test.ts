@@ -16,6 +16,7 @@ import type {
 const CONFIG: SdkSpawnerConfig = {
   parentAgentId: "agent-parent",
   model: "openai/gpt-5.6-luna",
+  stopSettlementTimeoutMs: 20,
   resolveModel: (id) => (id === "sonnet" ? "anthropic/claude-sonnet-5" : null),
 };
 

@@ -75,6 +75,8 @@ export interface SubagentOutcome {
   durationMs?: number;
   /** Total tokens consumed by the subagent session (prompt + completion). */
   totalTokens?: number;
+  /** Stop was requested but no terminal worker result confirmed settlement. */
+  cleanupUnconfirmed?: boolean;
 }
 
 /** Live signals a spawner may report while a subagent runs. */
