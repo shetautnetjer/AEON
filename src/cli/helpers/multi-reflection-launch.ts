@@ -1,4 +1,7 @@
-import { buildReflectionMemoryScope } from "@/agent/memory-worktree";
+import {
+  buildReflectionMemoryScope,
+  finalizeReflectionMemoryWorktree,
+} from "@/agent/memory-worktree";
 import { finalizeMultiReflectionCompletion } from "@/cli/helpers/reflection-completion";
 import {
   finalizeReflectionMemoryWorktreeLaunch,
@@ -25,6 +28,7 @@ const defaultDeps = {
   buildPayload: buildMultiReflectionPayload,
   prepareWorktree: prepareReflectionMemoryWorktreeLaunch,
   finalizeWorktree: finalizeReflectionMemoryWorktreeLaunch,
+  discardWorktree: finalizeReflectionMemoryWorktree,
   finalizeManifest: finalizeMultiReflectionCompletion,
   mergeOptions: getReflectionMergeLaunchOptions,
   spawn: async (args: SpawnBackgroundSubagentTaskArgs) => {
@@ -61,6 +65,14 @@ export async function launchMultiReflection(
   }
   let delegated = false;
   try {
+    if (params.selection.kind === "conversations") {
+      const invalid = params.selection.conversationIds.find(
+        (id) => id === "." || id === "..",
+      );
+      if (invalid !== undefined) {
+        throw new Error(`Invalid conversation ID: ${invalid}`);
+      }
+    }
     const payload = await deps.buildPayload({
       agentId,
       selectionPolicy:
@@ -78,49 +90,73 @@ export async function launchMultiReflection(
       agentId,
       instruction: params.instruction,
     });
-    await deps.spawn({
-      subagentType: "reflection",
-      prompt: reflectionPrompt,
-      description: "Reflecting on recent conversations",
-      silentCompletion: true,
-      transcriptPath: payload.payloadPath,
-      memoryScope: buildReflectionMemoryScope(worktree),
-      parentScope: { agentId, conversationId },
-      onComplete: async ({
-        success,
-        error,
-        agentId: reflectionAgentId,
-        model,
-      }) => {
-        try {
-          const { completionSuccess, completionMessage } =
-            await deps.finalizeWorktree({
-              worktree,
-              subagentSuccess: success,
-              subagentError: error,
+    try {
+      await deps.spawn({
+        subagentType: "reflection",
+        prompt: reflectionPrompt,
+        description: "Reflecting on recent conversations",
+        silentCompletion: true,
+        transcriptPath: payload.payloadPath,
+        memoryScope: buildReflectionMemoryScope(worktree),
+        parentScope: { agentId, conversationId },
+        actingUserId: params.actingUserId,
+        onComplete: async ({
+          success,
+          error,
+          agentId: reflectionAgentId,
+          model,
+        }) => {
+          try {
+            let completionSuccess = false;
+            let completionMessage =
+              "Reflection finalization failed; will retry later.";
+            try {
+              ({ completionSuccess, completionMessage } =
+                await deps.finalizeWorktree({
+                  worktree,
+                  subagentSuccess: success,
+                  subagentError: error,
+                  agentId,
+                  conversationId,
+                  subagentAgentId: reflectionAgentId ?? undefined,
+                  model,
+                  actingUserId: params.actingUserId,
+                  ...deps.mergeOptions(agentId),
+                  telemetryContext: { triggerSource: "manual" },
+                  recompileByConversation: params.recompileByConversation,
+                  recompileQueuedByConversation:
+                    params.recompileQueuedByConversation,
+                  logRecompileFailure: (message) =>
+                    debugWarn("memory", message),
+                }));
+            } catch (error) {
+              debugWarn(
+                "memory",
+                `Reflection finalization failed: ${String(error)}`,
+              );
+            }
+            await deps.finalizeManifest(
               agentId,
-              conversationId,
-              subagentAgentId: reflectionAgentId ?? undefined,
-              model,
-              actingUserId: params.actingUserId,
-              ...deps.mergeOptions(agentId),
-              telemetryContext: { triggerSource: "manual" },
-              recompileByConversation: params.recompileByConversation,
-              recompileQueuedByConversation:
-                params.recompileQueuedByConversation,
-              logRecompileFailure: (message) => debugWarn("memory", message),
-            });
-          await deps.finalizeManifest(
-            agentId,
-            payload.manifest,
-            completionSuccess,
-          );
-          await params.onComplete?.(completionMessage, completionSuccess);
-        } finally {
-          deps.release(agentId);
-        }
-      },
-    });
+              payload.manifest,
+              completionSuccess,
+            );
+            await params.onComplete?.(completionMessage, completionSuccess);
+          } finally {
+            deps.release(agentId);
+          }
+        },
+      });
+    } catch (error) {
+      await deps
+        .discardWorktree(worktree, { shouldMerge: false })
+        .catch((cleanupError) =>
+          debugWarn(
+            "memory",
+            `Reflection cleanup failed: ${String(cleanupError)}`,
+          ),
+        );
+      throw error;
+    }
     delegated = true;
     return {
       launched: true,
