@@ -565,7 +565,9 @@ export function AttachedApp({
     <Box flexDirection="column">
       <StaticTranscript
         renderEpoch={snapshot.generation}
-        items={model.staticItems}
+        // Ink memoizes new Static items by array identity. The model appends
+        // in place, so pass a fresh array when committing completed lines.
+        items={[...model.staticItems]}
         columns={columns}
         statusLinePrompt=">"
         showCompactionsEnabled={false}

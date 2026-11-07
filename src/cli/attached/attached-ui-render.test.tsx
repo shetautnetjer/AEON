@@ -263,6 +263,28 @@ test("attached approval shows complete input and sends only the exact decision i
     expect(stripAnsi(output.chunks.join(""))).toContain(
       "FAILURE-NEEDS-ATTENTION",
     );
+    onFrame?.({
+      type: "stream_delta",
+      delta: {
+        type: "message",
+        message_type: "assistant_message",
+        id: "assistant-static-retention",
+        content: "COMMITTED-RESULT α 👋",
+      },
+    } as unknown as WsProtocolMessage);
+    await pause();
+    const beforeCommit = output.chunks.length;
+    onFrame?.({
+      type: "turn_finished",
+      stop_reason: "end_turn",
+      turn_id: "turn-static-retention",
+    } as unknown as WsProtocolMessage);
+    await pause();
+    // Earlier live output is insufficient: the commit must emit the result
+    // into Static before the live line is removed from the terminal.
+    expect(stripAnsi(output.chunks.slice(beforeCommit).join(""))).toContain(
+      "COMMITTED-RESULT α 👋",
+    );
     input.write("UNACKNOWLEDGED-DRAFT");
     await pause();
     input.write("\r");

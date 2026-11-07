@@ -129,6 +129,22 @@ or reconstruct unknown workers after a host failure.
 
 ## Verification
 
+The attached renderer gives Ink a fresh static-items array when completed lines
+are committed. Ink memoizes pending static output by array identity; passing the
+model's in-place-mutated array could erase the live line without printing its
+completed replacement. Native conversation history remained intact. The render
+regression checks bytes emitted at the commit transition, excluding earlier live
+output. An isolated Linux/Herdr 0.9.5 qualification on 2026-11-07 retained Unicode
+results through all four snapshot sources in single/split panes and after resize,
+for both Bun source and the Node bundle. Detach, exact restore with zero replay,
+scoped Esc cancellation and blocked approvals also passed. Existing sessions and
+the installed AEON service were not changed by that source qualification.
+
+Herdr's named prompt/key commands currently require a built-in agent identity;
+AEON remains the custom identity `aeon`. Use explicit owned-pane input for this
+qualified setup. Native history and checked artifacts remain the durable result
+sources; a readable snapshot or an idle label is not result acceptance.
+
 Focused checks cover scoped transport, exact input ownership, approval retention,
 uncertain sends, private command dispatch, masked forms, skill selection, native
 accumulator compatibility, actual offline PTY rendering and the Node-targeted
