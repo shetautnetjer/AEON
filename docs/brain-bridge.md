@@ -65,7 +65,7 @@ Text is sent unchanged on stdin, preserving frontmatter and source-bearing
 fact text. The model cannot select another writer, file, executable, vault,
 schema or command. The CLI must exit successfully and acknowledge the native
 absolute `HOME/inbox/new/aya/YYYYmmddTHHMMSSffffffZ-HASH8.md` path. The result
-uses the canonical home resolved by Brain's `Paths.from_env`, including when
+uses the canonical home resolved by `brain.paths.from_env`, including when
 the configured home is a symlink. AEON validates that exact queue directory
 and native filename without requiring the file to remain present after filing.
 The result says **queued**, not admitted, filed, verified or learned. Runtime
