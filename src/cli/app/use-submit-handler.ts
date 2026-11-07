@@ -2771,7 +2771,6 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
           trimmed.startsWith("/reflect-arena ")
         ) {
           const cmd = commandRunner.start(msg, "Preparing reflection arena...");
-
           if (!experimentManager.isEnabled("reflection_arena")) {
             cmd.fail(
               "Reflection arena is experimental. Enable it with /experiments or LETTA_REFLECTION_ARENA=1.",
@@ -2789,7 +2788,7 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
           try {
             const arenaArgs = parseReflectArenaCommandArgs(trimmed);
             if (arenaArgs.kind === "choose") {
-              const { message } = await finalizeReflectionArenaChoice({
+              const result = await finalizeReflectionArenaChoice({
                 runId: arenaArgs.runId,
                 choice: arenaArgs.choice,
                 notes: arenaArgs.notes,
@@ -2801,7 +2800,8 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
                 recompileQueuedByConversation:
                   queuedSystemPromptRecompileByConversationRef.current,
               });
-              cmd.finish(message, true);
+              if (result.cleanupUnconfirmed) cmd.fail(result.message);
+              else cmd.finish(result.message, true);
               return { submitted: true };
             }
             if (arenaArgs.kind === "resume") {

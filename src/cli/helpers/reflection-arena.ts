@@ -845,7 +845,11 @@ export async function finalizeReflectionArenaChoice(
     appendChoice?: typeof appendChoiceRecord;
     uploadChoice?: typeof uploadChoiceRecordToHf;
   } = {},
-): Promise<{ message: string; run: ReflectionArenaRun }> {
+): Promise<{
+  message: string;
+  run: ReflectionArenaRun;
+  cleanupUnconfirmed?: boolean;
+}> {
   const run = await (deps.loadRun ?? loadReflectionArenaRun)(options.runId);
   if (run.status !== "awaiting_choice") {
     throw new Error(
@@ -897,7 +901,11 @@ export async function finalizeReflectionArenaChoice(
       });
       if (finalized.cleanupUnconfirmed) {
         retainReservation = true;
-        return { message: finalized.completionMessage, run };
+        return {
+          message: finalized.completionMessage,
+          run,
+          cleanupUnconfirmed: true,
+        };
       }
       integration = finalized.integration;
       completionSuccess = finalized.completionSuccess;

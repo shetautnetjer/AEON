@@ -83,18 +83,28 @@ export async function createAgentRunWorkerHost(
       "AEON_WORKER_CONFIG",
       "An explicit tool selection is required",
     );
-  const cwd = realpathSync(config.cwd);
+  const resolveBound = (path: string, name: string) => {
+    try {
+      return realpathSync(path);
+    } catch {
+      throw failure("AEON_WORKER_CONFIG", `${name} cannot be resolved`);
+    }
+  };
+  const cwd = resolveBound(config.cwd, "cwd");
   if (!statSync(cwd).isDirectory())
     throw failure("AEON_WORKER_CONFIG", "Worker cwd must be a directory");
-  const backendDir = realpathSync(config.backendDir);
+  const backendDir = resolveBound(config.backendDir, "backendDir");
   const routePath = (key: string) =>
-    process.env[key] ? realpathSync(process.env[key]) : null;
+    process.env[key] ? resolveBound(process.env[key], key) : null;
   const cliPath = routePath("LETTA_CLI_PATH"),
     sdkPath = routePath("LETTA_AGENT_SDK_PATH");
   const assertBackend = () => {
     if (
       !process.env.LETTA_LOCAL_BACKEND_DIR ||
-      realpathSync(process.env.LETTA_LOCAL_BACKEND_DIR) !== backendDir
+      resolveBound(
+        process.env.LETTA_LOCAL_BACKEND_DIR,
+        "LETTA_LOCAL_BACKEND_DIR",
+      ) !== backendDir
     )
       throw failure(
         "AEON_WORKER_CONFIG",

@@ -114,6 +114,7 @@ test("unknown integration preserves both candidates, run and frontier, and rejec
     },
   };
   const result = await finalizeReflectionArenaChoice(options, deps);
+  expect(result.cleanupUnconfirmed).toBe(true);
   expect(result.message).toContain("cleanup is unconfirmed");
   expect(result.run.status).toBe("awaiting_choice");
   expect(JSON.stringify(run)).toBe(before);
@@ -165,6 +166,7 @@ test.each([true, false])(
         return "";
       },
     });
+    expect(result.cleanupUnconfirmed).not.toBe(true);
     expect(result.run.status).toBe("completed");
     expect(calls).toEqual([
       "discard",

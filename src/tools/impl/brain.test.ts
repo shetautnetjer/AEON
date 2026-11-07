@@ -5,6 +5,7 @@ import {
   mkdtemp,
   readFile,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -366,3 +367,15 @@ test("cancellation through the shared executor stops its child and reports error
   expect(String(result.toolReturn)).toContain("cancelled");
   expect(() => process.kill(pid as number, 0)).toThrow();
 }, 6000);
+
+test("drop accepts the configured symlink home and still rejects other queues", async () => {
+  const alias = join(directory, "alias");
+  await symlink(directory, alias, "dir");
+  process.env.AEON_BRAIN_HOME = alias;
+  const result = await brainDrop({ text: "symlink drop" });
+  expect(result.status).toBe("success");
+  expect(JSON.parse(result.content).path).toStartWith(
+    join(alias, "inbox", "new", "aya"),
+  );
+  expect((await brainDrop({ text: "bad-path" })).status).toBe("error");
+});

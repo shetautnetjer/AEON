@@ -276,10 +276,12 @@ export async function brainDrop(args: BrainDropArgs): Promise<BrainToolResult> {
     const output = (
       await invoke(config, ["drop", "--writer", "aya"], args.text, args.signal)
     ).trim();
+    const queueDirectories = [config.home, realpathSync(config.home)].map(
+      (home) => join(home, "inbox", "new", "aya"),
+    );
     if (
       !isAbsolute(output) ||
-      dirname(output) !==
-        join(realpathSync(config.home), "inbox", "new", "aya") ||
+      !queueDirectories.includes(dirname(output)) ||
       !/^\d{8}T\d{12}Z-[0-9a-f]{8}\.md$/.test(basename(output))
     ) {
       throw new Error("Brain drop returned an invalid queue acknowledgement.");
