@@ -9,6 +9,7 @@
     "rootDir": "./src"
   },
   "include": [
+    "src/agentrun-worker.ts",
     "src/types/protocol.ts",
     "src/types/app-server-protocol.ts",
     "src/app-server-client.ts",

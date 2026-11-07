@@ -16,6 +16,7 @@ import { recompileAgentSystemPrompt } from "@/agent/modify";
 import { getBackend } from "@/backend";
 import { debugWarn } from "@/utils/debug";
 import type { SubagentMemoryScope, SubagentResult } from ".";
+import { SubagentProcessCleanupError } from "./subagent-process";
 
 const SYNCED_STATUSES = new Set<MemoryPostTurnSyncResult["status"]>([
   "clean",
@@ -112,19 +113,37 @@ export async function runMemoryWorker(
     repair: deps.repair,
     onMemoryChanged: deps.onMemoryChanged,
   };
+  const executeWithCleanupEvidence: MemoryWorkerExecute = async (...args) => {
+    try {
+      return await execute(...args);
+    } catch (error) {
+      if (!(error instanceof SubagentProcessCleanupError)) throw error;
+      return {
+        ...NO_WORKER,
+        error: error.message,
+        cleanupUnconfirmed: true,
+      };
+    }
+  };
+  // Even update workers can write the parent checkout/common Git directory
+  // through their memory scope, so an uncertain child retains this lease.
+  const retainLease = (result: SubagentResult) =>
+    result.cleanupUnconfirmed === true;
   const { repairToken } = params;
   if (repairToken === undefined) {
     return withMemoryOperation(
       params.memoryDir,
-      () => runUpdate(params, execute, helpers),
+      () => runUpdate(params, executeWithCleanupEvidence, helpers),
       params.signal,
+      retainLease,
     );
   }
   try {
     return await withMemoryOperation(
       params.memoryDir,
-      () => runRepair(params, repairToken, execute, helpers),
+      () => runRepair(params, repairToken, executeWithCleanupEvidence, helpers),
       params.signal,
+      retainLease,
     );
   } catch (error) {
     // Nothing ran: a failure anywhere in the leased run, or cancellation while
@@ -196,6 +215,12 @@ async function runUpdate(
       error instanceof Error ? error.message : String(error),
     );
   }
+  if (result.cleanupUnconfirmed)
+    return {
+      ...result,
+      success: false,
+      error: `${result.error ?? "Memory worker cleanup unconfirmed"}; worktree retained at ${worktree.worktreeDir}`,
+    };
   // A cancelled worker's edits are dropped with its worktree; nothing it did
   // reaches the checkout, and no sync (with remote retries) runs.
   const outcome = await integrateMemoryWorkerWorktree(worktree, {
@@ -254,6 +279,8 @@ async function runRepair(
     primaryRoot: params.memoryDir,
     writableRoots: [params.memoryDir],
   });
+  if (result.cleanupUnconfirmed)
+    return failed(result, "Memory repair cleanup unconfirmed");
   if (params.signal?.aborted) {
     await clearMemoryConflictRepair(params.memoryDir, token);
     return failed(result, "Memory repair cancelled");

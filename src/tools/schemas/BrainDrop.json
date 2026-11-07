@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Exact text to queue (at most 64 KiB UTF-8); include relevant source references in fact text."
+    }
+  },
+  "required": ["text"],
+  "additionalProperties": false
+}

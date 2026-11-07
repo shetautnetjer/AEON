@@ -67,7 +67,11 @@ const spawnProcess = mock(
     };
   },
 );
+const subagentProcessModule = await import(
+  "@/agent/subagents/subagent-process"
+);
 mock.module("@/agent/subagents/subagent-process", () => ({
+  ...subagentProcessModule,
   spawnSubagentProcess: spawnProcess,
   spawnManagedWorkloadProcess: spawnProcess,
 }));

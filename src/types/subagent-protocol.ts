@@ -15,6 +15,7 @@ export interface SubagentLaunchArgs {
     inherit: boolean;
     servers?: string[];
   };
+  /** Positive native Letta turn cap. Unsupported external-worker caps fail before launch. */
   max_turns?: number;
 }
 

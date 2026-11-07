@@ -14,6 +14,7 @@ import {
   type TempGitRepo,
 } from "@/test-utils/temp-git-repo";
 import { runMemoryWorker } from "./memory-worker";
+import { SubagentProcessCleanupError } from "./subagent-process";
 
 let repo: TempGitRepo;
 let root: string;
@@ -128,6 +129,134 @@ test("simultaneous updates each start from the latest merged memory", async () =
   ).toEqual(["", "first", "original", "second"]);
   expect(git("status", "--porcelain")).toBe("");
 });
+
+test("unconfirmed cleanup retains the update worktree without merging, discarding or syncing", async () => {
+  const controller = new AbortController();
+  let workerDir = "";
+  let synced = false;
+  const result = await runMemoryWorker(
+    { ...scope(), signal: controller.signal },
+    async (dir) => {
+      workerDir = dir;
+      writeFileSync(join(dir, "note.md"), "partial worker evidence\n");
+      gitIn(dir, "commit", "-am", "partial worker change");
+      controller.abort();
+      return {
+        agentId: "agent-worker",
+        runtimeSessionId: "native-session",
+        success: false,
+        report: "partial report",
+        error: "cleanup unconfirmed",
+        cleanupUnconfirmed: true,
+      };
+    },
+    {
+      sync: async () => {
+        synced = true;
+        return localSync("skipped")();
+      },
+    },
+  );
+  expect(result).toMatchObject({
+    success: false,
+    cleanupUnconfirmed: true,
+    runtimeSessionId: "native-session",
+    report: "partial report",
+  });
+  expect(result.error).toContain(workerDir);
+  expect(existsSync(workerDir)).toBe(true);
+  expect(readFileSync(join(workerDir, "note.md"), "utf8")).toBe(
+    "partial worker evidence\n",
+  );
+  expect(readFileSync(join(root, "note.md"), "utf8")).toBe("original\n");
+  expect(synced).toBe(false);
+  expect(await claimMemoryOperation(root, { timeoutMs: 20 })).toBeNull();
+});
+
+test("unconfirmed repair cleanup does not mark the attempt complete or launch post-worker sync", async () => {
+  conflict();
+  const controller = new AbortController();
+  let syncs = 0;
+  const result = await runMemoryWorker(
+    { ...scope(await claim()), signal: controller.signal },
+    async () => {
+      controller.abort();
+      return {
+        agentId: "agent-repair",
+        success: false,
+        report: "partial repair",
+        error: "cleanup unconfirmed",
+        cleanupUnconfirmed: true,
+      };
+    },
+    {
+      sync: async () => {
+        syncs++;
+        return {
+          status: "conflict",
+          summary: "fixture conflict",
+          memoryDir: root,
+          localOnly: true,
+        };
+      },
+    },
+  );
+  expect(result).toMatchObject({
+    success: false,
+    cleanupUnconfirmed: true,
+    report: "partial repair",
+  });
+  expect(syncs).toBe(1);
+  expect(await attemptStatus()).toBe("in_progress");
+  expect(await claimMemoryOperation(root, { timeoutMs: 20 })).toBeNull();
+});
+
+test.each([false, true])(
+  "typed cleanup rejection preserves evidence and lease (repair=%s)",
+  async (repair) => {
+    if (repair) conflict();
+    const repairToken = repair ? await claim() : undefined;
+    let workerDir = "";
+    let syncs = 0;
+    const result = await runMemoryWorker(
+      scope(repairToken),
+      async (dir) => {
+        workerDir = dir;
+        if (!repair)
+          writeFileSync(join(dir, "partial.md"), "unsettled worker evidence\n");
+        throw new SubagentProcessCleanupError("child cleanup unconfirmed");
+      },
+      {
+        sync: async () => {
+          syncs++;
+          return {
+            status: "conflict",
+            summary: "fixture conflict",
+            memoryDir: root,
+            localOnly: true,
+          };
+        },
+      },
+    );
+    expect(result).toMatchObject({
+      success: false,
+      cleanupUnconfirmed: true,
+    });
+    expect(result.error).toContain("child cleanup unconfirmed");
+    expect(existsSync(workerDir)).toBe(true);
+    expect(syncs).toBe(repair ? 1 : 0);
+    if (repair) {
+      expect(await attemptStatus()).toBe("in_progress");
+      expect(git("rev-parse", "--verify", "MERGE_HEAD")).not.toBe("");
+    } else {
+      expect(readFileSync(join(workerDir, "partial.md"), "utf8")).toBe(
+        "unsettled worker evidence\n",
+      );
+      expect(existsSync(join(root, "partial.md"))).toBe(false);
+    }
+    expect(await claimMemoryOperation(root, { timeoutMs: 20 })).toBeNull();
+  },
+);
 
 test("failed launches report the error, release the checkout and keep the primary's dirty files", async () => {
   writeFileSync(join(root, "unrelated.md"), "in progress");

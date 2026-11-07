@@ -5,6 +5,7 @@ import { buildParentMemoryNote } from "@/agent/parent-memory-note";
 import type { SubagentConfig, SubagentResult } from "@/agent/subagents";
 import { getCurrentSubagentDepth } from "@/agent/subagents/subagent-depth";
 import {
+  SubagentProcessCleanupError,
   spawnManagedWorkloadProcess,
   spawnSubagentProcess,
 } from "@/agent/subagents/subagent-process";
@@ -58,6 +59,8 @@ export interface ExternalCodingAgentRunOptions {
   type: ExternalCodingAgentType;
   prompt: string;
   model?: string;
+  /** Strict turn budget; refused until this driver has qualified enforcement. */
+  maxTurns?: number;
   parentAgentId: string;
   parentConversationId?: string;
   actingUserId?: string | null;
@@ -74,6 +77,20 @@ export interface ExternalCodingAgentCommand {
   executable: string;
   args: string[];
   stdin?: string;
+}
+
+/** Do not silently discard a requested budget, including at direct entrypoints. */
+export function validateExternalCodingAgentTurnLimit(
+  type: ExternalCodingAgentType,
+  maxTurns: number | undefined,
+): string | undefined {
+  if (maxTurns === undefined) return undefined;
+  if (!Number.isSafeInteger(maxTurns) || maxTurns <= 0)
+    return "max_turns must be a positive integer";
+  // Codex/OpenCode expose no qualified agentic-turn cap here. Native Claude
+  // also reported success above its requested cap in bounded qualification.
+  // Post-run usage checks alone cannot enforce a pre-dispatch budget.
+  return `${type} does not support an enforced max_turns limit; the worker was not launched. Choose an execution route with a qualified turn cap.`;
 }
 
 export function createExternalCodingAgentConfig(
@@ -477,6 +494,19 @@ export async function runExternalCodingAgent(
   options: ExternalCodingAgentRunOptions,
   deps: ExternalCodingAgentDependencies = {},
 ): Promise<SubagentResult> {
+  const limitError = validateExternalCodingAgentTurnLimit(
+    options.type,
+    options.maxTurns,
+  );
+  if (limitError)
+    return {
+      agentId: options.parentAgentId,
+      model: options.model,
+      report: "",
+      success: false,
+      error: limitError,
+      durationMs: 0,
+    };
   const parentMemoryNote = buildParentMemoryNote(options.parentAgentId);
   // Compose once for both providers, independently of MCP inheritance.
   options = {
@@ -714,6 +744,9 @@ export async function runExternalCodingAgent(
       report: "",
       success: false,
       error: message,
+      ...(error instanceof SubagentProcessCleanupError && {
+        cleanupUnconfirmed: true,
+      }),
       durationMs: Date.now() - startedAt,
     });
   }
