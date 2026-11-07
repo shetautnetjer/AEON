@@ -2,6 +2,7 @@ import { spawn as nodeSpawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import type { Readable, Writable } from "node:stream";
 import type { SubagentResult } from "@/agent/subagents";
+import { SubagentProcessCleanupError } from "@/agent/subagents/subagent-process";
 import { wrapManagedWorkloadLauncher } from "@/utils/systemd-workload-scope";
 import {
   type ExternalToolCall,
@@ -40,6 +41,7 @@ interface TurnWaiter {
   latestAgentMessage?: string;
   onToolCall?: ExternalToolCallListener;
   seenToolCallIds: Set<string>;
+  cancellationReason?: string;
 }
 
 interface CodexSession {
@@ -54,6 +56,7 @@ interface CodexSession {
   pendingNotifications: JsonRpcMessage[];
   idleTimer?: ReturnType<typeof setTimeout>;
   idleTimeoutMs: number;
+  cleanupError?: SubagentProcessCleanupError;
 }
 
 export interface CodexTurnOptions {
@@ -91,6 +94,7 @@ export interface CodexAppServerDependencies {
   }) => CodexAppServerTransport;
   env?: NodeJS.ProcessEnv;
   idleTimeoutMs?: number;
+  closeTimeoutMs?: number;
 }
 
 const sessions = new Map<string, CodexSession>();
@@ -171,6 +175,7 @@ class CodexAppServerClient {
     private readonly transport: CodexAppServerTransport,
     private readonly onNotification: (message: JsonRpcMessage) => void,
     private readonly onClose: (error: Error) => void,
+    private readonly closeTimeoutMs = 2_000,
   ) {
     const stdout = createInterface({ input: transport.stdout });
     stdout.once("error", () => void this.close());
@@ -254,9 +259,12 @@ class CodexAppServerClient {
     let exitTimeout: ReturnType<typeof setTimeout> | undefined;
     const exit = this.transport.exited
       ? await Promise.race([
-          this.transport.exited,
+          this.transport.exited.catch(() => undefined),
           new Promise<undefined>((resolve) => {
-            exitTimeout = setTimeout(() => resolve(undefined), 2_000);
+            exitTimeout = setTimeout(
+              () => resolve(undefined),
+              this.closeTimeoutMs,
+            );
           }),
         ]).finally(() => clearTimeout(exitTimeout))
       : undefined;
@@ -266,9 +274,12 @@ class CodexAppServerClient {
       : exit?.code != null
         ? ` (exit code ${exit.code}${exit.code === 143 ? "; possibly out of memory" : ""})`
         : "";
-    const error = new Error(
-      `Codex app-server closed${exitDetail}${detail ? `: ${detail}` : ""}`,
-    );
+    const message = `Codex app-server closed${exitDetail}${detail ? `: ${detail}` : ""}`;
+    const error = exit
+      ? new Error(message)
+      : new SubagentProcessCleanupError(
+          `${message}; process exit not confirmed`,
+        );
     for (const pending of this.pending.values()) pending.reject(error);
     this.pending.clear();
     this.onClose(error);
@@ -277,7 +288,9 @@ class CodexAppServerClient {
 
 function failSession(session: CodexSession, error: Error): void {
   clearIdleSessionCleanup(session);
-  if (sessions.get(session.threadId) === session)
+  if (error instanceof SubagentProcessCleanupError)
+    session.cleanupError = error;
+  else if (sessions.get(session.threadId) === session)
     sessions.delete(session.threadId);
   const waiter = session.activeWaiter;
   session.activeTurnId = undefined;
@@ -290,6 +303,9 @@ function failSession(session: CodexSession, error: Error): void {
     report: waiter.latestAgentMessage ?? "",
     success: false,
     error: error.message,
+    ...(error instanceof SubagentProcessCleanupError && {
+      cleanupUnconfirmed: true,
+    }),
     durationMs: Date.now() - waiter.startedAt,
   });
 }
@@ -377,15 +393,22 @@ function settleTurn(
   session.activeWaiter = undefined;
   const status = readString(turn, "status");
   const failure = turnError(params);
+  const success =
+    status === "completed" && waiter.cancellationReason === undefined;
   waiter.resolve({
     agentId: `codex_${session.threadId}`,
     runtimeSessionId: session.threadId,
     model: waiter.model,
     report: turnReport(params) || waiter.latestAgentMessage || "",
-    success: status === "completed",
-    ...(status === "completed"
+    success,
+    ...(success
       ? {}
-      : { error: failure ?? `Codex turn ${status ?? "failed"}` }),
+      : {
+          error:
+            waiter.cancellationReason ??
+            failure ??
+            `Codex turn ${status ?? "failed"}`,
+        }),
     durationMs: Date.now() - waiter.startedAt,
   });
   scheduleIdleSessionCleanup(session);
@@ -427,6 +450,7 @@ function clearIdleSessionCleanup(session: CodexSession): void {
 
 function disposeSession(session: CodexSession): void {
   clearIdleSessionCleanup(session);
+  if (session.cleanupError) return;
   if (sessions.get(session.threadId) === session)
     sessions.delete(session.threadId);
   session.client.dispose();
@@ -434,6 +458,7 @@ function disposeSession(session: CodexSession): void {
 
 function scheduleIdleSessionCleanup(session: CodexSession): void {
   clearIdleSessionCleanup(session);
+  if (session.cleanupError) return;
   session.idleTimer = setTimeout(
     () => disposeSession(session),
     session.idleTimeoutMs,
@@ -471,6 +496,10 @@ async function createSession(
   options: CodexTurnOptions,
   deps: CodexAppServerDependencies,
 ): Promise<CodexSession> {
+  const retained = options.resumeThreadId
+    ? sessions.get(options.resumeThreadId)
+    : undefined;
+  if (retained?.cleanupError) throw retained.cleanupError;
   const env = {
     ...(deps.env ?? process.env),
     AGENT_ID: options.parentAgentId,
@@ -492,6 +521,7 @@ async function createSession(
     (error) => {
       if (session) failSession(session, error);
     },
+    deps.closeTimeoutMs,
   );
   let response: Record<string, unknown>;
   try {
@@ -561,6 +591,7 @@ async function startTurnUnlocked(
   onStarted?: (threadId: string, turnId: string) => void,
   onToolCall?: ExternalToolCallListener,
 ): Promise<CodexTurnHandle> {
+  if (session.cleanupError) throw session.cleanupError;
   if (session.activeTurnId) {
     throw new Error("Codex thread already has an active turn");
   }
@@ -587,19 +618,35 @@ async function startTurnUnlocked(
       model: session.model,
       onToolCall,
       seenToolCallIds: new Set(),
+      cancellationReason: signal?.aborted
+        ? errorMessage(signal.reason ?? "Codex turn cancelled")
+        : undefined,
     };
   });
   onStarted?.(session.threadId, turnId);
   replayPendingNotifications(session);
   const abort = () => {
-    void session.client
-      .request("turn/interrupt", { threadId: session.threadId, turnId })
-      .catch(() => undefined);
+    void interruptTurn(session, turnId, signal?.reason).catch(() => undefined);
   };
   signal?.addEventListener("abort", abort, { once: true });
   if (signal?.aborted) abort();
   completion.finally(() => signal?.removeEventListener("abort", abort));
   return { threadId: session.threadId, turnId, completion };
+}
+
+function interruptTurn(
+  session: CodexSession,
+  turnId: string,
+  reason: unknown = "Codex turn cancelled",
+): Promise<Record<string, unknown>> {
+  if (session.activeWaiter?.turnId === turnId)
+    session.activeWaiter.cancellationReason = errorMessage(reason);
+  // The native terminal notification settles work; the reusable app-server
+  // transport intentionally remains alive for the next turn.
+  return session.client.request("turn/interrupt", {
+    threadId: session.threadId,
+    turnId,
+  });
 }
 
 function startTurn(
@@ -642,6 +689,7 @@ async function resumeSession(
 ): Promise<CodexSession> {
   const loaded = sessions.get(threadId);
   if (loaded) {
+    if (loaded.cleanupError) throw loaded.cleanupError;
     clearIdleSessionCleanup(loaded);
     return loaded;
   }
@@ -690,10 +738,7 @@ export async function sendCodexMessage(
         options.onToolCall,
       );
       if (options.signal?.aborted) {
-        await session.client.request("turn/interrupt", {
-          threadId: handle.threadId,
-          turnId: handle.turnId,
-        });
+        await interruptTurn(session, handle.turnId, options.signal.reason);
         options.signal.throwIfAborted();
       }
       return {
@@ -702,10 +747,7 @@ export async function sendCodexMessage(
         turnId: handle.turnId,
         completion: handle.completion,
         interrupt: async () => {
-          await session.client.request("turn/interrupt", {
-            threadId: handle.threadId,
-            turnId: handle.turnId,
-          });
+          await interruptTurn(session, handle.turnId);
         },
       };
     });
@@ -733,6 +775,9 @@ export async function runCodexTurn(
       report: "",
       success: false,
       error: errorMessage(error),
+      ...(error instanceof SubagentProcessCleanupError && {
+        cleanupUnconfirmed: true,
+      }),
     };
   }
 }

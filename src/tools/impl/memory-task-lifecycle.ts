@@ -96,7 +96,7 @@ export function runBackgroundMemoryTask(
           // Preserve the worker identity/report even if remote sync is slow or fails.
           appendToOutputFile(
             params.outputFile,
-            `${params.formatHeader(result)}\n\n${result.report}\n[Memory worker finished; syncing commits]\n`,
+            `${params.formatHeader(result)}\n\n${result.report}\n[${result.cleanupUnconfirmed ? "Memory worker cleanup unconfirmed; worktree retained" : "Memory worker finished; syncing commits"}]\n`,
           );
           return result;
         },

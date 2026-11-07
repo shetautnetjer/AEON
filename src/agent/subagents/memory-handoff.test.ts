@@ -6,6 +6,7 @@ import { __testSetBackend, type Backend } from "@/backend";
 import { DeterministicPongExecutor } from "@/backend/dev/headless-turn-executor";
 import { LocalBackend } from "@/backend/local/local-backend";
 import { prepareMemoryHandoff, withMemoryHandoff } from "./memory-handoff";
+import { SubagentProcessCleanupError } from "./subagent-process";
 
 const originalRoot = process.env.LETTA_TRANSCRIPT_ROOT;
 let root: string | undefined;
@@ -182,6 +183,49 @@ test("a full page whose cursor cannot advance ends the export", async () => {
     JSON.parse(await readFile(handoff.transcriptPath, "utf8")),
   ).toHaveLength(100);
 });
+
+test.each([false, true])(
+  "unconfirmed cleanup retains the read-only handoff snapshot (rejection=%s)",
+  async (rejection) => {
+    root = await mkdtemp(join(tmpdir(), "memory-handoff-retained-"));
+    process.env.LETTA_TRANSCRIPT_ROOT = root;
+    __testSetBackend({
+      listConversationMessages: async () => ({
+        getPaginatedItems: () => [
+          { message_type: "user_message", content: "retained fixture context" },
+        ],
+      }),
+    } as unknown as Backend);
+    let snapshot: string | undefined;
+    const pending = withMemoryHandoff(
+      {
+        agentId: "agent-parent",
+        conversationId: "conv-parent",
+        memoryDir: root,
+        assignment: "Remember fixture context",
+      },
+      async (handoff) => {
+        snapshot = handoff.transcriptPath;
+        if (rejection)
+          throw new SubagentProcessCleanupError("child cleanup unconfirmed");
+        return { success: false, cleanupUnconfirmed: true };
+      },
+    );
+    if (rejection)
+      await expect(pending).rejects.toBeInstanceOf(SubagentProcessCleanupError);
+    else
+      expect(await pending).toEqual({
+        success: false,
+        cleanupUnconfirmed: true,
+      });
+    if (!snapshot) throw new Error("Missing handoff snapshot");
+    expect(await readFile(snapshot, "utf8")).toContain(
+      "retained fixture context",
+    );
+    if (process.platform !== "win32")
+      expect((await stat(snapshot)).mode & 0o222).toBe(0);
+  },
+);
 
 test("cancelling the task stops the transcript export", async () => {
   root = await mkdtemp(join(tmpdir(), "memory-handoff-abort-"));

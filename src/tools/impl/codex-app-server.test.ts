@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { PassThrough } from "node:stream";
+import { SubagentProcessCleanupError } from "@/agent/subagents/subagent-process";
 import {
   __resetCodexSessionsForTests,
   CODEX_NOT_SIGNED_IN_ERROR,
@@ -7,6 +8,7 @@ import {
   sendCodexMessage,
   startCodexTurn,
 } from "./codex-app-server";
+import { backgroundTaskCompletion } from "./task-completion";
 
 class FakeCodexTransport {
   readonly requests: Array<Record<string, unknown>> = [];
@@ -49,7 +51,7 @@ class FakeCodexTransport {
     };
   }
 
-  complete(text = "done", items = true): void {
+  complete(text = "done", items = true, status = "completed"): void {
     if (!items) {
       this.send({
         method: "item/completed",
@@ -66,7 +68,7 @@ class FakeCodexTransport {
         threadId: this.threadId,
         turn: {
           id: this.turnId,
-          status: "completed",
+          status,
           items: items ? [{ type: "agentMessage", text }] : [],
         },
       },
@@ -305,11 +307,16 @@ describe("Codex app-server lifecycle", () => {
     expect(await handle.completion).toMatchObject({ success: true });
   });
 
-  test("fails active completion and evicts the session when stdout closes", async () => {
+  test("fails active completion and permits exact-session resume after confirmed process exit", async () => {
     const first = new FakeCodexTransport();
     const handle = await startCodexTurn(
       { prompt: "Initial", parentAgentId: "parent", cwd: "/repo" },
-      { createTransport: () => first.transport() },
+      {
+        createTransport: () => ({
+          ...first.transport(),
+          exited: Promise.resolve({ code: 1, signal: null }),
+        }),
+      },
     );
     first.close("boom");
     expect(await handle.completion).toMatchObject({
@@ -330,6 +337,89 @@ describe("Codex app-server lifecycle", () => {
       "thread/resume",
     );
   });
+
+  test.each(["missing", "pending", "rejected"] as const)(
+    "cancelled turn retains cleanup uncertainty when process exit is %s",
+    async (exitState) => {
+      const fake = new FakeCodexTransport();
+      const controller = new AbortController();
+      let rejectExit!: (error: Error) => void;
+      const exited = new Promise<{
+        code: number | null;
+        signal: NodeJS.Signals | null;
+      }>((_, reject) => {
+        rejectExit = reject;
+      });
+      const handle = await startCodexTurn(
+        {
+          prompt: "fixture",
+          parentAgentId: "parent",
+          cwd: "/repo",
+          signal: controller.signal,
+        },
+        {
+          closeTimeoutMs: 5,
+          createTransport: () => ({
+            ...fake.transport(),
+            ...(exitState === "missing" ? {} : { exited }),
+          }),
+        },
+      );
+      fake.item("item/completed", {
+        type: "agentMessage",
+        text: "partial evidence",
+      });
+      controller.abort(new Error("fixture cancellation"));
+      fake.close("lost transport");
+      await Bun.sleep(0);
+      if (exitState === "rejected") rejectExit(new Error("exit probe failed"));
+      const result = await handle.completion;
+      expect(result).toMatchObject({
+        success: false,
+        cleanupUnconfirmed: true,
+        runtimeSessionId: "thread-1",
+        report: "partial evidence",
+      });
+      expect(result.error).toContain("process exit not confirmed");
+      await expect(
+        backgroundTaskCompletion(
+          Promise.resolve(result),
+          Promise.resolve(),
+          false,
+        ),
+      ).rejects.toBeInstanceOf(SubagentProcessCleanupError);
+      let replacementSpawns = 0;
+      const deps = {
+        createTransport: () => {
+          replacementSpawns++;
+          return new FakeCodexTransport().transport();
+        },
+      };
+      await expect(
+        sendCodexMessage(
+          {
+            threadId: "thread-1",
+            prompt: "retry",
+            parentAgentId: "parent",
+            cwd: "/repo",
+          },
+          deps,
+        ),
+      ).rejects.toBeInstanceOf(SubagentProcessCleanupError);
+      await expect(
+        startCodexTurn(
+          {
+            resumeThreadId: "thread-1",
+            prompt: "retry",
+            parentAgentId: "parent",
+            cwd: "/repo",
+          },
+          deps,
+        ),
+      ).rejects.toBeInstanceOf(SubagentProcessCleanupError);
+      expect(replacementSpawns).toBe(0);
+    },
+  );
 
   test.each([
     {
@@ -407,7 +497,11 @@ describe("Codex app-server lifecycle", () => {
     );
     const rejected = pending.catch((error: unknown) => error);
     stdout.destroy(new Error("stdout failed"));
-    expect(await rejected).toEqual(new Error("Codex app-server closed"));
+    expect(await rejected).toEqual(
+      new SubagentProcessCleanupError(
+        "Codex app-server closed; process exit not confirmed",
+      ),
+    );
     expect(Date.now() - startedAt).toBeLessThan(3_000);
   });
 
@@ -426,7 +520,8 @@ describe("Codex app-server lifecycle", () => {
     fake.stdout.destroy(new Error("stdout failed"));
     expect(await handle.completion).toMatchObject({
       success: false,
-      error: "Codex app-server closed",
+      error: "Codex app-server closed; process exit not confirmed",
+      cleanupUnconfirmed: true,
     });
     expect(Date.now() - startedAt).toBeLessThan(3_000);
   });
@@ -583,5 +678,98 @@ describe("Codex app-server lifecycle", () => {
     expect(fake.requests.map((request) => request.method)).toContain(
       "turn/interrupt",
     );
+  });
+
+  test("interrupt acknowledgement waits for terminal work and retains the reusable session", async () => {
+    const fake = new FakeCodexTransport();
+    const controller = new AbortController();
+    const handle = await startCodexTurn(
+      {
+        prompt: "Initial",
+        parentAgentId: "parent",
+        cwd: "/repo",
+        signal: controller.signal,
+      },
+      { createTransport: () => fake.transport() },
+    );
+    let settled = false;
+    const completion = handle.completion.then((result) => {
+      settled = true;
+      return result;
+    });
+    controller.abort(new Error("cancelled by parent"));
+    await Bun.sleep(0);
+    expect(settled).toBe(false);
+    expect(fake.killed).toBe(false);
+    fake.complete("partial evidence", true, "interrupted");
+    expect(await completion).toMatchObject({
+      agentId: "codex_thread-1",
+      runtimeSessionId: "thread-1",
+      success: false,
+      report: "partial evidence",
+    });
+    const resumed = await sendCodexMessage(
+      {
+        prompt: "Continue",
+        parentAgentId: "parent",
+        cwd: "/repo",
+        threadId: handle.threadId,
+      },
+      {
+        createTransport: () => {
+          throw new Error("must reuse the session");
+        },
+      },
+    );
+    expect(resumed.mode).toBe("new_turn");
+    expect(fake.killed).toBe(false);
+    fake.complete("continued");
+    expect(await resumed.completion).toMatchObject({
+      success: true,
+      report: "continued",
+    });
+  });
+
+  test("a successful native result cannot override an earlier cancellation", async () => {
+    const fake = new FakeCodexTransport();
+    const controller = new AbortController();
+    const handle = await startCodexTurn(
+      {
+        prompt: "Initial",
+        parentAgentId: "parent",
+        cwd: "/repo",
+        signal: controller.signal,
+      },
+      { createTransport: () => fake.transport() },
+    );
+    controller.abort(new Error("cancelled by parent"));
+    fake.complete("partial evidence");
+    expect(await handle.completion).toMatchObject({
+      success: false,
+      error: "cancelled by parent",
+      report: "partial evidence",
+      runtimeSessionId: "thread-1",
+    });
+    expect(fake.killed).toBe(false);
+  });
+
+  test("interrupting a resumed task marks that task cancelled without closing the session", async () => {
+    const fake = new FakeCodexTransport();
+    const receipt = await sendCodexMessage(
+      {
+        prompt: "Continue",
+        parentAgentId: "parent",
+        cwd: "/repo",
+        threadId: "thread-1",
+      },
+      { createTransport: () => fake.transport() },
+    );
+    await receipt.interrupt?.();
+    fake.complete("partial evidence");
+    expect(await receipt.completion).toMatchObject({
+      success: false,
+      report: "partial evidence",
+    });
+    expect(fake.killed).toBe(false);
   });
 });

@@ -5,6 +5,7 @@ import { buildParentMemoryNote } from "@/agent/parent-memory-note";
 import type { SubagentConfig, SubagentResult } from "@/agent/subagents";
 import { getCurrentSubagentDepth } from "@/agent/subagents/subagent-depth";
 import {
+  SubagentProcessCleanupError,
   spawnManagedWorkloadProcess,
   spawnSubagentProcess,
 } from "@/agent/subagents/subagent-process";
@@ -743,6 +744,9 @@ export async function runExternalCodingAgent(
       report: "",
       success: false,
       error: message,
+      ...(error instanceof SubagentProcessCleanupError && {
+        cleanupUnconfirmed: true,
+      }),
       durationMs: Date.now() - startedAt,
     });
   }

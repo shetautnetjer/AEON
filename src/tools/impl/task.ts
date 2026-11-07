@@ -24,6 +24,7 @@ import {
   getAllSubagentConfigs,
   type SubagentConfig,
   type SubagentMemoryScope,
+  type SubagentResult,
 } from "@/agent/subagents";
 import {
   waitForBackgroundSubagentAgentId,
@@ -61,7 +62,6 @@ import {
   runBackgroundMemoryTask,
 } from "./memory-task-lifecycle";
 import {
-  appendToOutputFile,
   assertBackgroundTaskCapacity,
   type BackgroundTask,
   backgroundTasks,
@@ -72,6 +72,12 @@ import {
 import { launchRemoteExternalCodingAgent } from "./remote-external-coding-agent";
 import { resolveLaunchComputer } from "./subagent-computer";
 import { buildBackgroundTaskAbortHook } from "./task-abort-hook.js";
+import {
+  backgroundTaskCompletion,
+  failedTaskResult,
+  runTaskCompletionCallback,
+  type TaskCompletionCallback,
+} from "./task-completion";
 import {
   buildTaskResultHeader,
   writeTaskTranscriptResult,
@@ -165,21 +171,13 @@ export interface SpawnBackgroundSubagentTaskArgs {
       }) => string | Promise<string>);
   /**
    * Called after the subagent finishes (success or failure).
-   * Runs regardless of `silentCompletion` and is awaited before
+   * Unconfirmed reflection cleanup defers the callback and its finalization.
+   * Otherwise runs regardless of `silentCompletion` and is awaited before
    * completion notifications/hooks continue.
    * `report` is the raw final subagent report and may be large; callbacks
    * should parse/summarize it rather than injecting it directly into context.
    */
-  onComplete?: (result: {
-    success: boolean;
-    error?: string;
-    agentId?: string;
-    conversationId?: string;
-    model?: string;
-    stepCount?: number;
-    durationMs?: number;
-    report?: string;
-  }) => void | Promise<void>;
+  onComplete?: TaskCompletionCallback;
   /**
    * Optional dependency overrides for tests.
    * Production callers should not provide this.
@@ -398,8 +396,12 @@ export function spawnBackgroundSubagentTask(
           new Error("Memory tasks require a parent conversation scope"),
         )
       : execute());
+  let completedResult: SubagentResult | undefined;
+  let callbackAttempted = false;
+  let transcriptWritten = false;
   const taskLifecycle = subagentExecution
     .then(async (result) => {
+      completedResult = result;
       await copyGitHubPullRequestTagsFn(
         result.conversationId,
         resolvedParentScope?.conversationId,
@@ -417,6 +419,7 @@ export function spawnBackgroundSubagentTask(
         result.success ? "success" : "error",
       );
       writeTaskTranscriptResult(outputFile, result, header, !!memoryTask);
+      transcriptWritten = true;
       scheduleBackgroundTaskCleanup(taskId);
       clearSubagentAbortHook(subagentId);
 
@@ -436,22 +439,13 @@ export function spawnBackgroundSubagentTask(
           : {}),
       });
 
-      try {
-        await onComplete?.({
-          success: result.success,
-          error: result.error,
-          agentId: result.agentId,
-          conversationId: result.conversationId,
-          model: result.model,
-          stepCount: result.stepCount,
-          durationMs: result.durationMs,
-          report: result.report,
-        });
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        appendToOutputFile(outputFile, `[onComplete error] ${errorMessage}\n`);
-      }
+      callbackAttempted = true;
+      await runTaskCompletionCallback(
+        subagentType,
+        result,
+        onComplete,
+        outputFile,
+      );
 
       if (shouldEmitCompletionNotification) {
         const subagentSnapshot = getSubagentSnapshotFn();
@@ -514,35 +508,32 @@ export function spawnBackgroundSubagentTask(
       });
     })
     .catch(async (error) => {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const result = failedTaskResult(
+        error,
+        completedResult,
+        existingAgentId,
+        existingConversationId,
+      );
+      const errorMessage = result.error ?? "Subagent execution failed";
       bgTask.status = "failed";
       bgTask.error = errorMessage;
-      appendToOutputFile(
+      writeTaskTranscriptResult(
         outputFile,
-        `[error] ${errorMessage}\n\n[Task failed]\n`,
+        result,
+        buildTaskResultHeader(subagentType, subagentId, result, "error"),
+        transcriptWritten || !!memoryTask,
       );
       scheduleBackgroundTaskCleanup(taskId);
       clearSubagentAbortHook(subagentId);
       completeSubagentFn(subagentId, { success: false, error: errorMessage });
 
-      try {
-        await onComplete?.({
-          success: false,
-          error: errorMessage,
-          agentId: existingAgentId,
-          conversationId: existingConversationId,
-        });
-      } catch (onCompleteError) {
-        const callbackMessage =
-          onCompleteError instanceof Error
-            ? onCompleteError.message
-            : String(onCompleteError);
-        appendToOutputFile(
+      if (!callbackAttempted)
+        await runTaskCompletionCallback(
+          subagentType,
+          result,
+          onComplete,
           outputFile,
-          `[onComplete error] ${callbackMessage}\n`,
         );
-      }
 
       if (shouldEmitCompletionNotification) {
         const subagentSnapshot = getSubagentSnapshotFn();
@@ -602,12 +593,11 @@ export function spawnBackgroundSubagentTask(
     })
     .finally(unsubscribe);
 
-  // Memory drains wait for the whole lifecycle (sync, cleanup), not just the child.
-  const swallow = () => undefined;
-  bgTask.completion =
-    subagentType === "memory"
-      ? taskLifecycle
-      : subagentExecution.then(swallow, swallow);
+  bgTask.completion = backgroundTaskCompletion(
+    subagentExecution,
+    taskLifecycle,
+    subagentType === "memory",
+  );
   return { taskId, outputFile, subagentId };
 }
 

@@ -836,109 +836,136 @@ export async function startReflectionArenaRun(
 
 export async function finalizeReflectionArenaChoice(
   options: FinalizeReflectionArenaChoiceOptions,
+  deps: {
+    loadRun?: typeof loadReflectionArenaRun;
+    finalize?: typeof finalizeReflectionMemoryWorktreeLaunch;
+    discard?: typeof finalizeReflectionMemoryWorktree;
+    finalizeTranscript?: typeof finalizeAutoReflectionCompletion;
+    saveRun?: typeof saveReflectionArenaRun;
+    appendChoice?: typeof appendChoiceRecord;
+    uploadChoice?: typeof uploadChoiceRecordToHf;
+  } = {},
 ): Promise<{ message: string; run: ReflectionArenaRun }> {
-  const run = await loadReflectionArenaRun(options.runId);
+  const run = await (deps.loadRun ?? loadReflectionArenaRun)(options.runId);
   if (run.status !== "awaiting_choice") {
     throw new Error(
       `Reflection arena run ${options.runId} is ${run.status}; expected awaiting_choice.`,
     );
   }
 
-  const discarded: ReflectionArenaCandidateLabel[] = [];
-  let integration: ReflectionMemoryWorktreeFinalizeResult | undefined;
-  let completionSuccess = false;
-  let memoryBaseCommit: string | null = null;
-  let memoryCandidateCommit: string | null = null;
-
-  if (options.choice !== "tie") {
-    const chosen = run.candidates.find(
-      (candidate) => candidate.label === options.choice,
+  if (!tryReserveReflectionLaunch(run.agentId))
+    throw new Error(
+      "Reflection work is still active or awaiting cleanup reconciliation.",
     );
-    if (!chosen) {
-      throw new Error(`Unknown reflection arena label: ${options.choice}`);
-    }
-    memoryBaseCommit = chosen.worktree.baseHead;
-    memoryCandidateCommit =
-      (await getGitHead(chosen.worktree.worktreeDir)) ??
-      chosen.result?.memoryHead ??
-      null;
-    const finalized = await finalizeReflectionMemoryWorktreeLaunch({
-      worktree: chosen.worktree,
-      subagentSuccess: chosen.result?.success ?? false,
-      subagentError: chosen.result?.error,
-      knownNoChanges: candidateIsConfirmedNoOp(chosen),
-      ...getReflectionFinalizationContext(run.agentId),
-      conversationId: run.conversationId,
-      subagentAgentId: chosen.result?.agentId,
-      model: chosen.result?.model ?? chosen.model,
-      telemetryContext: {
-        triggerSource: run.triggerSource ?? "compaction-event",
-      },
-      recompileByConversation: options.recompileByConversation,
-      recompileQueuedByConversation: options.recompileQueuedByConversation,
-      logRecompileFailure: (message) => debugWarn("memory", message),
-    });
-    integration = finalized.integration;
-    completionSuccess = finalized.completionSuccess;
-  }
+  let retainReservation = false;
+  try {
+    const discarded: ReflectionArenaCandidateLabel[] = [];
+    let integration: ReflectionMemoryWorktreeFinalizeResult | undefined;
+    let completionSuccess = false;
+    let memoryBaseCommit: string | null = null;
+    let memoryCandidateCommit: string | null = null;
 
-  for (const candidate of run.candidates) {
-    if (options.choice !== "tie" && candidate.label === options.choice) {
-      continue;
-    }
-    discarded.push(candidate.label);
-    await finalizeReflectionMemoryWorktree(candidate.worktree, {
-      shouldMerge: false,
-      knownNoChanges: candidateIsConfirmedNoOp(candidate),
-    });
-  }
-
-  await finalizeAutoReflectionCompletion(
-    run.agentId,
-    run.conversationId,
-    run.payloadPath,
-    run.endSnapshotLine,
-    run.endMessageId,
-    completionSuccess,
-  );
-
-  const completedRun: ReflectionArenaRun = {
-    ...run,
-    choice: {
-      chosen: options.choice,
-      discarded,
-      ...(integration ? { integration } : {}),
-      ...(options.notes ? { notes: options.notes } : {}),
-      recordedAt: new Date().toISOString(),
-    },
-    status: "completed",
-  };
-  await saveReflectionArenaRun(completedRun);
-  await appendChoiceRecord(completedRun);
-  void uploadChoiceRecordToHf({
-    run: completedRun,
-    memoryBaseCommit,
-    memoryCandidateCommit,
-  })
-    .then((message) => {
-      if (message) {
-        options.onHfUploadComplete?.(message);
-      }
-    })
-    .catch((error) => {
-      debugWarn(
-        "memory",
-        `Failed to upload reflection arena choice to Hugging Face: ${error instanceof Error ? error.message : String(error)}`,
+    if (options.choice !== "tie") {
+      const chosen = run.candidates.find(
+        (candidate) => candidate.label === options.choice,
       );
-      options.onHfUploadComplete?.("HF upload: failed; local log only.");
-    });
+      if (!chosen) {
+        throw new Error(`Unknown reflection arena label: ${options.choice}`);
+      }
+      memoryBaseCommit = chosen.worktree.baseHead;
+      memoryCandidateCommit =
+        (await getGitHead(chosen.worktree.worktreeDir)) ??
+        chosen.result?.memoryHead ??
+        null;
+      const finalized = await (
+        deps.finalize ?? finalizeReflectionMemoryWorktreeLaunch
+      )({
+        worktree: chosen.worktree,
+        subagentSuccess: chosen.result?.success ?? false,
+        subagentError: chosen.result?.error,
+        knownNoChanges: candidateIsConfirmedNoOp(chosen),
+        ...getReflectionFinalizationContext(run.agentId),
+        conversationId: run.conversationId,
+        subagentAgentId: chosen.result?.agentId,
+        model: chosen.result?.model ?? chosen.model,
+        telemetryContext: {
+          triggerSource: run.triggerSource ?? "compaction-event",
+        },
+        recompileByConversation: options.recompileByConversation,
+        recompileQueuedByConversation: options.recompileQueuedByConversation,
+        logRecompileFailure: (message) => debugWarn("memory", message),
+      });
+      if (finalized.cleanupUnconfirmed) {
+        retainReservation = true;
+        return { message: finalized.completionMessage, run };
+      }
+      integration = finalized.integration;
+      completionSuccess = finalized.completionSuccess;
+    }
 
-  return {
-    message: formatReflectionArenaChoiceResult({
-      discarded,
-      integration,
+    for (const candidate of run.candidates) {
+      if (options.choice !== "tie" && candidate.label === options.choice) {
+        continue;
+      }
+      discarded.push(candidate.label);
+      await (deps.discard ?? finalizeReflectionMemoryWorktree)(
+        candidate.worktree,
+        {
+          shouldMerge: false,
+          knownNoChanges: candidateIsConfirmedNoOp(candidate),
+        },
+      );
+    }
+
+    await (deps.finalizeTranscript ?? finalizeAutoReflectionCompletion)(
+      run.agentId,
+      run.conversationId,
+      run.payloadPath,
+      run.endSnapshotLine,
+      run.endMessageId,
+      completionSuccess,
+    );
+
+    const completedRun: ReflectionArenaRun = {
+      ...run,
+      choice: {
+        chosen: options.choice,
+        discarded,
+        ...(integration ? { integration } : {}),
+        ...(options.notes ? { notes: options.notes } : {}),
+        recordedAt: new Date().toISOString(),
+      },
+      status: "completed",
+    };
+    await (deps.saveRun ?? saveReflectionArenaRun)(completedRun);
+    await (deps.appendChoice ?? appendChoiceRecord)(completedRun);
+    void (deps.uploadChoice ?? uploadChoiceRecordToHf)({
       run: completedRun,
-    }),
-    run: completedRun,
-  };
+      memoryBaseCommit,
+      memoryCandidateCommit,
+    })
+      .then((message) => {
+        if (message) {
+          options.onHfUploadComplete?.(message);
+        }
+      })
+      .catch((error) => {
+        debugWarn(
+          "memory",
+          `Failed to upload reflection arena choice to Hugging Face: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        options.onHfUploadComplete?.("HF upload: failed; local log only.");
+      });
+
+    return {
+      message: formatReflectionArenaChoiceResult({
+        discarded,
+        integration,
+        run: completedRun,
+      }),
+      run: completedRun,
+    };
+  } finally {
+    if (!retainReservation) releaseReflectionLaunch(run.agentId);
+  }
 }

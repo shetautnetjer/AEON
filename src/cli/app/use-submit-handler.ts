@@ -81,10 +81,8 @@ import {
   startReflectionArenaRun,
 } from "@/cli/helpers/reflection-arena";
 import { launchReflectionArena } from "@/cli/helpers/reflection-arena-launcher";
-import { finalizeMultiReflectionCompletion } from "@/cli/helpers/reflection-completion";
 import {
   AUTO_REFLECTION_DESCRIPTION,
-  finalizeReflectionMemoryWorktreeLaunch,
   getReflectionLaunchSkippedMessage,
   getReflectionMergeLaunchOptions,
   launchReflectionSubagent,
@@ -92,6 +90,7 @@ import {
   releaseReflectionLaunch,
   tryReserveReflectionLaunch,
 } from "@/cli/helpers/reflection-launcher";
+import { completeManualReflectionLaunch } from "@/cli/helpers/reflection-manual-completion";
 import {
   buildAutoReflectionPayload,
   buildMultiReflectionPayload,
@@ -3091,44 +3090,29 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
                           agentId: reflectionAgentId,
                           model: reflectionModel,
                         }) => {
-                          try {
-                            telemetry.trackReflectionEnd(
-                              "manual",
-                              reflectionSuccess,
-                              {
-                                subagentId: reflectionAgentId ?? undefined,
-                                conversationId: reflectionConversationId,
-                                error: reflectionError,
-                                model: reflectionModel,
-                              },
-                            );
-                            const { completionSuccess, completionMessage } =
-                              await finalizeReflectionMemoryWorktreeLaunch({
-                                worktree,
-                                subagentSuccess: reflectionSuccess,
-                                subagentError: reflectionError,
-                                agentId,
-                                conversationId: conversationIdRef.current,
-                                subagentAgentId: reflectionAgentId ?? undefined,
-                                model: reflectionModel,
-                                ...getReflectionMergeLaunchOptions(agentId),
-                                telemetryContext: { triggerSource: "manual" },
-                                recompileByConversation:
-                                  systemPromptRecompileByConversationRef.current,
-                                recompileQueuedByConversation:
-                                  queuedSystemPromptRecompileByConversationRef.current,
-                                logRecompileFailure: (message) =>
-                                  debugWarn("memory", message),
-                              });
-                            await finalizeMultiReflectionCompletion(
+                          await completeManualReflectionLaunch({
+                            finalization: {
+                              worktree,
+                              subagentSuccess: reflectionSuccess,
+                              subagentError: reflectionError,
                               agentId,
-                              autoReflectionPayload.manifest,
-                              completionSuccess,
-                            );
-                            appendTaskNotificationEvents([completionMessage]);
-                          } finally {
-                            releaseReflectionReservation();
-                          }
+                              conversationId: conversationIdRef.current,
+                              subagentAgentId: reflectionAgentId ?? undefined,
+                              model: reflectionModel,
+                              ...getReflectionMergeLaunchOptions(agentId),
+                              telemetryContext: { triggerSource: "manual" },
+                              recompileByConversation:
+                                systemPromptRecompileByConversationRef.current,
+                              recompileQueuedByConversation:
+                                queuedSystemPromptRecompileByConversationRef.current,
+                              logRecompileFailure: (message) =>
+                                debugWarn("memory", message),
+                            },
+                            telemetryConversationId: reflectionConversationId,
+                            manifest: autoReflectionPayload.manifest,
+                            notify: appendTaskNotificationEvents,
+                            release: releaseReflectionReservation,
+                          });
                         },
                       });
                       reflectionReservationDelegated = true;
@@ -3214,40 +3198,29 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
                 agentId: reflectionAgentId,
                 model: reflectionModel,
               }) => {
-                try {
-                  telemetry.trackReflectionEnd("manual", success, {
-                    subagentId: reflectionAgentId ?? undefined,
-                    conversationId: reflectionConversationId,
-                    error,
-                    model: reflectionModel,
-                  });
-                  const { completionSuccess, completionMessage } =
-                    await finalizeReflectionMemoryWorktreeLaunch({
-                      worktree,
-                      subagentSuccess: success,
-                      subagentError: error,
-                      agentId,
-                      conversationId: conversationIdRef.current,
-                      subagentAgentId: reflectionAgentId ?? undefined,
-                      model: reflectionModel,
-                      ...getReflectionMergeLaunchOptions(agentId),
-                      telemetryContext: { triggerSource: "manual" },
-                      recompileByConversation:
-                        systemPromptRecompileByConversationRef.current,
-                      recompileQueuedByConversation:
-                        queuedSystemPromptRecompileByConversationRef.current,
-                      logRecompileFailure: (message) =>
-                        debugWarn("memory", message),
-                    });
-                  await finalizeMultiReflectionCompletion(
+                await completeManualReflectionLaunch({
+                  finalization: {
+                    worktree,
+                    subagentSuccess: success,
+                    subagentError: error,
                     agentId,
-                    reflectionPayload.manifest,
-                    completionSuccess,
-                  );
-                  appendTaskNotificationEvents([completionMessage]);
-                } finally {
-                  releaseReflectionReservation();
-                }
+                    conversationId: conversationIdRef.current,
+                    subagentAgentId: reflectionAgentId ?? undefined,
+                    model: reflectionModel,
+                    ...getReflectionMergeLaunchOptions(agentId),
+                    telemetryContext: { triggerSource: "manual" },
+                    recompileByConversation:
+                      systemPromptRecompileByConversationRef.current,
+                    recompileQueuedByConversation:
+                      queuedSystemPromptRecompileByConversationRef.current,
+                    logRecompileFailure: (message) =>
+                      debugWarn("memory", message),
+                  },
+                  telemetryConversationId: reflectionConversationId,
+                  manifest: reflectionPayload.manifest,
+                  notify: appendTaskNotificationEvents,
+                  release: releaseReflectionReservation,
+                });
               },
             });
             reflectionReservationDelegated = true;

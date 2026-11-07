@@ -54,6 +54,7 @@ import { buildSubagentPrompt } from "./context-budget";
 import { allocateSubagentName } from "./names";
 import { collectRemoteTurnResult } from "./remote-turn-wait";
 import { resolveSubagentHarnessTools } from "./subagent-depth";
+import { failedSubagentExecution } from "./subagent-failure";
 import {
   composeSubagentChildEnv,
   resolveSubagentInheritedPrimaryRoot,
@@ -307,6 +308,18 @@ async function executeSubagent(
     updateSubagent(subagentId, { model });
   }
 
+  // Keep parsed identity and evidence available if process cleanup rejects.
+  const state: ExecutionState = {
+    agentId: existingAgentId || null,
+    conversationId: existingConversationId || null,
+    finalResult: null,
+    finalError: null,
+    enqueueReceipt: null,
+    resultStats: null,
+    displayedToolCalls: new Set(),
+    toolCallStatuses: new Map(),
+  };
+
   try {
     const activeBackend = getBackend();
     const backendMode: BackendMode = activeBackend.capabilities.localMemfs
@@ -463,18 +476,6 @@ async function executeSubagent(
     const stdoutChunks: Buffer[] = [];
     const stderrChunks: Buffer[] = [];
 
-    // Initialize execution state
-    const state: ExecutionState = {
-      agentId: existingAgentId || null,
-      conversationId: existingConversationId || null,
-      finalResult: null,
-      finalError: null,
-      enqueueReceipt: null,
-      resultStats: null,
-      displayedToolCalls: new Set(),
-      toolCallStatuses: new Map(),
-    };
-
     // Parse child stdout manually instead of using readline. This keeps the
     // stream handling simple and avoids Bun/runtime-specific instability in
     // nested child-process line readers.
@@ -497,7 +498,13 @@ async function executeSubagent(
     });
 
     // Wait for process to complete
-    const { exitCode, exitSignal } = await runningProcess.completion;
+    const { exitCode, exitSignal } = await runningProcess.completion.finally(
+      () => {
+        // Preserve a trailing result even when process cleanup rejects.
+        if (stdoutBuffer.length > 0)
+          processStreamEvent(stdoutBuffer, state, subagentId);
+      },
+    );
 
     if (
       effectiveLaunchProfile === "memory-subagent" &&
@@ -512,12 +519,6 @@ async function executeSubagent(
           `Failed to clean up memory-subagent scratchpad: ${getErrorMessage(error)}`,
         );
       }
-    }
-
-    // Ensure the trailing partial line is processed before completing.
-    // Without this, late tool events can be dropped before Task marks completion.
-    if (stdoutBuffer.length > 0) {
-      processStreamEvent(stdoutBuffer, state, subagentId);
     }
 
     // Check if process was aborted by user
@@ -725,12 +726,7 @@ async function executeSubagent(
     }
     return withModel(result);
   } catch (error) {
-    return withModel({
-      agentId: "",
-      report: "",
-      success: false,
-      error: getErrorMessage(error),
-    });
+    return withModel(failedSubagentExecution(error, state));
   }
 }
 
