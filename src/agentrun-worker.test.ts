@@ -424,3 +424,39 @@ test("JSON before a pending native approval cannot complete or permit host reuse
   });
   expect(queries).toBe(1);
 });
+
+for (const key of [
+  "LETTA_LOCAL_BACKEND_DIR",
+  "LETTA_CLI_PATH",
+  "LETTA_AGENT_SDK_PATH",
+]) {
+  test(`missing bound ${key} is a final configuration failure before dispatch`, async () => {
+    const conf = config();
+    const original = process.env[key];
+    const bound = mkdtempSync(join(tmpdir(), "aeon-bound-"));
+    dirs.push(bound);
+    if (key === "LETTA_LOCAL_BACKEND_DIR") conf.backendDir = bound;
+    process.env[key] = bound;
+    let queries = 0;
+    try {
+      const host = await createAgentRunWorkerHost(conf, {
+        client: {
+          query() {
+            queries++;
+            throw new Error("must not dispatch");
+          },
+        },
+      });
+      rmSync(bound, { recursive: true });
+      await expect(host.runAgent(request())).rejects.toMatchObject({
+        code: "AEON_WORKER_CONFIG",
+        final: true,
+      });
+      expect(queries).toBe(0);
+      await host.close();
+    } finally {
+      if (original === undefined) delete process.env[key];
+      else process.env[key] = original;
+    }
+  });
+}
