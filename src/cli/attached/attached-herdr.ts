@@ -93,6 +93,7 @@ export function attachedHerdrResume(
   return args;
 }
 
+/** Map a session snapshot to Herdr status, prioritizing conditions that need attention. */
 export function attachedHerdrState(snapshot: AttachedSnapshot): {
   state: "idle" | "working" | "blocked";
   message?: string;

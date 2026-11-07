@@ -33,6 +33,7 @@ Inside the terminal, type / for commands or /help for keyboard help.
 Native commands use the server's capabilities; unavailable commands explain why.
 `;
 
+/** Connect the native terminal to an app-server session and report its lifecycle to Herdr when available. */
 export async function runAttachSubcommand(argv: string[]): Promise<number> {
   let options: ReturnType<typeof parseAttachedOptions>;
   try {
