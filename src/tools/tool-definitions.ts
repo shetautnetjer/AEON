@@ -2,6 +2,8 @@ import { defineTool, type ToolAssets } from "./define-tool";
 import ApplyPatchDescription from "./descriptions/ApplyPatch.md";
 import AskUserQuestionDescription from "./descriptions/AskUserQuestion.md";
 import BashDescription from "./descriptions/Bash.md";
+import BrainDropDescription from "./descriptions/BrainDrop.md";
+import BrainRecallDescription from "./descriptions/BrainRecall.md";
 import CodeModeDescription from "./descriptions/CodeMode.md";
 import EditDescription from "./descriptions/Edit.md";
 import EnterWorktreeDescription from "./descriptions/EnterWorktree.md";
@@ -36,6 +38,7 @@ import { apply_patch } from "./impl/apply-patch";
 import { read_artifact_file, write_artifact_file } from "./impl/artifact-files";
 import { ask_user_question_async } from "./impl/ask-user-question";
 import { bash } from "./impl/bash";
+import { brainDrop, brainRecall } from "./impl/brain";
 import { code_mode } from "./impl/code-mode";
 import { edit } from "./impl/edit";
 import { enter_worktree } from "./impl/enter-worktree";
@@ -67,6 +70,8 @@ import { write } from "./impl/write";
 import ApplyPatchSchema from "./schemas/ApplyPatch.json";
 import AskUserQuestionSchema from "./schemas/AskUserQuestion.json";
 import BashSchema from "./schemas/Bash.json";
+import BrainDropSchema from "./schemas/BrainDrop.json";
+import BrainRecallSchema from "./schemas/BrainRecall.json";
 import CodeModeSchema from "./schemas/CodeMode.json";
 import EditSchema from "./schemas/Edit.json";
 import EnterWorktreeSchema from "./schemas/EnterWorktree.json";
@@ -135,6 +140,16 @@ const toolDefinitions = {
     schema: BashSchema,
     description: buildBashDescriptionForPlatform(),
     impl: bash,
+  }),
+  BrainRecall: defineTool({
+    schema: BrainRecallSchema,
+    description: BrainRecallDescription.trim(),
+    impl: brainRecall,
+  }),
+  BrainDrop: defineTool({
+    schema: BrainDropSchema,
+    description: BrainDropDescription.trim(),
+    impl: brainDrop,
   }),
   EnterWorktree: defineTool({
     schema: EnterWorktreeSchema,
