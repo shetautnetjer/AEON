@@ -175,6 +175,7 @@ export interface SdkStreamMessage {
   conversationId?: string;
   content?: string;
   success?: boolean;
+  stopReason?: string;
   result?: string;
   error?: string;
   errorCode?: string;

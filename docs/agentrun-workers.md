@@ -26,7 +26,7 @@ is no deferred queue. `close()` stops admission, aborts/drains an active turn an
 disposes the SDK client. An abort acknowledgment alone is insufficient: the
 spawner waits for a native terminal result, bounded by the settlement timeout.
 Delayed SDK startup triggers another interrupt when its identity becomes known.
-A dropped stream, missing verdict or expired settlement deadline reports
+A dropped stream, pending `requires_approval`, missing verdict or expired settlement deadline reports
 `cleanupUnconfirmed`, retains the observed conversation ID and blocks reuse.
 An SDK client disposal is not proof of OS child exit; provider qualification must
 observe owned subprocesses separately. A settled turn may share a still-running
@@ -36,6 +36,22 @@ The host's `runAgent` consumes native AgentRun step metadata and passes explicit
 workspace/tool/model policy to the existing spawner. The logical `step.sessionId`
 never selects a native conversation. Results and native IDs are returned to the
 native journal; incomplete work is not automatically resumed or redispatched.
+The host requests a JSON final response with the schema in its instructions and
+returns a parsed candidate. The pinned AgentRun interpreter owns transport/stage
+schema validation immediately after `runNode`, including replay. Invalid JSON
+fails without another query; schema-invalid JSON stays failed on replay and does
+not promote the workflow. `resultTransport: "json"` is part of the binding.
+
+This transport is an explicit SDK 0.8.38 workaround. The first real cancellation
+canary exposed `streamStructuredTurns` starting portable structured-output repair
+turns after a native `interrupted` result, then rewriting the terminal reason.
+The AgentRun host therefore omits SDK `outputFormat`; the shared Workflow schema
+API is unchanged. The failed canary remains retained in SUPERAGENT evidence;
+the workaround's offline regressions do not replace a fresh real qualification.
+The plain SDK stream can mark `requires_approval` as successful; the spawner
+explicitly treats it as unfinished work and holds cleanup/reuse rather than
+accepting preceding JSON or changing the configured approval policy.
+
 Wall-clock expiry requests interruption and has a separate bounded settlement
 wait. `maxToolCalls` reuses the spawner's observed-call stop threshold: after
 seeing a call beyond the threshold it interrupts asynchronously. It is not a
