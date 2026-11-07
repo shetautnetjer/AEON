@@ -20,6 +20,10 @@ the SDK resolves its CLI lazily. Evolve's entry rejects concurrent invocation
 before changing that route and restores its prior values after close. Installed
 SDK dependency bytes remain pinned by the owning AEON dependency lock; supplying
 a custom injected SDK client transfers that implementation choice to the caller.
+Unresolvable configured paths, including removed backend/CLI/SDK routes at a
+dispatch recheck, produce `AEON_WORKER_CONFIG` with `final: true` before any
+query. Unset optional CLI/SDK overrides remain null in the binding; adding one
+after binding is a route change, not permission to retry the procedure.
 
 This first host admits one worker at a time and refuses overlapping calls. There
 is no deferred queue. `close()` stops admission, aborts/drains an active turn and
@@ -72,3 +76,11 @@ have been exercised on `codex/aeon-agentrun-workers-20261107`. The owner
 SUPERAGENT qualification packet records the exact source revisions and any
 separate real-provider canary. This document does not claim installation,
 daemon adoption, a provider cleanup guarantee or a Brain memory migration.
+
+The PR 14 review follow-up at source `1586258c3` passed all 13 checks,
+`bun build.js`, and 156 affected tests across 13 files. The reflection-launcher
+suite also passed separately as required by its isolation manifest (19 tests;
+already included in the 156). A built Node worker-module fixture passed seven
+checks for final path failures and a normal JSON result, using an injected SDK
+client and no provider calls. Node was 26.9.0, below the declared supported Node
+26 range; these checks do not repeat or replace native provider qualification.

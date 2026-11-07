@@ -65,9 +65,12 @@ Text is sent unchanged on stdin, preserving frontmatter and source-bearing
 fact text. The model cannot select another writer, file, executable, vault,
 schema or command. The CLI must exit successfully and acknowledge the native
 absolute `HOME/inbox/new/aya/YYYYmmddTHHMMSSffffffZ-HASH8.md` path. The result
-says **queued**, not admitted, filed, verified or learned. Runtime agent and
-conversation IDs in this acknowledgement describe the submission; they are
-not automatically written into facts or retained by Brain's filer. Include
+uses the canonical home resolved by Brain's `Paths.from_env`, including when
+the configured home is a symlink. AEON validates that exact queue directory
+and native filename without requiring the file to remain present after filing.
+The result says **queued**, not admitted, filed, verified or learned. Runtime
+agent and conversation IDs in this acknowledgement describe the submission;
+they are not automatically written into facts or retained by Brain's filer. Include
 relevant canonical source references in the fact text itself.
 
 Brain's `run` and `release` remain host/operator operations. Successful queueing
@@ -130,3 +133,10 @@ independent minimal fixture, while native Bun and Node delivered bytes. The
 stdin/cancellation qualification therefore used the approved native route.
 This distinction is retained rather than modifying working runtime semantics
 to mask the sandbox limitation. No live provider or private memory was read.
+
+The PR 14 follow-up corrected the Python test fixture to resolve its home like
+the actual CLI. Both the fixture and disposable-vault CLI now exercise a
+symlinked home. Strict queue/path/filename rejection stays unchanged, including
+noncanonical alias acknowledgements. This coverage is part of the 156-test
+review rerun recorded in [AgentRun workers](agentrun-workers.md); no production
+Brain path validation was widened.

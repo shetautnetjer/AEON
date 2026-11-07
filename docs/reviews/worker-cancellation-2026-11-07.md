@@ -45,6 +45,10 @@ preserve the worktree/merge and do not consume the source transcript. Existing
 reflection launch reservations are retained, including manual and arena paths.
 An uncertain arena choice leaves the run and both candidates unchanged and
 refuses another choice while the reservation is held.
+The PR 14 follow-up also propagates that uncertainty to the slash-command
+result: the command finishes as failed while the reservation and evidence stay
+held. Its regression checks the real command runner's transcript state and
+completion event, not just the finalizer's returned message.
 
 These holds require manual process reconciliation. The checkout lock is owned
 by the parent PID and start time; its existing dead-owner reaping does not prove
