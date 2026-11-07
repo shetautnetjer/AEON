@@ -34,6 +34,7 @@ import {
   type ExternalCodingAgentType,
   formatExternalCodingAgentId,
   parseExternalCodingAgentId,
+  validateExternalCodingAgentTurnLimit,
 } from "./external-coding-agent";
 
 export const REMOTE_EXTERNAL_WORKER_STOPPED = Symbol(
@@ -65,6 +66,7 @@ export interface RemoteExternalCodingAgentLaunch {
   description: string;
   model?: string;
   mcp?: ExternalCodingAgentMcpOptions;
+  maxTurns?: number;
   toolCallId?: string;
   parentScope: ParentScope;
   signal?: AbortSignal;
@@ -297,6 +299,11 @@ export async function launchRemoteExternalCodingAgent(
   deps: RemoteExternalCodingAgentDeps,
 ): Promise<SubagentLaunchResult> {
   const { type, computer, parentScope } = params;
+  const limitError = validateExternalCodingAgentTurnLimit(
+    type,
+    params.maxTurns,
+  );
+  if (limitError) return { success: false, error: limitError };
   let connectionId: string;
   let deviceId: string;
   let supportsSteering: boolean;
@@ -354,6 +361,9 @@ export async function launchRemoteExternalCodingAgent(
         prompt: params.prompt,
         description: params.description,
         ...(params.model ? { model: params.model } : {}),
+        ...(params.maxTurns !== undefined
+          ? { max_turns: params.maxTurns }
+          : {}),
         ...(params.mcp ? { mcp: params.mcp } : {}),
       },
       tool_call_id: toolCallId,

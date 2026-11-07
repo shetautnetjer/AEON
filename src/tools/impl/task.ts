@@ -53,6 +53,7 @@ import {
   resolveExternalCodingAgentMcpReminder,
   runExternalCodingAgent,
   validateExternalCodingAgentMcpOptions,
+  validateExternalCodingAgentTurnLimit,
 } from "./external-coding-agent";
 import { copyGitHubPullRequestTags } from "./github-pull-request-tracker.js";
 import {
@@ -726,6 +727,13 @@ export async function launchSubagent(
   ) {
     return { success: false, error: "max_turns must be a positive integer" };
   }
+  const limitError = externalCodingAgentType
+    ? validateExternalCodingAgentTurnLimit(
+        externalCodingAgentType,
+        args.max_turns,
+      )
+    : undefined;
+  if (limitError) return { success: false, error: limitError };
   const resolvedComputer = resolveLaunchComputer({
     requested: args.computer,
     subagentType: subagent_type,
@@ -761,6 +769,7 @@ export async function launchSubagent(
           prompt: inputPrompt,
           description,
           model,
+          maxTurns: args.max_turns,
           mcp: args.mcp,
           toolCallId,
           parentScope: resolvedParentScope ?? {
@@ -806,6 +815,7 @@ export async function launchSubagent(
             type: externalCodingAgentType,
             prompt,
             model,
+            maxTurns: args.max_turns,
             parentAgentId,
             parentConversationId: resolvedParentScope?.conversationId,
             actingUserId: resolvedParentScope?.actingUserId,

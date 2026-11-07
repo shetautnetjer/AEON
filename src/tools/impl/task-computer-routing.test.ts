@@ -41,6 +41,7 @@ mock.module("@/agent/subagents", () => ({
 }));
 
 let receivedEnvironment: string | undefined;
+let receivedMaxTurns: number | undefined;
 const spawn = mock(
   (
     ...[
@@ -51,7 +52,7 @@ const spawn = mock(
       _signal,
       _existingAgentId,
       _existingConversationId,
-      _maxTurns,
+      maxTurns,
       _forkedContext,
       _parentAgentId,
       _transcriptPath,
@@ -62,6 +63,7 @@ const spawn = mock(
     ]: Parameters<typeof spawnSubagent>
   ) => {
     receivedEnvironment = environment;
+    receivedMaxTurns = maxTurns;
     updateSubagent(subagentId, {
       agentId: "agent-routing-child",
       agentURL: "https://example.invalid/agent-routing-child",
@@ -94,6 +96,7 @@ function setDefaultComputer(value: string | undefined) {
 beforeEach(() => {
   spawn.mockClear();
   receivedEnvironment = undefined;
+  receivedMaxTurns = undefined;
   forkConversation.mockClear();
   retrieveAgent.mockClear();
   capabilities.environmentRouting = true;
@@ -135,6 +138,16 @@ const launchArgs = {
 };
 
 describe("task computer routing", () => {
+  test.each(["local", "office-mac"])(
+    "preserves the native Letta turn budget on %s",
+    async (computer) => {
+      const result = await task({ ...launchArgs, computer, max_turns: 7 });
+      expect(result).toContain("Task running in background with task ID:");
+      expect(spawn).toHaveBeenCalledTimes(1);
+      expect(receivedMaxTurns).toBe(7);
+    },
+  );
+
   test("forwards a whitespace-padded selector trimmed to the child", async () => {
     const result = await task({ ...launchArgs, computer: " \t office-mac \n" });
 
