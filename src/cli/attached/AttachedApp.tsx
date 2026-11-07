@@ -98,7 +98,18 @@ function LiveLine({ line, streaming }: { line: Line; streaming: boolean }) {
 }
 
 /** Native presentation for an existing app-server session. No local agent loop is started. */
-export function AttachedApp({ session }: { session: AttachedSession }) {
+export function AttachedApp({
+  session,
+  onIntentionalExit,
+  onReady,
+}: {
+  session: AttachedSession;
+  onIntentionalExit?: () => void;
+  onReady?: () => void;
+}) {
+  // Child input subscriptions mount before this effect. Publishing idle earlier
+  // can lose an automated Enter while the native UI is still loading.
+  useEffect(() => onReady?.(), [onReady]);
   const snapshot = useSyncExternalStore(
     session.subscribe,
     session.getSnapshot,
@@ -435,6 +446,7 @@ export function AttachedApp({ session }: { session: AttachedSession }) {
     [context],
   );
   const exit = () => {
+    onIntentionalExit?.();
     session.close();
     app.exit();
   };

@@ -15,10 +15,13 @@ explicit agent or `AYA_AGENT_ID`.
 Existing conversations use validated scoped sync with approval recovery and
 interrupted-turn resumption disabled. A new conversation uses `runtime_start`.
 Switching prepares another socket and commits only while the current conversation
-is still idle. Ctrl-C targets an exactly owned turn; `/stop` explicitly targets
+is still idle. Esc targets an exactly owned turn; `/stop` explicitly targets
 the selected conversation. A send whose acknowledgement is lost stays visibly
 uncertain until correlated completion or cancellation; it is not automatically
 sent again. Reopen chat after disconnecting from a restarted server.
+
+Ctrl-C clears the draft; a second Ctrl-C within one second exits chat. `/quit`
+also exits. Neither exit requests cancellation of a server-owned turn.
 
 Display preferences are read without bootstrapping credentials, migrating
 settings or starting browser discovery. Native transcript accumulation runs in
@@ -78,6 +81,48 @@ status is not proof that a pending approval was resolved. History/stream overlap
 is deduplicated by canonical message IDs and incomplete tools remain live, but
 the protocol supplies no history cutoff for perfectly distinguishing overlapping
 partial text chunks with the same ID.
+
+## Herdr status and exact-session restore
+
+Inside a Herdr-managed pane, the attached client uses `HERDR_ENV=1`,
+`HERDR_SOCKET_PATH` and `HERDR_PANE_ID` to report native state through Herdr's
+existing local API. Outside that environment it does nothing. No Herdr hooks,
+CLI installation, new daemon or terminal scraping are required by this adapter.
+
+Native active work is `working`; approval, paused input, uncertain delivery,
+disconnect or a session error is `blocked`; an idle native session is `idle`.
+Startup stays `blocked` until the native keyboard handlers have mounted, so a
+ready-state observer cannot send Enter while the terminal is still loading.
+Herdr can display an unseen idle transition as `done`. Neither label certifies
+a checked task result. AEON still owns approvals, cancellation, tools, queues,
+Letta memory and Brain operations.
+
+The client supplies Herdr's `resume_argv` with the exact native agent and
+conversation, absolute runtime/entry/cwd/state directory, server URL and token
+**file path**, plus the original primary-agent selection binding. Resume attaches
+without submitting input or starting interrupted work. An idle conversation
+switch updates the command to the newly validated native scope. The supported
+entries are Bun's attached `entry.ts` or `src/index.ts`, and the Node/Bun
+`letta.js` bundle on POSIX. This first integration is qualified on Linux with
+Herdr 0.9.5. Paths containing apostrophes/control characters and credential-bearing
+URLs cannot be represented under this restore contract; native chat still works,
+with a warning and withdrawal of this client's stale restore metadata.
+
+Herdr's default **Ctrl+B, q** detaches its TUI while its server and pane processes
+continue. **Esc** in the AEON pane cancels the exactly owned native turn; `/stop`
+explicitly targets the selected conversation. **Ctrl+C** clears a draft and a
+second Ctrl+C exits. `/quit` also deliberately exits and releases Herdr's report
+and restore command. Unexpected process shutdown retains restore metadata so
+Herdr can reopen the client. Stopping Herdr's server exits its pane processes;
+it does not stop a separately owned AEON App Server or certify cancellation.
+
+Reports are ordered within each client, coalesced, and bounded by a 250 ms socket
+deadline. An unavailable reporter warns and retries on a later native update;
+there is no independent polling loop. Displayed status/restore metadata may be
+stale after a failed report. Reconcile native state before accepting results or
+retrying work. Cold restore requires the original runtime, source/bundle, cwd,
+token file and AEON server to remain available. This does not restart AEON itself
+or reconstruct unknown workers after a host failure.
 
 ## Verification
 
