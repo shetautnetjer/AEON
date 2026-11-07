@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { AttachedSession, AttachedSnapshot } from "./attached-session";
 import { type HerdrReport, sendHerdrReport } from "./herdr-transport";
@@ -52,7 +53,17 @@ export function attachedHerdrResume(
     );
   } else if (basename(entry) === "letta.js") {
     args.push(entry, "attach");
-  } else return null;
+  } else {
+    // npm's bin symlink remains in Node's argv[1]. Pin its compiled target so
+    // a later PATH/bin change cannot redirect restoration to a different CLI.
+    try {
+      const target = realpathSync(entry);
+      if (basename(target) !== "letta.js") return null;
+      args.push(target, "attach");
+    } catch {
+      return null;
+    }
+  }
   // Do not persist a bearer embedded in a URL. Native token-file references suffice.
   try {
     const url = new URL(options.url);

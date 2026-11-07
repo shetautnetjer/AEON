@@ -103,7 +103,10 @@ conversation, absolute runtime/entry/cwd/state directory, server URL and token
 without submitting input or starting interrupted work. An idle conversation
 switch updates the command to the newly validated native scope. The supported
 entries are Bun's attached `entry.ts` or `src/index.ts`, and the Node/Bun
-`letta.js` bundle on POSIX. This first integration is qualified on Linux with
+`letta.js` bundle on POSIX. An npm-style `letta` bin symlink is resolved to its
+canonical `letta.js` target before that path is saved for restore. Broken links
+and unrelated entry targets do not produce restore commands.
+This first integration is qualified on Linux with
 Herdr 0.9.5. Paths containing apostrophes/control characters and credential-bearing
 URLs cannot be represented under this restore contract; native chat still works,
 with a warning and withdrawal of this client's stale restore metadata.

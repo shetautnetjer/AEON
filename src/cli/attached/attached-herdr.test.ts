@@ -1,4 +1,7 @@
 import { expect, test } from "bun:test";
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   attachedHerdrResume,
   attachedHerdrState,
@@ -138,6 +141,38 @@ test("Bun native launcher and main source both preserve owner bunfig and absolut
       entry,
       ...suffix,
     ]);
+  }
+});
+
+test("npm-style bin symlinks resume the canonical compiled entry", () => {
+  const dir = mkdtempSync(join(tmpdir(), "herdr-bin-"));
+  try {
+    const entry = join(dir, "letta.js");
+    const bin = join(dir, "letta");
+    writeFileSync(entry, "// compiled entry fixture\n");
+    symlinkSync(entry, bin);
+    const args = attachedHerdrResume(options, snapshot().scope, {
+      ...invocation,
+      entry: bin,
+    });
+    expect(args?.slice(2, 5)).toEqual([invocation.executable, entry, "attach"]);
+    rmSync(entry);
+    expect(
+      attachedHerdrResume(options, snapshot().scope, {
+        ...invocation,
+        entry: bin,
+      }),
+    ).toBeNull();
+    writeFileSync(join(dir, "unrelated.js"), "// unrelated entry\n");
+    symlinkSync(join(dir, "unrelated.js"), join(dir, "other"));
+    expect(
+      attachedHerdrResume(options, snapshot().scope, {
+        ...invocation,
+        entry: join(dir, "other"),
+      }),
+    ).toBeNull();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
 
