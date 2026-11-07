@@ -61,7 +61,7 @@ test("host binds authority, passes native options, and never resumes the logical
             yield {
               type: "result",
               success: true,
-              structuredOutput: { ok: true },
+              result: '{"ok":true}',
             };
           },
           async interrupt() {},
@@ -77,9 +77,12 @@ test("host binds authority, passes native options, and never resumes the logical
     await host.runAgent({ ...request(), call: (record) => calls.push(record) }),
   ).toEqual({ ok: true });
   expect(received?.options.conversationId).toBeUndefined();
+  expect(received?.options.outputFormat).toBeUndefined();
+  expect(received?.options.system).toContain(JSON.stringify(request().schema));
   expect(received?.options.cwd).toBe(conf.cwd);
   expect(received?.options.allowedTools).toEqual(["Read"]);
   expect(host.workerBinding.maxConcurrent).toBe(1);
+  expect(host.workerBinding.resultTransport).toBe("json");
   expect(host.workerBinding.backendDir).toBe(conf.cwd);
   expect(Object.isFrozen(host.workerBinding.allowedTools)).toBe(true);
   expect(calls).toContainEqual({
@@ -184,6 +187,133 @@ test("unknown cleanup holds host reuse and is reported after disposal", async ()
               type: "result",
               success: false,
               errorCode: "stream_closed",
+            };
+          },
+          async interrupt() {},
+          close() {},
+        };
+      },
+    },
+  });
+  await expect(host.runAgent(request())).rejects.toMatchObject({
+    code: "AEON_WORKER_CLEANUP_UNCONFIRMED",
+  });
+  await expect(host.runAgent(request())).rejects.toMatchObject({
+    code: "AEON_WORKER_STATE",
+  });
+  await expect(host.close()).rejects.toMatchObject({
+    code: "AEON_WORKER_CLEANUP_UNCONFIRMED",
+  });
+  expect(queries).toBe(1);
+});
+
+test("AgentRun JSON transport preserves native interruption without SDK schema repair turns", async () => {
+  const conf = config(),
+    caller = new AbortController();
+  let repairTurns = 0,
+    queries = 0,
+    interrupted!: () => void;
+  const stopped = new Promise<void>((resolve) => {
+    interrupted = resolve;
+  });
+  const host = await createAgentRunWorkerHost(conf, {
+    client: {
+      query(params) {
+        queries++;
+        return {
+          conversationId: "native",
+          agentId: null,
+          async *[Symbol.asyncIterator]() {
+            yield { type: "assistant", content: "started" };
+            caller.abort();
+            await stopped;
+            // Model the installed SDK's portable structured-output branch: it
+            // rewrites interrupted and creates repair turns when outputFormat exists.
+            if (params.options.outputFormat) {
+              repairTurns += 2;
+              yield {
+                type: "result",
+                success: false,
+                errorCode: "structured_output_error",
+              };
+            } else
+              yield {
+                type: "result",
+                success: false,
+                errorCode: "interrupted",
+              };
+          },
+          async interrupt() {
+            interrupted();
+          },
+          close() {},
+        };
+      },
+    },
+  });
+  const evidence: unknown[] = [];
+  await expect(
+    host.runAgent({
+      ...request(),
+      signal: caller.signal,
+      call: (value) => evidence.push(value),
+    }),
+  ).rejects.toMatchObject({
+    code: "AEON_WORKER_FAILED",
+    message: "Workflow subagent interrupted",
+  });
+  expect(queries).toBe(1);
+  expect(repairTurns).toBe(0);
+  expect(evidence).toContainEqual({
+    outcome: "failed",
+    conversationId: "native",
+    totalTokens: null,
+  });
+  await host.close();
+});
+
+test("non-JSON worker output fails without a repair query", async () => {
+  const conf = config();
+  let queries = 0;
+  const host = await createAgentRunWorkerHost(conf, {
+    client: {
+      query() {
+        queries++;
+        return {
+          conversationId: "native",
+          agentId: null,
+          async *[Symbol.asyncIterator]() {
+            yield { type: "result", success: true, result: "not JSON" };
+          },
+          async interrupt() {},
+          close() {},
+        };
+      },
+    },
+  });
+  await expect(host.runAgent(request())).rejects.toMatchObject({
+    code: "AEON_WORKER_FAILED",
+  });
+  expect(queries).toBe(1);
+  await host.close();
+});
+
+test("JSON before a pending native approval cannot complete or permit host reuse", async () => {
+  const conf = config();
+  let queries = 0;
+  const host = await createAgentRunWorkerHost(conf, {
+    client: {
+      query() {
+        queries++;
+        return {
+          conversationId: "native-pending",
+          agentId: null,
+          async *[Symbol.asyncIterator]() {
+            yield {
+              type: "result",
+              success: true,
+              stopReason: "requires_approval",
+              result: '{"ok":true}',
             };
           },
           async interrupt() {},

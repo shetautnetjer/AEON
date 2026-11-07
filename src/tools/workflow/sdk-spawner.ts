@@ -328,11 +328,16 @@ async function drainTurn(
     if (message.type === "result") {
       terminal =
         typeof message.success === "boolean" &&
+        message.stopReason !== "requires_approval" &&
+        message.stopReason !== "stream_closed" &&
         message.errorCode !== "stream_closed" &&
         message.error !== "stream_closed";
       success = terminal && message.success === true;
       resultText = message.result;
-      error = message.errorDetail ?? message.error ?? message.errorCode;
+      error =
+        message.stopReason === "requires_approval"
+          ? "Worker is waiting for tool approval; cleanup is unconfirmed"
+          : (message.errorDetail ?? message.error ?? message.errorCode);
       structuredOutput = message.structuredOutput;
     }
   }

@@ -124,6 +124,7 @@ export async function createAgentRunWorkerHost(
     maxConcurrent: config.maxConcurrent,
     cliPath,
     sdkPath,
+    resultTransport: "json",
   });
   const client =
     deps.client ?? (await loadAgentSdk()).createLocalClient(binding.backend);
@@ -194,8 +195,11 @@ export async function createAgentRunWorkerHost(
             callIndex: callIndex++,
             options: {
               label: request.label,
-              schema: request.schema,
-              systemPrompt: request.system,
+              // SDK 0.8.38 portable structured output repairs an interrupted
+              // turn. Keep cancellation native; AgentRun validates the parsed
+              // candidate against this schema after runNode, including replay.
+              json: true,
+              systemPrompt: `${request.system}\n\nReturn only a JSON value matching this schema:\n${JSON.stringify(request.schema)}`,
               allowedTools: tools,
               timeoutMs: binding.timeoutMs,
               maxToolCalls: binding.maxToolCalls,

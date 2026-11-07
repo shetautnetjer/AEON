@@ -82,6 +82,12 @@ for (const message of [
   { type: "result", success: false, errorCode: "stream_closed" },
   { type: "result", success: true, error: "stream_closed" },
   { type: "result", result: "missing verdict" },
+  {
+    type: "result",
+    success: true,
+    stopReason: "requires_approval",
+    result: '{"ok":true}',
+  },
 ] satisfies SdkStreamMessage[]) {
   test(`synthetic or malformed result cannot establish settlement: ${JSON.stringify(message)}`, async () => {
     const query: SdkQuery = {
