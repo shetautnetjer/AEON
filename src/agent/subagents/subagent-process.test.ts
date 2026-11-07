@@ -10,6 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  SubagentProcessCleanupError,
   spawnManagedWorkloadProcess,
   spawnSubagentProcess,
 } from "@/agent/subagents/subagent-process";
@@ -29,6 +30,31 @@ async function waitForProcessExit(pid: number): Promise<void> {
 }
 
 describe.skipIf(process.platform === "win32")("subagent process", () => {
+  test("rejects completion when final process-group cleanup is unconfirmed", async () => {
+    const controller = new AbortController();
+    const waits: number[] = [];
+    const running = spawnSubagentProcess(
+      process.execPath,
+      ["-e", 'process.stdout.write("ready\\n"); setInterval(() => {}, 1000);'],
+      {
+        cwd: process.cwd(),
+        env: process.env,
+        signal: controller.signal,
+        waitForGroupExit: async (_pid, timeout) => {
+          waits.push(timeout);
+          return false;
+        },
+      },
+    );
+    await once(running.process.stdout, "data");
+    controller.abort();
+    await expect(running.completion).rejects.toBeInstanceOf(
+      SubagentProcessCleanupError,
+    );
+    expect(waits).toEqual([2_000, 500]);
+    if (running.process.pid) await waitForProcessExit(running.process.pid);
+  });
+
   test("stops the launcher and a descendant that outlives graceful cancellation", async () => {
     const descendantScript = [
       'process.on("SIGINT", () => {});',

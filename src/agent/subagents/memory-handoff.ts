@@ -3,6 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getBackend } from "@/backend";
 import { getTranscriptRoot } from "@/utils/transcript-paths";
+import { SubagentProcessCleanupError } from "./subagent-process";
 
 /** Keep the snapshot only for the lifetime of the child that can read it. */
 export async function withMemoryHandoff<T>(
@@ -12,10 +13,20 @@ export async function withMemoryHandoff<T>(
   ) => Promise<T>,
 ): Promise<T> {
   const handoff = await prepareMemoryHandoff(params);
+  let retainSnapshot = false;
   try {
-    return await run(handoff);
+    const result = await run(handoff);
+    retainSnapshot =
+      result !== null &&
+      typeof result === "object" &&
+      "cleanupUnconfirmed" in result &&
+      result.cleanupUnconfirmed === true;
+    return result;
+  } catch (error) {
+    retainSnapshot = error instanceof SubagentProcessCleanupError;
+    throw error;
   } finally {
-    if (handoff.transcriptPath)
+    if (handoff.transcriptPath && !retainSnapshot)
       await rm(handoff.transcriptPath, { force: true });
   }
 }

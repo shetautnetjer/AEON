@@ -12,6 +12,7 @@ export interface ReflectionIntegrationOutcome {
   success: boolean;
   error?: string;
   conversationId?: string;
+  cleanupUnconfirmed?: boolean;
 }
 
 export function buildReflectionIntegrationConversationTitle(
@@ -90,6 +91,7 @@ export async function runExplicitReflectionIntegration(params: {
               ? undefined
               : (result.error ?? "Reflection integration did not complete"),
             conversationId: result.conversationId,
+            cleanupUnconfirmed: result.cleanupUnconfirmed,
           });
         },
       });

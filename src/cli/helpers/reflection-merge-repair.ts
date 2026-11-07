@@ -17,7 +17,7 @@ Reported status: ${integration.summary}`;
  * parent checkout — exactly what the repair worker expects — and
  * `integration.repairToken` is the attempt claimed under the finalize lease,
  * so no second claim is made. Resolves to whether a worker ran on the
- * problem (false when none could be launched); the caller must not hold the
+ * problem, carrying uncertain cleanup to the finalizer; the caller must not hold the
  * checkout lease, which the worker needs.
  */
 export async function launchReflectionMergeRepair(
@@ -30,8 +30,12 @@ export async function launchReflectionMergeRepair(
   deps: {
     spawnMemoryRepair?: (args: SpawnBackgroundSubagentTaskArgs) => unknown;
   } = {},
-): Promise<boolean> {
-  if (!params.integration.repairToken) return false;
+): Promise<{
+  launched: boolean;
+  cleanupUnconfirmed?: boolean;
+  error?: string;
+}> {
+  if (!params.integration.repairToken) return { launched: false };
   const [{ ensureMemoryRepair }, { spawnBackgroundSubagentTask }] =
     await Promise.all([
       import("@/tools/impl/memory-task-lifecycle"),
@@ -39,6 +43,8 @@ export async function launchReflectionMergeRepair(
     ]);
   const spawn = deps.spawnMemoryRepair ?? spawnBackgroundSubagentTask;
   let finished = () => {};
+  let cleanupUnconfirmed: boolean | undefined;
+  let error: string | undefined;
   const repairFinished = new Promise<void>((resolve) => {
     finished = resolve;
   });
@@ -58,8 +64,16 @@ export async function launchReflectionMergeRepair(
       },
     },
     // The worker's onComplete runs on success, failure and cancellation.
-    (args) => spawn({ ...args, onComplete: async () => finished() }),
+    (args) =>
+      spawn({
+        ...args,
+        onComplete: async (result) => {
+          cleanupUnconfirmed = result.cleanupUnconfirmed;
+          error = result.error;
+          finished();
+        },
+      }),
   );
   if (launched) await repairFinished;
-  return launched;
+  return { launched, cleanupUnconfirmed, error };
 }

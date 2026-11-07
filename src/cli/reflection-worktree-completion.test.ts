@@ -9,7 +9,10 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { completeMemoryConflictRepair } from "@/agent/memory-conflict-repair";
+import {
+  claimMemoryConflictRepair,
+  completeMemoryConflictRepair,
+} from "@/agent/memory-conflict-repair";
 import { claimMemoryOperation } from "@/agent/memory-operation";
 import {
   createReflectionMemoryWorktree,
@@ -148,6 +151,76 @@ afterEach(() => {
 });
 
 describe("reflection worktree completion messaging", () => {
+  test("uncertain explicit integration retains its worktree and the checkout lease", async () => {
+    const worktree = await createReflectionMemoryWorktree({
+      parentMemoryDir: memoryDir,
+    });
+    writeFileSync(
+      join(worktree.worktreeDir, "partial.md"),
+      "partial integration\n",
+    );
+    const syncIntegratedMemory = mock(async () => ({
+      status: "clean" as const,
+      summary: "clean",
+      memoryDir,
+      localOnly: true,
+    }));
+    const updateIntegrationConversation = mock(async () => {});
+    const result = await finalizeLaunch(worktree, true, {
+      mergePolicy: "explicit",
+      syncIntegratedMemory,
+      updateIntegrationConversation,
+      runExplicitIntegration: async () => ({
+        success: false,
+        cleanupUnconfirmed: true,
+        error: "cleanup unconfirmed",
+        conversationId: "integration-conversation",
+      }),
+    });
+    expect(result.completionSuccess).toBe(false);
+    expect(result.cleanupUnconfirmed).toBe(true);
+    expect(result.integration.status).toBe("failed");
+    expect(result.completionMessage).toContain("reconciliation");
+    expect(result.integrationConversationId).toBe("integration-conversation");
+    expect(readFileSync(join(worktree.worktreeDir, "partial.md"), "utf8")).toBe(
+      "partial integration\n",
+    );
+    expect(syncIntegratedMemory).not.toHaveBeenCalled();
+    expect(updateIntegrationConversation).not.toHaveBeenCalled();
+    expect(telemetryState.events).toHaveLength(0);
+    expect(await claimMemoryOperation(memoryDir)).toBeNull();
+  });
+
+  test("uncertain merge repair retains the in-progress merge and attempt marker", async () => {
+    const worktree = await conflictingReflection();
+    let statusWhileRepairing = "";
+    const result = await finalizeLaunch(worktree, true, {
+      spawnMemoryRepair: (args) => {
+        statusWhileRepairing = git(memoryDir, ["status", "--porcelain"]);
+        void args.onComplete?.({
+          success: false,
+          cleanupUnconfirmed: true,
+          error: "repair cleanup unconfirmed",
+        });
+        return { taskId: "fixture-repair" };
+      },
+    });
+    expect(result.completionSuccess).toBe(false);
+    expect(result.integration.status).toBe("failed");
+    expect(result.completionMessage).toContain("reconciliation");
+    expect(existsSync(join(memoryDir, ".git", "MERGE_HEAD"))).toBe(true);
+    expect(git(memoryDir, ["status", "--porcelain"])).toBe(
+      statusWhileRepairing,
+    );
+    expect((await claimMemoryConflictRepair(memoryDir)).status).toBe(
+      "in_progress",
+    );
+    expect(telemetryState.events).toHaveLength(0);
+    const release = await claimMemoryOperation(memoryDir);
+    expect(release).not.toBeNull();
+    await release?.();
+  });
+
   test("explicit integration can edit, commit, and merge in its conversation", async () => {
     const worktree = await createReflectionMemoryWorktree({
       parentMemoryDir: memoryDir,

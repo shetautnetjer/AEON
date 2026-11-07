@@ -20,6 +20,12 @@ import type { LettaStreamingResponse } from "@letta-ai/letta-client/resources/ag
 import { type Instance, render } from "ink";
 import stripAnsi from "strip-ansi";
 import { WebSocketServer } from "ws";
+import {
+  clearAllSubagents,
+  registerSubagent,
+  registerSubagentAbortHook,
+  updateSubagent,
+} from "@/agent/subagent-state";
 import { __testSetBackend } from "@/backend";
 import {
   type BackendMode,
@@ -33,12 +39,17 @@ import {
   type HeadlessTurnExecutorInput,
 } from "@/backend/dev/headless-turn-executor";
 import { App } from "@/cli/App";
+import {
+  releaseReflectionLaunch,
+  tryReserveReflectionLaunch,
+} from "@/cli/helpers/reflection-launcher";
 import { settingsManager } from "@/settings-manager";
 import { monitor } from "@/tools/impl/monitor";
 import {
   backgroundProcesses,
   clearBackgroundProcessCleanup,
 } from "@/tools/impl/process_manager";
+import { runTaskCompletionCallback } from "@/tools/impl/task-completion";
 import {
   addToMessageQueue,
   clearPendingMessages,
@@ -202,6 +213,7 @@ afterEach(async () => {
     instance.cleanup();
   }
   renderedInstances.clear();
+  clearAllSubagents();
   for (const id of monitorIds) {
     const state = backgroundProcesses.get(id);
     if (state) {
@@ -274,6 +286,68 @@ async function typePrompt(stdin: NodeJS.ReadStream, text: string) {
 }
 
 describe("TUI interrupt queue lifecycle", () => {
+  test.each(["initial", "retry"])(
+    "%s Esc keeps reflection ownership until cleanup is confirmed",
+    async (mode) => {
+      const executor = new DelayedInterruptExecutor();
+      const { stdin } = await renderTestApp(executor);
+      await typePrompt(stdin, "start turn");
+      await waitFor(() => executor.inputs.length === 1, "the active turn");
+      const input = executor.inputs[0];
+      if (!input) throw new Error("Missing active turn");
+      if (mode === "retry") {
+        stdin.push("\u001b");
+        await executor.abortObserved;
+      }
+      const workerId = `reflection-interrupt-${mode}`;
+      expect(tryReserveReflectionLaunch(input.agentId)).toBe(true);
+      let stops = 0;
+      try {
+        registerSubagent(
+          workerId,
+          "reflection",
+          "reflection interrupt fixture",
+          undefined,
+          true,
+          true,
+          input,
+        );
+        updateSubagent(workerId, {
+          status: "running",
+          ...(mode === "retry" && { stopFailed: true }),
+        });
+        registerSubagentAbortHook(workerId, () => {
+          stops++;
+        });
+        stdin.push("\u001b");
+        await waitFor(() => stops === 1, "the reflection stop request");
+        expect(tryReserveReflectionLaunch(input.agentId)).toBe(false);
+
+        const outputFile = join(tempHome, "reflection-interrupt.log");
+        const release = async () => releaseReflectionLaunch(input.agentId);
+        await runTaskCompletionCallback(
+          "reflection",
+          { success: false, cleanupUnconfirmed: true },
+          release,
+          outputFile,
+        );
+        expect(tryReserveReflectionLaunch(input.agentId)).toBe(false);
+        // Ordinary settled cancellation still releases through its finalizer.
+        await runTaskCompletionCallback(
+          "reflection",
+          { success: false },
+          release,
+          outputFile,
+        );
+        expect(tryReserveReflectionLaunch(input.agentId)).toBe(true);
+      } finally {
+        releaseReflectionLaunch(input.agentId);
+        executor.settleInterruptedTurn();
+      }
+    },
+    15_000,
+  );
+
   test("a real Monitor survives normal completion and idle Esc", async () => {
     const inputs: HeadlessTurnExecutorInput[] = [];
     const { stdin } = await renderTestApp({

@@ -15,7 +15,10 @@ interface SpawnSubagentProcessOptions {
   env: NodeJS.ProcessEnv;
   signal?: AbortSignal;
   forceKillGraceMs?: number;
+  waitForGroupExit?: typeof waitForProcessGroupExit;
 }
+
+export class SubagentProcessCleanupError extends Error {}
 
 export interface RunningSubagentProcess {
   process: ChildProcessWithoutNullStreams;
@@ -93,6 +96,7 @@ async function killWindowsProcessTree(
 async function terminateSubagentProcessTree(
   childProcess: ChildProcessWithoutNullStreams,
   forceKillGraceMs: number,
+  waitForGroupExit = waitForProcessGroupExit,
 ): Promise<void> {
   if (!childProcess.pid) return;
 
@@ -105,10 +109,13 @@ async function terminateSubagentProcessTree(
   // Headless mode converts SIGINT into the turn AbortSignal. That gives each
   // active tool a chance to clean up its own subprocesses before escalation.
   signalProcessGroup(childProcess, "SIGINT");
-  if (await waitForProcessGroupExit(pid, forceKillGraceMs)) return;
+  if (await waitForGroupExit(pid, forceKillGraceMs)) return;
 
   signalProcessGroup(childProcess, "SIGKILL");
-  await waitForProcessGroupExit(pid, FORCE_KILL_SETTLE_MS);
+  if (!(await waitForGroupExit(pid, FORCE_KILL_SETTLE_MS)))
+    throw new SubagentProcessCleanupError(
+      "Subagent process-group cleanup could not be confirmed",
+    );
 }
 
 /**
@@ -126,7 +133,8 @@ export function spawnSubagentProcess(
     detached: process.platform !== "win32",
   });
   let aborted = false;
-  let termination: Promise<void> = Promise.resolve();
+  let termination: Promise<undefined | { error: unknown }> =
+    Promise.resolve(undefined);
 
   const abortHandler = () => {
     if (aborted) return;
@@ -134,6 +142,10 @@ export function spawnSubagentProcess(
     termination = terminateSubagentProcessTree(
       childProcess,
       options.forceKillGraceMs ?? DEFAULT_FORCE_KILL_GRACE_MS,
+      options.waitForGroupExit,
+    ).then(
+      () => undefined,
+      (error: unknown) => ({ error }),
     );
   };
 
@@ -156,8 +168,11 @@ export function spawnSubagentProcess(
   });
 
   const completion = processExit.then(async (result) => {
-    if (aborted) await termination;
     options.signal?.removeEventListener("abort", abortHandler);
+    if (aborted) {
+      const cleanupFailure = await termination;
+      if (cleanupFailure) throw cleanupFailure.error;
+    }
     return result;
   });
 

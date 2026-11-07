@@ -159,3 +159,31 @@ test("a follow-up operation started inside another still waits its turn", async 
   await followup;
   expect(ran).toBe(true);
 });
+
+test("an uncertain writer returns failure while retaining its existing checkout lease", async () => {
+  const root = repository();
+  const result = await withMemoryOperation(
+    root,
+    async () => ({ success: false, cleanupUnconfirmed: true }),
+    undefined,
+    (result) => result.cleanupUnconfirmed,
+  );
+  expect(result.success).toBe(false);
+  expect(await claimMemoryOperation(root, { timeoutMs: 20 })).toBeNull();
+  const child = claimFromChild(root);
+  expect(await child.exited).toBe(0);
+  expect((await new Response(child.stdout).text()).trim()).toBe("true");
+});
+
+test("a confirmed failure releases its checkout lease", async () => {
+  const root = repository();
+  await withMemoryOperation(
+    root,
+    async () => ({ success: false, cleanupUnconfirmed: false }),
+    undefined,
+    (result) => result.cleanupUnconfirmed,
+  );
+  const release = await claimMemoryOperation(root);
+  expect(release).not.toBeNull();
+  await release?.();
+});

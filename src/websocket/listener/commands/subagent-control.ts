@@ -27,6 +27,7 @@ import { getConversationWorkingDirectory } from "@/websocket/listener/cwd";
 import type { ConversationRuntime } from "@/websocket/listener/types";
 
 const DEDUPE_TTL_MS = 30_000;
+const STOP_SETTLEMENT_TIMEOUT_MS = 5_000;
 const responses = new Map<
   string,
   { expiresAt: number; response: Promise<SubagentMessageResponse> }
@@ -231,6 +232,7 @@ export async function handleSubagentMessageCommand(
 export async function handleSubagentStopCommand(
   command: SubagentStopCommand,
   parent: ConversationRuntime,
+  options: { settlementTimeoutMs?: number } = {},
 ): Promise<SubagentStopResponse> {
   const base: SubagentStopResponse = {
     type: "subagent_stop_response",
@@ -252,8 +254,43 @@ export async function handleSubagentStopCommand(
   if (task.status !== "running") return { ...base, success: true };
   if (!task.abortController)
     return { ...base, error: "Subagent could not be stopped" };
+  // The abort signal requests cancellation. Only the task's terminal evidence
+  // confirms stopped work; a persistent provider server may remain reusable.
+  const completion = task.completion;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const settlement = completion
+    ? Promise.race([
+        completion,
+        new Promise<never>((_, reject) => {
+          timeout = setTimeout(
+            () =>
+              reject(
+                new Error(
+                  "Cancellation requested; work settlement not confirmed",
+                ),
+              ),
+            options.settlementTimeoutMs ?? STOP_SETTLEMENT_TIMEOUT_MS,
+          );
+        }),
+      ])
+    : undefined;
   task.abortController.abort(new Error("Stopped by remote parent"));
-  return { ...base, success: true, stopped: true };
+  try {
+    if (!settlement)
+      return {
+        ...base,
+        error: "Cancellation requested; task settlement is unavailable",
+      };
+    await settlement;
+    return { ...base, success: true, stopped: true };
+  } catch (error) {
+    return {
+      ...base,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export function __resetSubagentControlDedupeForTests(): void {

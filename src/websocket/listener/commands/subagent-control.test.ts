@@ -307,7 +307,37 @@ describe("remote external subagent control", () => {
     expect(captures).toBe(2);
   });
 
-  test("stops the owning background task", async () => {
+  test("acknowledges stop only after the owning background work settles", async () => {
+    const { parent, abortController } = fixture();
+    let finish!: () => void;
+    const task = backgroundTasks.get("task-1");
+    if (!task) throw new Error("Missing fixture task");
+    task.completion = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    let settled = false;
+    const stopping = handleSubagentStopCommand(
+      {
+        type: "subagent_stop",
+        request_id: "stop",
+        runtime,
+        agent_id: nativeId,
+      },
+      parent,
+    ).then((response) => {
+      settled = true;
+      return response;
+    });
+    await Bun.sleep(0);
+    expect(abortController.signal.aborted).toBe(true);
+    expect(settled).toBe(false);
+    finish();
+    const response = await stopping;
+    expect(response).toMatchObject({ success: true, stopped: true });
+    expect(abortController.signal.aborted).toBe(true);
+  });
+
+  test("does not claim stop when task settlement is unavailable", async () => {
     const { parent, abortController } = fixture();
     const response = await handleSubagentStopCommand(
       {
@@ -318,7 +348,44 @@ describe("remote external subagent control", () => {
       },
       parent,
     );
-    expect(response).toMatchObject({ success: true, stopped: true });
     expect(abortController.signal.aborted).toBe(true);
+    expect(response).toMatchObject({ success: false, stopped: false });
+    expect(response.error).toContain("settlement is unavailable");
+  });
+
+  test("does not claim stop when settlement fails or times out", async () => {
+    for (const failure of [true, false]) {
+      const { parent, abortController } = fixture();
+      const task = backgroundTasks.get("task-1");
+      if (!task) throw new Error("Missing fixture task");
+      task.completion = new Promise<void>((resolve, reject) => {
+        abortController.signal.addEventListener(
+          "abort",
+          () => {
+            if (failure) reject(new Error("cleanup failed"));
+            else setTimeout(resolve, 30);
+          },
+          { once: true },
+        );
+      });
+      const response = await handleSubagentStopCommand(
+        {
+          type: "subagent_stop",
+          request_id: "stop",
+          runtime,
+          agent_id: nativeId,
+        },
+        parent,
+        { settlementTimeoutMs: 5 },
+      );
+      expect(response).toMatchObject({ success: false, stopped: false });
+      expect(response.error).toContain(
+        failure ? "cleanup failed" : "not confirmed",
+      );
+      expect(task.status).toBe("running");
+      await task.completion.catch(() => undefined);
+      clearAllSubagents();
+      backgroundTasks.clear();
+    }
   });
 });

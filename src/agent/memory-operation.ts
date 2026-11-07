@@ -47,13 +47,20 @@ export async function withMemoryOperation<T>(
   memoryDir: string,
   operation: () => Promise<T>,
   signal?: AbortSignal,
+  /** Retain the existing lease when a returned result cannot confirm writer cleanup. */
+  retainLeaseWhen?: (result: T) => boolean,
 ): Promise<T> {
   const release = await claimMemoryOperation(memoryDir, { wait: true, signal });
   if (!release) throw new Error("Failed to acquire memory checkout");
+  let retainLease = false;
   try {
     signal?.throwIfAborted();
-    return await operation();
+    const result = await operation();
+    retainLease = retainLeaseWhen?.(result) === true;
+    return result;
   } finally {
-    await release();
+    // This hold belongs to the parent PID/start time. Dead-owner reaping is
+    // unchanged and does not establish that an uncertain child has stopped.
+    if (!retainLease) await release();
   }
 }

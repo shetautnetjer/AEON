@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { PassThrough } from "node:stream";
+import { SubagentProcessCleanupError } from "@/agent/subagents/subagent-process";
 import {
   __resetClaudeSessionsForTests,
   buildClaudeStreamArgs,
@@ -10,7 +11,7 @@ import {
 
 const SESSION_ID = "11111111-1111-4111-8111-111111111111";
 
-function transportFixture() {
+function transportFixture(finishOnEnd = true) {
   const stdin = new PassThrough();
   const stdout = new PassThrough();
   const stderr = new PassThrough();
@@ -32,7 +33,8 @@ function transportFixture() {
     ended = true;
     return originalEnd(...args);
   }) as typeof stdin.end;
-  stdin.on("finish", () => finish({ exitCode: 0, exitSignal: null }));
+  if (finishOnEnd)
+    stdin.on("finish", () => finish({ exitCode: 0, exitSignal: null }));
   const transport: ClaudeSessionTransport = {
     process: { stdin, stdout, stderr } as ClaudeSessionTransport["process"],
     completion,
@@ -64,6 +66,58 @@ const base = { parentAgentId: "parent", cwd: "/repo" };
 afterEach(() => __resetClaudeSessionsForTests());
 
 describe("Claude stream sessions", () => {
+  test("uncertain cleanup retains the exact session and refuses continuation without spawning", async () => {
+    const fixture = transportFixture();
+    let failCleanup!: (error: Error) => void;
+    const completion = new Promise<{
+      exitCode: number | null;
+      exitSignal: NodeJS.Signals | null;
+    }>((_, reject) => {
+      failCleanup = reject;
+    });
+    const running = runClaudeTurn(
+      { ...base, prompt: "fixture", sessionId: SESSION_ID },
+      { createTransport: () => ({ ...fixture.transport, completion }) },
+    );
+    await Bun.sleep(0);
+    fixture.emit({
+      type: "result",
+      result: "partial evidence",
+      is_error: false,
+    });
+    failCleanup(new SubagentProcessCleanupError("cleanup unconfirmed"));
+    expect(await running).toMatchObject({
+      success: false,
+      cleanupUnconfirmed: true,
+      runtimeSessionId: SESSION_ID,
+      report: "partial evidence",
+    });
+    let replacementSpawns = 0;
+    const deps = {
+      createTransport: () => {
+        replacementSpawns++;
+        return transportFixture().transport;
+      },
+    };
+    await expect(
+      sendClaudeMessage(
+        { ...base, prompt: "retry", sessionId: SESSION_ID },
+        deps,
+      ),
+    ).rejects.toBeInstanceOf(SubagentProcessCleanupError);
+    expect(
+      await runClaudeTurn(
+        { ...base, prompt: "retry", resumeSessionId: SESSION_ID },
+        deps,
+      ),
+    ).toMatchObject({
+      success: false,
+      cleanupUnconfirmed: true,
+      runtimeSessionId: SESSION_ID,
+    });
+    expect(replacementSpawns).toBe(0);
+  });
+
   test("launches unattended subagents with bypassed permissions", async () => {
     const args = buildClaudeStreamArgs({ sessionId: SESSION_ID });
     expect(args).toContain("--permission-mode");
@@ -200,6 +254,79 @@ describe("Claude stream sessions", () => {
     fixture.emit({ type: "result", is_error: false, result: "done" });
     expect(await running).toMatchObject({ success: true, report: "done" });
     expect(fixture.ended()).toBe(true);
+  });
+
+  test("keeps the task pending until a final result's transport settles", async () => {
+    const fixture = transportFixture(false);
+    let settled = false;
+    const running = runClaudeTurn(
+      { ...base, prompt: "work", sessionId: SESSION_ID },
+      { createTransport: () => fixture.transport },
+    ).then((result) => {
+      settled = true;
+      return result;
+    });
+    await Bun.sleep(0);
+    fixture.emit({ type: "result", is_error: false, result: "done" });
+    await Bun.sleep(0);
+    expect(fixture.ended()).toBe(true);
+    expect(settled).toBe(false);
+    fixture.finish({ exitCode: 0, exitSignal: null });
+    expect(await running).toMatchObject({ success: true, report: "done" });
+  });
+
+  test("a final result racing cancellation preserves evidence but cannot succeed", async () => {
+    const fixture = transportFixture(false);
+    const controller = new AbortController();
+    let settled = false;
+    const running = runClaudeTurn(
+      {
+        ...base,
+        prompt: "work",
+        sessionId: SESSION_ID,
+        signal: controller.signal,
+      },
+      { createTransport: () => fixture.transport },
+    ).then((result) => {
+      settled = true;
+      return result;
+    });
+    await Bun.sleep(0);
+    controller.abort(new Error("cancelled by parent"));
+    fixture.emit({
+      type: "result",
+      is_error: false,
+      result: "partial evidence",
+    });
+    await Bun.sleep(0);
+    expect(settled).toBe(false);
+    fixture.finish({ exitCode: 0, exitSignal: null });
+    expect(await running).toMatchObject({
+      agentId: `claude_${SESSION_ID}`,
+      runtimeSessionId: SESSION_ID,
+      success: false,
+      error: "cancelled by parent",
+      report: "partial evidence",
+    });
+  });
+
+  test("a final result followed by unsuccessful transport exit cannot succeed", async () => {
+    const fixture = transportFixture(false);
+    const running = runClaudeTurn(
+      { ...base, prompt: "work", sessionId: SESSION_ID },
+      { createTransport: () => fixture.transport },
+    );
+    await Bun.sleep(0);
+    fixture.emit({
+      type: "result",
+      is_error: false,
+      result: "partial evidence",
+    });
+    fixture.finish({ exitCode: 1, exitSignal: null });
+    expect(await running).toMatchObject({
+      success: false,
+      report: "partial evidence",
+    });
   });
 
   test("idle concurrent sends start one resume and serialize the second steer", async () => {
@@ -399,39 +526,65 @@ describe("Claude stream sessions", () => {
     expect(await receipt.completion).toMatchObject({ success: false });
   });
 
-  test("startup write failure aborts and awaits the child process", async () => {
-    const fixture = transportFixture();
-    let aborted = false;
-    fixture.stdin.write = ((
-      _chunk: unknown,
-      callback?: (error?: Error | null) => void,
-    ) => {
-      queueMicrotask(() => callback?.(new Error("write failed")));
-      return false;
-    }) as typeof fixture.stdin.write;
-    const result = await runClaudeTurn(
-      { ...base, prompt: "work", sessionId: SESSION_ID },
-      {
-        createTransport: (options) => {
-          options.signal?.addEventListener(
-            "abort",
-            () => {
-              aborted = true;
-              fixture.transport.wasAborted = () => true;
-              fixture.finish({ exitCode: null, exitSignal: "SIGTERM" });
-            },
-            { once: true },
-          );
-          return fixture.transport;
+  test.each([false, true])(
+    "startup write failure waits for cleanup (unconfirmed: %s)",
+    async (cleanupUnconfirmed) => {
+      const fixture = transportFixture();
+      let failCleanup!: (error: Error) => void;
+      if (cleanupUnconfirmed)
+        fixture.transport.completion = new Promise((_, reject) => {
+          failCleanup = reject;
+        });
+      let aborted = false;
+      fixture.stdin.write = ((
+        _chunk: unknown,
+        callback?: (error?: Error | null) => void,
+      ) => {
+        queueMicrotask(() => callback?.(new Error("write failed")));
+        return false;
+      }) as typeof fixture.stdin.write;
+      const result = await runClaudeTurn(
+        { ...base, prompt: "work", sessionId: SESSION_ID },
+        {
+          createTransport: (options) => {
+            options.signal?.addEventListener(
+              "abort",
+              () => {
+                aborted = true;
+                fixture.transport.wasAborted = () => true;
+                if (cleanupUnconfirmed)
+                  failCleanup(
+                    new SubagentProcessCleanupError(
+                      "fixture cleanup unconfirmed",
+                    ),
+                  );
+                else fixture.finish({ exitCode: null, exitSignal: "SIGTERM" });
+              },
+              { once: true },
+            );
+            return fixture.transport;
+          },
         },
-      },
-    );
-    expect(result).toMatchObject({
-      success: false,
-      error: expect.stringContaining("write failed"),
-    });
-    expect(aborted).toBe(true);
-  });
+      );
+      expect(result).toMatchObject({
+        success: false,
+        error: expect.stringContaining(
+          cleanupUnconfirmed ? "cleanup unconfirmed" : "write failed",
+        ),
+      });
+      expect(aborted).toBe(true);
+      if (cleanupUnconfirmed) {
+        expect(result.cleanupUnconfirmed).toBe(true);
+        await expect(
+          sendClaudeMessage({
+            ...base,
+            prompt: "retry",
+            sessionId: SESSION_ID,
+          }),
+        ).rejects.toBeInstanceOf(SubagentProcessCleanupError);
+      }
+    },
+  );
 
   test("replacement write failure aborts after an acknowledged interrupt", async () => {
     const fixture = transportFixture();
