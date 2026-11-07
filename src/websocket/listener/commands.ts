@@ -18,6 +18,7 @@ import {
   gatherInitGitContext,
 } from "@/cli/helpers/init-command";
 import { getReflectionSettings } from "@/cli/helpers/memory-reminder";
+import { launchMultiReflection } from "@/cli/helpers/multi-reflection-launch";
 import { parseReflectCommandArgs } from "@/cli/helpers/reflect-command";
 import { launchReflectionSubagent } from "@/cli/helpers/reflection-launcher";
 import { buildModCommandPrompt } from "@/cli/mods/command-runtime";
@@ -806,10 +807,53 @@ async function handleReflectCommand(
   );
   if (output !== null) return output;
   const parsed = parseReflectCommandArgs(`/reflect ${args}`);
-  if (parsed.kind !== "single") {
+  if (parsed.kind === "auto") {
     throw new Error(
-      "The remote listener supports only the current conversation and --instruction. Use the TUI for --recent, --conversation, or --auto with Code-managed reflection.",
+      "The remote listener supports the current conversation, --recent and --conversation. Use the TUI for --auto with Code-managed reflection.",
     );
+  }
+  if (parsed.kind === "recent" || parsed.kind === "conversations") {
+    if (!settingsManager.isMemfsEnabled(agentId)) {
+      return "Reflection needs the memory filesystem to be enabled for this agent.";
+    }
+    const multi = await launchMultiReflection({
+      agentId,
+      conversationId,
+      selection:
+        parsed.kind === "recent"
+          ? { kind: "recent", limit: parsed.limit }
+          : { kind: "conversations", conversationIds: parsed.conversationIds },
+      instruction: parsed.instruction,
+      actingUserId,
+      recompileByConversation: listener.systemPromptRecompileByConversation,
+      recompileQueuedByConversation:
+        listener.queuedSystemPromptRecompileByConversation,
+      onComplete: async (completionMessage) => {
+        emitCanonicalMessageDelta(
+          socket,
+          conversationRuntime,
+          {
+            type: "message",
+            id: `user-msg-${crypto.randomUUID()}`,
+            date: new Date().toISOString(),
+            message_type: "user_message",
+            content: [
+              {
+                type: "text",
+                text: `<task-notification><summary>${escapeTaskNotificationSummary(completionMessage)}</summary></task-notification>`,
+              },
+            ],
+          } as StreamDelta,
+          { agent_id: agentId, conversation_id: conversationId },
+        );
+      },
+    });
+    if (multi.launched) {
+      return `Started a reflection pass over ${multi.transcriptCount} conversation(s). Payload: ${multi.payloadPath}`;
+    }
+    return multi.reason === "already_active"
+      ? "A reflection agent is already running for this agent."
+      : "No transcript content found for the selected conversations.";
   }
   const result = await launchReflectionSubagent(
     {
