@@ -96,5 +96,8 @@ already supplies this setting.
 
 Windows taskkill behavior, live Claude/Codex providers, remote deployment, and
 cross-restart child reconciliation were not qualified by this source candidate.
-The parent implementation branch must still combine this change with worker
-limits, run the full required checks and review before adoption.
+The preceding commands/counts describe the author candidate before integration.
+The parent subsequently integrated it as `fbec9d06a` on top of worker limits,
+completed the required source checks, 438 targeted tests, the native fixture,
+build and 14 built-entrypoint tests. See the current
+[combined qualification](../worker-execution.md). Live adoption remains separate.
