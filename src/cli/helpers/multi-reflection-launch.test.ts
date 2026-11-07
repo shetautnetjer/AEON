@@ -73,6 +73,18 @@ describe("launchMultiReflection", () => {
     });
   });
 
+  test("releases the reservation when building the payload throws", async () => {
+    const { state, deps } = fakeDeps(null);
+    deps.buildPayload = async () => {
+      throw new Error("payload failed");
+    };
+    await expect(launchMultiReflection(base, deps)).rejects.toThrow(
+      "payload failed",
+    );
+    expect(state.reserved).toBe(false);
+    expect(state.spawned).toBeNull();
+  });
+
   test("holds the reservation until the merge finishes, then releases it", async () => {
     const { state, deps } = fakeDeps({
       payloadPath: "/p.json",
@@ -116,6 +128,48 @@ describe("launchMultiReflection", () => {
       ).rejects.toThrow(`Invalid conversation ID: ${id}`);
       expect(built).toBe(false);
       expect(state.reserved).toBe(false);
+    },
+  );
+
+  test.each([false, true])(
+    "retains reservation and manifest on unconfirmed cleanup even if notification rejects: %s",
+    async (notificationRejects) => {
+      const { state, deps } = fakeDeps({
+        payloadPath: "/p.json",
+        manifest: { transcripts: [{}] },
+      });
+      deps.finalizeWorktree = async () =>
+        ({
+          completionSuccess: false,
+          completionMessage: "Cleanup is unconfirmed; worktree retained.",
+          cleanupUnconfirmed: true,
+        }) as Awaited<
+          ReturnType<MultiReflectionLaunchDeps["finalizeWorktree"]>
+        >;
+      await launchMultiReflection(
+        {
+          ...base,
+          onComplete: async (message, success) => {
+            expect(success).toBe(false);
+            expect(message).toContain("unconfirmed");
+            state.calls.push("notify");
+            if (notificationRejects) throw new Error("notification failed");
+          },
+        },
+        deps,
+      );
+      const completion = state.spawned?.onComplete?.({
+        success: true,
+      } as never);
+      if (notificationRejects)
+        await expect(completion).rejects.toThrow("notification failed");
+      else await completion;
+      expect(state.calls).toEqual(["notify"]);
+      expect(state.reserved).toBe(true);
+      expect(await launchMultiReflection(base, deps)).toEqual({
+        launched: false,
+        reason: "already_active",
+      });
     },
   );
 

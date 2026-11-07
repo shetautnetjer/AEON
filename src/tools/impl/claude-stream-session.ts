@@ -5,6 +5,7 @@ import type { Writable } from "node:stream";
 import type { SubagentResult } from "@/agent/subagents";
 import {
   type RunningSubagentProcess,
+  SubagentProcessCleanupError,
   spawnManagedWorkloadProcess,
 } from "@/agent/subagents/subagent-process";
 import {
@@ -40,10 +41,12 @@ interface ClaudeSession {
   report: string;
   protocolError?: string;
   settled: boolean;
+  cleanupError?: SubagentProcessCleanupError;
   pendingSteers: number;
   interruptible: boolean;
   awaitingReplacementStart: boolean;
   suppressedResult?: Record<string, unknown>;
+  finalResult?: Record<string, unknown>;
   resultCount: number;
   turnWaiters: Set<TurnWaiter>;
   writeLock: Promise<void>;
@@ -170,6 +173,9 @@ function failResult(session: ClaudeSession, error: unknown): SubagentResult {
     report: session.report,
     success: false,
     error: errorMessage(error),
+    ...(error instanceof SubagentProcessCleanupError && {
+      cleanupUnconfirmed: true,
+    }),
     durationMs: Date.now() - session.startedAt,
   };
 }
@@ -239,7 +245,11 @@ function settle(session: ClaudeSession, result: SubagentResult): void {
   if (session.settled) return;
   session.settled = true;
   session.removeUpstreamAbort();
-  if (sessions.get(session.sessionId) === session)
+  if (result.cleanupUnconfirmed)
+    session.cleanupError = new SubagentProcessCleanupError(
+      result.error ?? "Claude process cleanup is unconfirmed",
+    );
+  else if (sessions.get(session.sessionId) === session)
     sessions.delete(session.sessionId);
   const completedError = new Error("Claude Code session completed");
   rejectControls(session, completedError);
@@ -350,12 +360,10 @@ function settleResult(
   value: Record<string, unknown>,
 ): void {
   if (typeof value.result === "string") session.report = value.result;
+  // A final line is not process settlement. Keep cancellation connected until
+  // the owned transport completes, including any process-group cleanup.
+  session.finalResult = value;
   closeInput(session);
-  if (value.is_error === true) {
-    settle(session, failResult(session, value.result ?? "Claude Code failed"));
-  } else {
-    settle(session, successResult(session));
-  }
 }
 
 function handleResult(
@@ -471,6 +479,17 @@ async function launchSession(
   transport.completion
     .then(({ exitCode, exitSignal }) => {
       if (session.settled) return;
+      const aborted = abortController.signal.aborted || transport.wasAborted();
+      if (!aborted && exitCode === 0 && session.finalResult) {
+        const value = session.finalResult;
+        settle(
+          session,
+          value.is_error === true
+            ? failResult(session, value.result ?? "Claude Code failed")
+            : successResult(session),
+        );
+        return;
+      }
       const detail = session.stderr.trim();
       const protocolDetail = session.protocolError
         ? `; protocol error: ${session.protocolError}`
@@ -479,9 +498,9 @@ async function launchSession(
         exitCode === 143 || exitSignal === "SIGTERM" || exitSignal === "SIGKILL"
           ? "; possibly out of memory"
           : "";
-      const error = transport.wasAborted()
+      const error = aborted
         ? (abortController.signal.reason ?? "Claude Code turn cancelled")
-        : `Claude Code exited before a final result with ${exitCode ?? exitSignal ?? "unknown status"}${oomDetail}${detail ? `: ${detail}` : ""}${protocolDetail}`;
+        : `Claude Code exited ${session.finalResult ? "after a final result" : "before a final result"} with ${exitCode ?? exitSignal ?? "unknown status"}${oomDetail}${detail ? `: ${detail}` : ""}${protocolDetail}`;
       rejectControls(session, new Error(errorMessage(error)));
       settle(session, failResult(session, error));
     })
@@ -492,9 +511,9 @@ async function launchSession(
   try {
     await writeInput(transport.process.stdin, options.prompt);
   } catch (error) {
-    settle(session, failResult(session, error));
     abortController.abort(error);
-    await transport.completion.catch(() => undefined);
+    // Cleanup uncertainty takes precedence over the original write failure.
+    await transport.completion;
     throw error;
   }
   options.onStarted?.(sessionId);
@@ -508,6 +527,7 @@ async function startSession(
   const key = options.resumeSessionId ?? options.sessionId;
   if (key) {
     const active = sessions.get(key);
+    if (active?.cleanupError) throw active.cleanupError;
     if (active && !active.settled) return active;
   }
   return launchSession(options, deps);
@@ -537,6 +557,9 @@ export async function runClaudeTurn(
       report: "",
       success: false,
       error: errorMessage(error),
+      ...(error instanceof SubagentProcessCleanupError && {
+        cleanupUnconfirmed: true,
+      }),
     };
   }
 }
@@ -591,7 +614,7 @@ async function steerSession(
       session.pendingSteers = Math.max(0, session.pendingSteers - 1);
       if (interruptAcknowledged) {
         session.abortController.abort(error);
-        await session.transport.completion.catch(() => undefined);
+        await session.transport.completion;
       } else if (session.suppressedResult) {
         const suppressed = session.suppressedResult;
         session.suppressedResult = undefined;
@@ -623,6 +646,7 @@ export async function sendClaudeMessage(
 ): Promise<ClaudeMessageReceipt> {
   options.signal?.throwIfAborted();
   const active = sessions.get(options.sessionId);
+  if (active?.cleanupError) throw active.cleanupError;
   if (active && !active.settled) {
     try {
       await steerSession(active, options.prompt, options.signal);

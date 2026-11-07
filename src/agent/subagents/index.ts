@@ -82,6 +82,8 @@ export interface SubagentResult {
   report: string;
   success: boolean;
   error?: string;
+  /** Internal execution evidence: failed cleanup must not acknowledge stopped work. */
+  cleanupUnconfirmed?: boolean;
   totalTokens?: number;
   stepCount?: number;
   durationMs?: number;

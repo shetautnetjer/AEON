@@ -50,6 +50,8 @@ export interface SdkSpawnerConfig {
   retrieveConversation?: (id: string) => Promise<WorkerConversation>;
   /** Latest persisted conversation run (injected for focused tests). */
   latestRun?: (id: string) => Promise<WorkerRun | null>;
+  /** Bound the wait for a terminal result after requesting interruption. */
+  stopSettlementTimeoutMs?: number;
 }
 
 export interface WorkerConversation {
@@ -248,6 +250,7 @@ function createToolCallGuard(maxToolCalls: number): {
 }
 
 interface DrainedTurn {
+  terminal: boolean;
   finalText: string;
   success: boolean;
   error?: string;
@@ -291,6 +294,7 @@ async function drainTurn(
   let error: string | undefined;
   let structuredOutput: unknown;
   let startedNotified = false;
+  let terminal = false;
   const guard = createToolCallGuard(maxToolCalls);
   for await (const message of query) {
     // The SDK sends loop_status before inference, not an init message.
@@ -322,9 +326,18 @@ async function drainTurn(
       if (reason) stop(reason);
     }
     if (message.type === "result") {
-      success = message.success === true;
+      terminal =
+        typeof message.success === "boolean" &&
+        message.stopReason !== "requires_approval" &&
+        message.stopReason !== "stream_closed" &&
+        message.errorCode !== "stream_closed" &&
+        message.error !== "stream_closed";
+      success = terminal && message.success === true;
       resultText = message.result;
-      error = message.errorDetail ?? message.error ?? message.errorCode;
+      error =
+        message.stopReason === "requires_approval"
+          ? "Worker is waiting for tool approval; cleanup is unconfirmed"
+          : (message.errorDetail ?? message.error ?? message.errorCode);
       structuredOutput = message.structuredOutput;
     }
   }
@@ -334,6 +347,7 @@ async function drainTurn(
     error,
     structuredOutput,
     totalTokens: usage.totalTokens,
+    terminal,
   };
 }
 
@@ -423,6 +437,7 @@ export function createSdkSpawner(
 ): SubagentSpawner {
   const activeResumeIds = new Set<string>();
   const locallyCompletedIds = new Set<string>();
+  const uncertainIds = new Set<string>();
   return async (
     request: SubagentRequest,
     signal: AbortSignal,
@@ -430,6 +445,11 @@ export function createSdkSpawner(
   ): Promise<SubagentOutcome> => {
     const { prompt, options } = request;
     const resumeId = options.conversationId;
+    if (resumeId && uncertainIds.has(resumeId)) {
+      throw new Error(
+        "Worker cleanup is unconfirmed; reconcile it before continuing.",
+      );
+    }
     if (
       resumeId !== undefined &&
       !/^(?:conv-|local-conv-)[A-Za-z0-9_-]+$/.test(resumeId)
@@ -571,27 +591,42 @@ export function createSdkSpawner(
         "SDK resumed an unexpected worker conversation; refusing continuation.",
       );
     }
-    // Stopping early (abort, timeout, runaway) interrupts the turn and
-    // settles the outcome; the stream drain then ends on its own.
+    // An interrupt acknowledgment is not terminal evidence. Keep draining
+    // until the native result, or return an explicitly unknown cleanup state.
     let settleStopped!: (turn: DrainedTurn) => void;
     const stopped = new Promise<DrainedTurn>((resolve) => {
       settleStopped = resolve;
     });
     let finished = false;
+    let stopReason: string | undefined;
+    let stopTimer: ReturnType<typeof setTimeout> | undefined;
+    const interrupt = () => {
+      try {
+        void query.interrupt().catch(() => undefined);
+      } catch {
+        /* Settlement remains unknown. */
+      }
+    };
     const stop = (reason: string) => {
       if (finished) return;
       finished = true;
-      void query.interrupt().catch(() => undefined);
-      query.close();
-      settleStopped({
-        finalText: "",
-        success: false,
-        error: reason,
-        totalTokens: usage.totalTokens,
-      });
+      stopReason = reason;
+      interrupt();
+      stopTimer = setTimeout(
+        () =>
+          settleStopped({
+            finalText: "",
+            success: false,
+            error: reason,
+            totalTokens: usage.totalTokens,
+            terminal: false,
+          }),
+        config.stopSettlementTimeoutMs ?? 5_000,
+      );
     };
     const abort = () => stop("Workflow subagent interrupted");
     signal.addEventListener("abort", abort, { once: true });
+    if (signal.aborted) abort();
     const timeoutMs = options.timeoutMs ?? DEFAULT_SUBAGENT_TIMEOUT_MS;
     const timeout = setTimeout(
       () => stop(`Workflow subagent timed out after ${timeoutMs}ms`),
@@ -611,18 +646,20 @@ export function createSdkSpawner(
           (id) => {
             if (resumeId && id !== resumeId) {
               stop("SDK resumed an unexpected worker conversation");
-            } else if (!finished) {
+            } else {
               if (!activeId) {
                 activeId = id;
                 activeResumeIds.add(id);
               }
               hooks?.onStarted?.(id);
+              // SDK queries start lazily; an earlier interrupt may have had no session.
+              if (stopReason) interrupt();
             }
           },
         ),
         stopped,
       ]);
-      if (!finished && query.conversationId) {
+      if (!finished && turn.terminal && query.conversationId) {
         locallyCompletedIds.add(query.conversationId);
       }
       if (resumeId && query.conversationId !== resumeId) {
@@ -639,12 +676,24 @@ export function createSdkSpawner(
           ? { conversationId: query.conversationId }
           : {}),
       };
+      if (stopReason) {
+        if (!turn.terminal && activeId) uncertainIds.add(activeId);
+        return {
+          value: null,
+          failed: true,
+          error: stopReason,
+          ...stats,
+          ...(!turn.terminal ? { cleanupUnconfirmed: true } : {}),
+        };
+      }
       if (!turn.success) {
+        if (!turn.terminal && activeId) uncertainIds.add(activeId);
         const outcome = {
           value: null,
           failed: true,
           error: turn.error ?? "subagent turn failed",
           ...stats,
+          ...(!turn.terminal ? { cleanupUnconfirmed: true } : {}),
         };
         return outcome;
       }
@@ -677,10 +726,12 @@ export function createSdkSpawner(
       const outcome = { value: turn.finalText, failed: false, ...stats };
       return outcome;
     } catch (error) {
+      if (activeId) uncertainIds.add(activeId);
       const outcome = {
         value: null,
         failed: true,
         error: String(error),
+        cleanupUnconfirmed: true,
         ...(query.conversationId || resumeId
           ? { conversationId: query.conversationId ?? resumeId }
           : {}),
@@ -689,6 +740,7 @@ export function createSdkSpawner(
     } finally {
       finished = true;
       clearTimeout(timeout);
+      clearTimeout(stopTimer);
       signal.removeEventListener("abort", abort);
       query.close();
       if (activeId) activeResumeIds.delete(activeId);

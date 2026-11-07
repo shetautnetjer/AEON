@@ -19,6 +19,8 @@
     "skills",
     "vendor",
     "dist/app-server-client.js",
+    "dist/agentrun-worker.js",
+    "dist/agentrun-worker.js.map",
     "dist/app-server-client.js.map",
     "dist/app-server-client.cjs",
     "dist/app-server-client.cjs.map",
@@ -53,6 +55,10 @@
   ],
   "exports": {
     ".": "./letta.js",
+    "./agentrun-worker": {
+      "types": "./dist/types/agentrun-worker.d.ts",
+      "import": "./dist/agentrun-worker.js"
+    },
     "./ask-user-question": {
       "types": "./dist/types/ask-user-question.d.ts",
       "browser": "./dist/ask-user-question.js",
@@ -229,6 +235,9 @@
   },
   "typesVersions": {
     "*": {
+      "agentrun-worker": [
+        "./dist/types/agentrun-worker.d.ts"
+      ],
       "ask-user-question": [
         "./dist/types/ask-user-question.d.ts"
       ],

@@ -3,6 +3,7 @@ import {
   finalizeReflectionMemoryWorktree,
 } from "@/agent/memory-worktree";
 import { finalizeMultiReflectionCompletion } from "@/cli/helpers/reflection-completion";
+import { completeReflectionLaunch } from "@/cli/helpers/reflection-launch-completion";
 import {
   finalizeReflectionMemoryWorktreeLaunch,
   getReflectionMergeLaunchOptions,
@@ -106,13 +107,10 @@ export async function launchMultiReflection(
           agentId: reflectionAgentId,
           model,
         }) => {
-          try {
-            let completionSuccess = false;
-            let completionMessage =
-              "Reflection finalization failed; will retry later.";
-            try {
-              ({ completionSuccess, completionMessage } =
-                await deps.finalizeWorktree({
+          await completeReflectionLaunch({
+            finalize: async () => {
+              try {
+                return await deps.finalizeWorktree({
                   worktree,
                   subagentSuccess: success,
                   subagentError: error,
@@ -128,22 +126,25 @@ export async function launchMultiReflection(
                     params.recompileQueuedByConversation,
                   logRecompileFailure: (message) =>
                     debugWarn("memory", message),
-                }));
-            } catch (error) {
-              debugWarn(
-                "memory",
-                `Reflection finalization failed: ${String(error)}`,
-              );
-            }
-            await deps.finalizeManifest(
-              agentId,
-              payload.manifest,
-              completionSuccess,
-            );
-            await params.onComplete?.(completionMessage, completionSuccess);
-          } finally {
-            deps.release(agentId);
-          }
+                });
+              } catch (error) {
+                debugWarn(
+                  "memory",
+                  `Reflection finalization failed: ${String(error)}`,
+                );
+                return {
+                  completionSuccess: false,
+                  completionMessage:
+                    "Reflection finalization failed; will retry later.",
+                };
+              }
+            },
+            finalizeTranscript: (success) =>
+              deps.finalizeManifest(agentId, payload.manifest, success),
+            notify: ({ completionMessage, completionSuccess }) =>
+              params.onComplete?.(completionMessage, completionSuccess),
+            release: () => deps.release(agentId),
+          });
         },
       });
     } catch (error) {

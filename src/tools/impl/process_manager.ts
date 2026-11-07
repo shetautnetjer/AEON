@@ -63,7 +63,11 @@ export interface BackgroundTask {
   startTime: Date;
   outputFile: string;
   abortController?: AbortController;
-  /** Resolves once the local subagent launcher and its process tree have stopped. */
+  /**
+   * Resolves when task execution settles (including memory integration for
+   * memory tasks). Native CLI processes include their transport completion;
+   * a reusable provider app-server may remain alive after its turn stops.
+   */
   completion?: Promise<void>;
   /** Runs on another computer or in Cloud; stopping it must cancel Cloud. */
   remote?: boolean;

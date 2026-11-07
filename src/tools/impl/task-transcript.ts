@@ -53,6 +53,6 @@ export function writeTaskTranscriptResult(
 
   appendToOutputFile(
     outputFile,
-    `${header ? `${header}\n\n` : ""}[error] ${result.error || "Subagent execution failed"}\n\n[Task failed]\n`,
+    `${header ? `${header}\n\n` : ""}${!reportAlreadyWritten && result.report ? `${result.report}\n\n` : ""}[error] ${result.error || "Subagent execution failed"}\n\n[Task failed]\n`,
   );
 }

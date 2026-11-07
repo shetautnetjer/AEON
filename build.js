@@ -163,6 +163,19 @@ if (process.platform !== "win32") {
 }
 
 await Bun.build({
+  entrypoints: ["./src/agentrun-worker.ts"],
+  outdir: "./dist",
+  target: "node",
+  format: "esm",
+  packages: "external",
+  minify: false,
+  sourcemap: "external",
+  loader: { ".md": "text", ".mdx": "text", ".txt": "text" },
+  define: { LETTA_VERSION: JSON.stringify(version), __USE_MAGICK__: "false" },
+  naming: { entry: "agentrun-worker.js" },
+});
+
+await Bun.build({
   entrypoints: ["./src/app-server-client.ts"],
   outdir: "./dist",
   target: "browser",

@@ -34,6 +34,7 @@ import {
   handleMemorySubagentCompletion,
   type MemorySubagentSuccessMessageOverride,
 } from "@/cli/helpers/memory-subagent-completion";
+import { unconfirmedReflectionCleanup } from "@/cli/helpers/reflection-cleanup";
 import { finalizeAutoReflectionCompletion } from "@/cli/helpers/reflection-completion";
 import { classifyReflectionConfigurationError } from "@/cli/helpers/reflection-configuration-error";
 import {
@@ -43,6 +44,7 @@ import {
   type RunExplicitReflectionIntegration,
   runExplicitReflectionIntegration,
 } from "@/cli/helpers/reflection-integration";
+import { completeReflectionLaunch } from "@/cli/helpers/reflection-launch-completion";
 import { launchReflectionMergeRepair } from "@/cli/helpers/reflection-merge-repair";
 import {
   isReflectionRetryDeferred,
@@ -540,6 +542,7 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
   completionMessage: string;
   shouldNotify: boolean;
   integrationConversationId?: string;
+  cleanupUnconfirmed?: boolean;
 }> {
   const configurationFailure =
     !params.subagentSuccess &&
@@ -553,6 +556,9 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
   }
 
   let integrationRun: ReflectionIntegrationOutcome | undefined;
+  let retainedCleanup:
+    | ReturnType<typeof unconfirmedReflectionCleanup>
+    | undefined;
   const finalizeOptions = () => ({
     shouldMerge: params.subagentSuccess,
     knownNoChanges: params.knownNoChanges,
@@ -574,51 +580,66 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
   // lease: releasing between them would let another process's post-turn sync
   // pull --rebase and rewrite the merge before ancestry is checked.
   let integration = explicitIntegration
-    ? await withMemoryOperation(params.worktree.parentMemoryDir, async () => {
-        integrationRun = await (
-          params.runExplicitIntegration ?? runExplicitReflectionIntegration
-        )({
-          agentId: params.agentId,
-          conversationId: params.conversationId,
-          worktree: params.worktree,
-          instructions: params.mergeInstructions,
-          reflectionSubagentId: params.subagentAgentId,
-        });
-        const result = await finalizeReflectionMemoryWorktreeUnlocked(
-          params.worktree,
-          finalizeOptions(),
-        );
-        // The integration child's own post-turn sync found the lease held and
-        // skipped, and no parent turn may follow; push its verified merge here.
-        if (result.status === "merged") {
-          try {
-            const sync = await (
-              params.syncIntegratedMemory ?? syncPendingMemoryCommitsAfterTurn
-            )(params.agentId, { memoryDir: params.worktree.parentMemoryDir });
-            if (sync.status !== "clean" && sync.status !== "pushed") {
-              debugWarn("reflection", `Integration sync: ${sync.summary}`);
-            }
-          } catch (error) {
-            debugWarn(
-              "reflection",
-              `Integration sync failed: ${String(error)}`,
+    ? await withMemoryOperation(
+        params.worktree.parentMemoryDir,
+        async () => {
+          integrationRun = await (
+            params.runExplicitIntegration ?? runExplicitReflectionIntegration
+          )({
+            agentId: params.agentId,
+            conversationId: params.conversationId,
+            worktree: params.worktree,
+            instructions: params.mergeInstructions,
+            reflectionSubagentId: params.subagentAgentId,
+          });
+          if (integrationRun.cleanupUnconfirmed) {
+            retainedCleanup = unconfirmedReflectionCleanup(
+              params.worktree,
+              integrationRun.error,
+              undefined,
+              integrationRun.conversationId,
             );
+            return retainedCleanup.integration;
           }
-        }
-        return result;
-      })
+          const result = await finalizeReflectionMemoryWorktreeUnlocked(
+            params.worktree,
+            finalizeOptions(),
+          );
+          // The integration child's own post-turn sync found the lease held and
+          // skipped, and no parent turn may follow; push its verified merge here.
+          if (result.status === "merged") {
+            try {
+              const sync = await (
+                params.syncIntegratedMemory ?? syncPendingMemoryCommitsAfterTurn
+              )(params.agentId, { memoryDir: params.worktree.parentMemoryDir });
+              if (sync.status !== "clean" && sync.status !== "pushed") {
+                debugWarn("reflection", `Integration sync: ${sync.summary}`);
+              }
+            } catch (error) {
+              debugWarn(
+                "reflection",
+                `Integration sync failed: ${String(error)}`,
+              );
+            }
+          }
+          return result;
+        },
+        undefined,
+        () => retainedCleanup?.cleanupUnconfirmed === true,
+      )
     : await finalizeReflectionMemoryWorktree(params.worktree, {
         ...finalizeOptions(),
         claimConflictRepair:
           params.claimConflictRepair ?? claimMemoryConflictRepair,
       });
+  if (retainedCleanup) return retainedCleanup;
   // The conflict stays in progress in the parent checkout; hand it to the
   // repair worker with the token claimed under the finalize lease and wait
   // for it, so the transcript is consumed only if the reflection's commits
   // then landed on the parent's HEAD. When no worker can be launched, undo
   // the handoff so the repo is not left mid-merge with nothing working on it.
   if (integration.status === "repair_started") {
-    const repairRan = await launchReflectionMergeRepair(
+    const repair = await launchReflectionMergeRepair(
       {
         agentId: params.agentId,
         conversationId: params.conversationId,
@@ -627,10 +648,16 @@ export async function finalizeReflectionMemoryWorktreeLaunch(params: {
       },
       { spawnMemoryRepair: params.spawnMemoryRepair },
     );
-    integration = repairRan
+    if (repair.cleanupUnconfirmed)
+      return unconfirmedReflectionCleanup(
+        params.worktree,
+        repair.error,
+        integration,
+      );
+    integration = repair.launched
       ? await settleReflectionMergeRepair(integration)
       : await abortReflectionMergeRepair(integration);
-    if (repairRan) await abortUnlandedReflectionMerge(integration);
+    if (repair.launched) await abortUnlandedReflectionMerge(integration);
   }
   const completionSuccess =
     params.subagentSuccess &&
@@ -860,64 +887,67 @@ export async function launchReflectionSubagent(
         stepCount,
         durationMs,
       }) => {
-        try {
-          emitReflectionRunEnd({
-            parentAgentId: agentId,
-            triggerSource,
-            success,
-            subagentId: reflectionAgentId ?? undefined,
-            conversationId,
-            error,
-            stepCount,
-            durationMs,
-            model: reflectionModel,
-            feedbackContext: options.feedbackContext,
-          });
-          const completionConversationId = resolveCompletionConversationId(
-            options.completionConversationId,
-            conversationId,
-          );
-          const {
+        await completeReflectionLaunch({
+          finalize: async () => {
+            emitReflectionRunEnd({
+              parentAgentId: agentId,
+              triggerSource,
+              success,
+              subagentId: reflectionAgentId ?? undefined,
+              conversationId,
+              error,
+              stepCount,
+              durationMs,
+              model: reflectionModel,
+              feedbackContext: options.feedbackContext,
+            });
+            const completionConversationId = resolveCompletionConversationId(
+              options.completionConversationId,
+              conversationId,
+            );
+            return finalizeReflectionMemoryWorktreeLaunch({
+              worktree,
+              subagentSuccess: success,
+              subagentError: error,
+              agentId,
+              conversationId: completionConversationId,
+              subagentAgentId: reflectionAgentId ?? undefined,
+              model: reflectionModel,
+              mergePolicy: reflectionSettings.merge,
+              mergeInstructions: reflectionSettings.mergeInstructions,
+              actingUserId: options.actingUserId,
+              telemetryContext: { triggerSource },
+              recompileByConversation,
+              recompileQueuedByConversation,
+              logRecompileFailure: (message) => debugWarn("memory", message),
+            });
+          },
+          finalizeTranscript: (completionSuccess) =>
+            finalizeAutoReflectionCompletion(
+              agentId,
+              conversationId,
+              autoPayload.payloadPath,
+              autoPayload.endSnapshotLine,
+              autoPayload.endMessageId,
+              completionSuccess,
+            ),
+          notify: async ({
             completionSuccess,
             completionMessage,
             shouldNotify,
             integrationConversationId,
-          } = await finalizeReflectionMemoryWorktreeLaunch({
-            worktree,
-            subagentSuccess: success,
-            subagentError: error,
-            agentId,
-            conversationId: completionConversationId,
-            subagentAgentId: reflectionAgentId ?? undefined,
-            model: reflectionModel,
-            mergePolicy: reflectionSettings.merge,
-            mergeInstructions: reflectionSettings.mergeInstructions,
-            actingUserId: options.actingUserId,
-            telemetryContext: { triggerSource },
-            recompileByConversation,
-            recompileQueuedByConversation,
-            logRecompileFailure: (message) => debugWarn("memory", message),
-          });
-
-          await finalizeAutoReflectionCompletion(
-            agentId,
-            conversationId,
-            autoPayload.payloadPath,
-            autoPayload.endSnapshotLine,
-            autoPayload.endMessageId,
-            completionSuccess,
-          );
-          if (shouldNotify) {
-            await onCompletionMessage?.(completionMessage, {
-              success: completionSuccess,
-              error,
-              reflectionAgentId: reflectionAgentId ?? undefined,
-              integrationConversationId,
-            });
-          }
-        } finally {
-          releaseReflectionLaunch(agentId);
-        }
+          }) => {
+            if (shouldNotify) {
+              await onCompletionMessage?.(completionMessage, {
+                success: completionSuccess,
+                error,
+                reflectionAgentId: reflectionAgentId ?? undefined,
+                integrationConversationId,
+              });
+            }
+          },
+          release: () => releaseReflectionLaunch(agentId),
+        });
       },
     });
     releaseOnComplete = true;
