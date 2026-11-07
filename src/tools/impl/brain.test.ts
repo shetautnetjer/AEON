@@ -4,7 +4,9 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -35,11 +37,13 @@ let original: Array<string | undefined>;
 const fixture = `#!/usr/bin/python3
 import json, pathlib, signal, sys, time
 args = sys.argv[1:]
-home = pathlib.Path(args[3])
+home = pathlib.Path(args[3]).resolve()
 text = sys.stdin.read()
 (home / "invocation.json").write_text(json.dumps({"args": args, "text": text, "pid": __import__("os").getpid()}))
 if args[4] == "drop":
-    if text == "bad-path":
+    if text.startswith("ack:"):
+        print(text[4:])
+    elif text == "bad-path":
         print("/somewhere/else.md")
     else:
         print(home / "inbox/new/aya/20261107T123456123456Z-1234abcd.md")
@@ -198,6 +202,58 @@ test("invalid input and pre-cancellation launch no child", async () => {
   await expect(readFile(join(directory, "invocation.json"))).rejects.toThrow();
 });
 
+test("symlinked Brain home uses the native canonical queue acknowledgement", async () => {
+  const alias = join(directory, "home-alias");
+  await symlink(
+    directory,
+    alias,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  process.env.AEON_BRAIN_HOME = alias;
+  const text = "Exact symlink-home bytes 🦢\n";
+  const result = await brainDrop({ text });
+  expect(result.status).toBe("success");
+  expect(JSON.parse(result.content).path).toBe(
+    join(
+      await realpath(directory),
+      "inbox/new/aya/20261107T123456123456Z-1234abcd.md",
+    ),
+  );
+  const invocation = JSON.parse(
+    await readFile(join(directory, "invocation.json"), "utf8"),
+  );
+  expect(invocation.text).toBe(text);
+  expect(invocation.args[3]).toBe(alias);
+  const lexicalAck = join(
+    alias,
+    "inbox/new/aya/20261107T123456123456Z-1234abcd.md",
+  );
+  expect((await brainDrop({ text: `ack:${lexicalAck}` })).status).toBe("error");
+});
+
+test.each([
+  "inbox/new/other/20261107T123456123456Z-1234abcd.md",
+  "inbox/new/aya/nested/20261107T123456123456Z-1234abcd.md",
+  "inbox/new/aya/../aya/20261107T123456123456Z-1234abcd.md",
+  "inbox/new/aya/20261107T123456Z-1234abcd.md",
+  "inbox/new/aya/20261107T123456123456Z-1234abcg.md",
+  "inbox/new/aya/20261107T123456123456Z-1234abcd.tmp",
+])("drop rejects non-native acknowledgement %s", async (suffix) => {
+  const path = `${await realpath(directory)}/${suffix}`;
+  const result = await brainDrop({ text: `ack:${path}` });
+  expect(result.status).toBe("error");
+  expect(result.content).toContain("invalid queue acknowledgement");
+  expect(result.content).toContain("may already be queued");
+});
+
+test("drop rejects a relative acknowledgement", async () => {
+  const result = await brainDrop({
+    text: "ack:inbox/new/aya/20261107T123456123456Z-1234abcd.md",
+  });
+  expect(result.status).toBe("error");
+  expect(result.content).toContain("invalid queue acknowledgement");
+});
+
 test("deadline stops a SIGINT-ignoring child with no successful result", async () => {
   process.env.AEON_BRAIN_TIMEOUT_MS = "200";
   const started = Date.now();
@@ -212,14 +268,23 @@ test("deadline stops a SIGINT-ignoring child with no successful result", async (
 }, 6000);
 
 // Explicit source opt-in; always uses a disposable vault, never the operator's.
-test.skipIf(!process.env.AEON_BRAIN_TEST_SOURCE)(
-  "actual Brain CLI queues exact bytes and recalls attributed quoted facts",
-  async () => {
+test.skipIf(!process.env.AEON_BRAIN_TEST_SOURCE).each([false, true])(
+  "actual Brain CLI queues exact bytes and recalls attributed quoted facts (symlink home=%s)",
+  async (useAlias) => {
     const source = process.env.AEON_BRAIN_TEST_SOURCE as string;
     const oldPythonPath = process.env.PYTHONPATH;
     process.env.PYTHONPATH = source;
     process.env.AEON_BRAIN_PYTHON = "/usr/bin/python3";
     try {
+      if (useAlias) {
+        const alias = join(directory, "actual-home-alias");
+        await symlink(
+          directory,
+          alias,
+          process.platform === "win32" ? "junction" : "dir",
+        );
+        process.env.AEON_BRAIN_HOME = alias;
+      }
       await mkdir(join(directory, "vault", "projects"), { recursive: true });
       await writeFile(
         join(directory, "vault", "projects", "fixture.md"),
@@ -246,6 +311,9 @@ test.skipIf(!process.env.AEON_BRAIN_TEST_SOURCE)(
       expect(dropped.status).toBe("success");
       const receipt = JSON.parse(String(dropped.toolReturn));
       expect(receipt.status).toBe("queued");
+      expect(
+        receipt.path.startsWith(`${await realpath(directory)}/inbox/new/aya/`),
+      ).toBe(true);
       expect(await readFile(receipt.path, "utf8")).toBe(text);
       const recalled = await executeTool(
         "BrainRecall",

@@ -8,11 +8,17 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+  type CommandFinishedEvent,
+  createCommandRunner,
+} from "@/cli/commands/runner";
 import { settingsManager } from "@/settings-manager";
+import { createBuffers } from "./accumulator";
 import {
   finalizeReflectionArenaChoice,
   type ReflectionArenaRun,
 } from "./reflection-arena";
+import { completeReflectionArenaChoiceCommand } from "./reflection-arena-command";
 import { unconfirmedReflectionCleanup } from "./reflection-cleanup";
 import {
   releaseReflectionLaunch,
@@ -115,6 +121,7 @@ test("unknown integration preserves both candidates, run and frontier, and rejec
   };
   const result = await finalizeReflectionArenaChoice(options, deps);
   expect(result.message).toContain("cleanup is unconfirmed");
+  expect(result).toMatchObject({ cleanupUnconfirmed: true });
   expect(result.run.status).toBe("awaiting_choice");
   expect(JSON.stringify(run)).toBe(before);
   expect(readFileSync(run.payloadPath, "utf8")).toBe(
@@ -176,3 +183,34 @@ test.each([true, false])(
     expect(tryReserveReflectionLaunch(run.agentId)).toBe(true);
   },
 );
+
+test("arena choice command reports uncertain cleanup as failure while retaining the reservation", async () => {
+  const { run, options, first } = fixture();
+  const buffersRef = { current: createBuffers() };
+  const events: CommandFinishedEvent[] = [];
+  const runner = createCommandRunner({
+    buffersRef,
+    refreshDerived() {},
+    createId: () => "arena-command",
+    onCommandFinished: (event) => events.push(event),
+  });
+  const command = runner.start(
+    "/reflect-arena choose fixture-run 1",
+    "Preparing reflection arena...",
+  );
+  await completeReflectionArenaChoiceCommand(command, options, (params) =>
+    finalizeReflectionArenaChoice(params, {
+      loadRun: async () => run,
+      finalize: async () => unconfirmedReflectionCleanup(first.worktree),
+    }),
+  );
+  expect(events).toHaveLength(1);
+  expect(events[0]).toMatchObject({ success: false });
+  expect(events[0]?.output).toContain("cleanup is unconfirmed");
+  expect(buffersRef.current.byId.get(command.id)).toMatchObject({
+    phase: "finished",
+    success: false,
+  });
+  expect(run.status).toBe("awaiting_choice");
+  expect(tryReserveReflectionLaunch(run.agentId)).toBe(false);
+});

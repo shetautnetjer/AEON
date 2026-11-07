@@ -42,6 +42,17 @@ function failure(code: string, message: string): Error {
   return Object.assign(new Error(message), { code, final: true });
 }
 
+function resolveBoundPath(path: string, name: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    throw failure(
+      "AEON_WORKER_CONFIG",
+      `${name} must resolve to an existing path`,
+    );
+  }
+}
+
 /** One worker at a time; callers retain the native journal and its run key. */
 export async function createAgentRunWorkerHost(
   config: AgentRunWorkerConfig,
@@ -83,19 +94,16 @@ export async function createAgentRunWorkerHost(
       "AEON_WORKER_CONFIG",
       "An explicit tool selection is required",
     );
-  const cwd = realpathSync(config.cwd);
+  const cwd = resolveBoundPath(config.cwd, "cwd");
   if (!statSync(cwd).isDirectory())
     throw failure("AEON_WORKER_CONFIG", "Worker cwd must be a directory");
-  const backendDir = realpathSync(config.backendDir);
+  const backendDir = resolveBoundPath(config.backendDir, "backendDir");
   const routePath = (key: string) =>
-    process.env[key] ? realpathSync(process.env[key]) : null;
+    process.env[key] ? resolveBoundPath(process.env[key], key) : null;
   const cliPath = routePath("LETTA_CLI_PATH"),
     sdkPath = routePath("LETTA_AGENT_SDK_PATH");
   const assertBackend = () => {
-    if (
-      !process.env.LETTA_LOCAL_BACKEND_DIR ||
-      realpathSync(process.env.LETTA_LOCAL_BACKEND_DIR) !== backendDir
-    )
+    if (routePath("LETTA_LOCAL_BACKEND_DIR") !== backendDir)
       throw failure(
         "AEON_WORKER_CONFIG",
         "LETTA_LOCAL_BACKEND_DIR must match the explicit backendDir",

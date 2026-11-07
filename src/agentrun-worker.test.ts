@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -10,17 +10,26 @@ import {
 import type { SdkClient, SdkQuery } from "./tools/workflow/types";
 
 const dirs: string[] = [];
-const originalBackend = process.env.LETTA_LOCAL_BACKEND_DIR;
+const routeKeys = [
+  "LETTA_LOCAL_BACKEND_DIR",
+  "LETTA_CLI_PATH",
+  "LETTA_AGENT_SDK_PATH",
+] as const;
+const originalRoutes = routeKeys.map((key) => process.env[key]);
 afterEach(() => {
   for (const dir of dirs.splice(0))
     rmSync(dir, { recursive: true, force: true });
-  if (originalBackend === undefined) delete process.env.LETTA_LOCAL_BACKEND_DIR;
-  else process.env.LETTA_LOCAL_BACKEND_DIR = originalBackend;
+  routeKeys.forEach((key, index) => {
+    if (originalRoutes[index] === undefined) delete process.env[key];
+    else process.env[key] = originalRoutes[index];
+  });
 });
 function config(): AgentRunWorkerConfig {
   const cwd = mkdtempSync(join(tmpdir(), "aeon-agentrun-"));
   dirs.push(cwd);
   process.env.LETTA_LOCAL_BACKEND_DIR = cwd;
+  delete process.env.LETTA_CLI_PATH;
+  delete process.env.LETTA_AGENT_SDK_PATH;
   return {
     cwd,
     backendDir: cwd,
@@ -44,6 +53,88 @@ function request(): AgentRunWorkerRequest {
     step: { sessionId: "logical:step:a1", attempt: 1, earlierSessionIds: [] },
   };
 }
+
+for (const key of routeKeys) {
+  test(`missing ${key} path is a final configuration failure before dispatch`, async () => {
+    const conf = config();
+    process.env[key] = join(conf.cwd, "missing");
+    let queries = 0;
+    await expect(
+      createAgentRunWorkerHost(conf, {
+        client: {
+          query() {
+            queries++;
+            throw new Error("must not dispatch");
+          },
+        },
+      }),
+    ).rejects.toMatchObject({ code: "AEON_WORKER_CONFIG", final: true });
+    expect(queries).toBe(0);
+  });
+
+  test(`removed ${key} path is a final configuration failure on recheck`, async () => {
+    const conf = config();
+    const bound =
+      key === "LETTA_LOCAL_BACKEND_DIR" ? conf.backendDir : join(conf.cwd, key);
+    if (bound !== conf.backendDir) mkdirSync(bound);
+    process.env[key] = bound;
+    let queries = 0;
+    const host = await createAgentRunWorkerHost(conf, {
+      client: {
+        query() {
+          queries++;
+          throw new Error("must not dispatch");
+        },
+      },
+    });
+    rmSync(bound, { recursive: true });
+    await expect(host.runAgent(request())).rejects.toMatchObject({
+      code: "AEON_WORKER_CONFIG",
+      final: true,
+    });
+    expect(queries).toBe(0);
+    await host.close();
+  });
+}
+
+test("unset optional CLI and SDK routes remain null and cannot be added after binding", async () => {
+  const conf = config();
+  const host = await createAgentRunWorkerHost(conf, {
+    client: {
+      query() {
+        throw new Error("must not dispatch");
+      },
+    },
+  });
+  expect(host.workerBinding.cliPath).toBeNull();
+  expect(host.workerBinding.sdkPath).toBeNull();
+  for (const key of routeKeys.slice(1)) {
+    process.env[key] = conf.cwd;
+    await expect(host.runAgent(request())).rejects.toMatchObject({
+      code: "AEON_WORKER_CONFIG",
+      final: true,
+    });
+    delete process.env[key];
+  }
+  await host.close();
+});
+
+test.each(["cwd", "backendDir"] as const)(
+  "missing explicit %s is a final configuration failure",
+  async (key) => {
+    const conf = config();
+    conf[key] = join(conf.cwd, "missing");
+    await expect(
+      createAgentRunWorkerHost(conf, {
+        client: {
+          query() {
+            throw new Error("must not dispatch");
+          },
+        },
+      }),
+    ).rejects.toMatchObject({ code: "AEON_WORKER_CONFIG", final: true });
+  },
+);
 
 test("host binds authority, passes native options, and never resumes the logical DSL session", async () => {
   const conf = config();

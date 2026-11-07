@@ -71,7 +71,6 @@ import { resolveReasoningTabToggleCommand } from "@/cli/helpers/reasoning-tab-to
 import { parseReflectCommandArgs } from "@/cli/helpers/reflect-command";
 import {
   buildReflectionArenaChoiceQuestions,
-  finalizeReflectionArenaChoice,
   formatReflectionArenaAwaitingChoice,
   loadReflectionArenaRun,
   REFLECTION_ARENA_MODEL_A_DEFAULT,
@@ -80,6 +79,7 @@ import {
   sampleReflectionArenaComparisonModel,
   startReflectionArenaRun,
 } from "@/cli/helpers/reflection-arena";
+import { completeReflectionArenaChoiceCommand } from "@/cli/helpers/reflection-arena-command";
 import { launchReflectionArena } from "@/cli/helpers/reflection-arena-launcher";
 import {
   AUTO_REFLECTION_DESCRIPTION,
@@ -2789,7 +2789,7 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
           try {
             const arenaArgs = parseReflectArenaCommandArgs(trimmed);
             if (arenaArgs.kind === "choose") {
-              const { message } = await finalizeReflectionArenaChoice({
+              await completeReflectionArenaChoiceCommand(cmd, {
                 runId: arenaArgs.runId,
                 choice: arenaArgs.choice,
                 notes: arenaArgs.notes,
@@ -2801,7 +2801,6 @@ export function useSubmitHandler(ctx: SubmitHandlerContext) {
                 recompileQueuedByConversation:
                   queuedSystemPromptRecompileByConversationRef.current,
               });
-              cmd.finish(message, true);
               return { submitted: true };
             }
             if (arenaArgs.kind === "resume") {
