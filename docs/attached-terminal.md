@@ -152,3 +152,23 @@ bundle. Startup fixtures isolate HOME, TMPDIR and backend state. Run repository
 `bun run check` as well as affected behavior tests. Offline fixtures do not prove
 live provider behavior; deployment evidence belongs in the owning installation's
 status record (Aya: evolve `aya/chat/STATUS.md`).
+
+### Current-main reconciliation, 2026-11-07
+
+The Herdr branch merged main at `06396884` (daemon reflection PR #13) without
+conflicts. Attached runtime, fixture, dependency and vendored Ink bytes were
+unchanged by that merge. The first combined test run exposed a timing flaw in
+the existing PTY driver: its fixed 600 ms expand key could arrive while the
+initial approval still owned focus. A deliberate 1.2-second child startup
+delay reproduced the same missing-thinking assertion. The driver now waits
+for the rendered `ctrl+t to expand` control, sends the key once and always
+cleans up its owned child. The delayed control passes with every content
+assertion retained; production behavior and the fixture are unchanged.
+
+All 13 source checks, the merged-source build, 35 attached tests and 46
+reflection tests passed. Reflection transport used
+`LETTA_TEST_BUILT_ARTIFACT=1` to include both Bun and built Node. The first
+34-pass/one-failure attached run and the earlier 45-test Bun-only reflection
+run remain in the SUPERAGENT qualification packet. Earlier native Herdr
+readback/lifecycle evidence still applies to the unchanged attached runtime;
+those native pane exercises were not repeated for this test-driver repair.

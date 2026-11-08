@@ -24,3 +24,10 @@ state and external fetches blocked. Node 26.9.0 is below the package's declared
 26.12.1 minimum; this test does not qualify that minimum. No provider call,
 daemon restart, user-session mutation, scheduler activation or memory migration
 was performed. The Entire hosted-review verdict remains a separate merge gate.
+
+Later on 2026-11-07, the owner explicitly changed only Entire's hosted findings
+gate to advisory for AEON. It is no longer a blocking merge gate. Other gates,
+configured review agents, bypass policy and local capture remain unchanged.
+The previous hosted request exhausted its review credits; no current-head
+hosted review is claimed. CodeRabbit incremental checks are configured to skip;
+their `SKIPPED` status is not a current-head review pass.

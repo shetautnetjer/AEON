@@ -14,24 +14,33 @@ fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 30, 90, 0, 0))
 p = subprocess.Popen(['bun', sys.argv[1]], stdin=slave, stdout=slave, stderr=slave, env=os.environ.copy())
 os.close(slave)
 out = bytearray()
-start = time.monotonic()
-deadline = start + 8
+deadline = time.monotonic() + 8
 sent_thinking = False
-while time.monotonic() < deadline:
-    if not sent_thinking and time.monotonic() - start > 0.6:
-        os.write(master, b'\\x14')
-        sent_thinking = True
-    ready, _, _ = select.select([master], [], [], 0.2)
-    if ready:
-        try: out.extend(os.read(master, 65536))
-        except OSError: break
-    if p.poll() is not None and not ready: break
-try: p.wait(timeout=1)
-except subprocess.TimeoutExpired:
-    p.kill(); p.wait(); sys.exit(124)
-os.close(master)
-sys.stdout.buffer.write(out)
-sys.exit(p.returncode)
+result = 124
+try:
+    while time.monotonic() < deadline:
+        ready, _, _ = select.select([master], [], [], 0.2)
+        if ready:
+            try: out.extend(os.read(master, 65536))
+            except OSError: break
+        # Initial approval owns focus. Wait for the actual reasoning control,
+        # not elapsed startup time, before sending its expand key exactly once.
+        if not sent_thinking and b'ctrl+t to expand' in out:
+            os.write(master, b'\\x14')
+            sent_thinking = True
+        if p.poll() is not None and not ready: break
+    try: result = p.wait(timeout=1)
+    except subprocess.TimeoutExpired: pass
+    if result == 0 and not sent_thinking:
+        sys.stderr.write('Thinking expand control was never ready\\n')
+        result = 2
+finally:
+    if p.poll() is None:
+        p.kill()
+        p.wait()
+    os.close(master)
+    sys.stdout.buffer.write(out)
+sys.exit(result)
 `;
   try {
     const child = spawnSync(
