@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import WebSocket from "ws";
+import { observeAttachedHerdr } from "@/cli/attached/attached-herdr";
 import { listAttachedConversations } from "@/cli/attached/attached-list";
 import {
   attachedStateDirectory,
@@ -32,6 +33,7 @@ Inside the terminal, type / for commands or /help for keyboard help.
 Native commands use the server's capabilities; unavailable commands explain why.
 `;
 
+/** Connect the native terminal to an app-server session and report its lifecycle to Herdr when available. */
 export async function runAttachSubcommand(argv: string[]): Promise<number> {
   let options: ReturnType<typeof parseAttachedOptions>;
   try {
@@ -156,6 +158,28 @@ export async function runAttachSubcommand(argv: string[]): Promise<number> {
   };
   let unsubscribe = () => {};
   let framesUnsubscribe = () => {};
+  let intentionalExit = false;
+  const herdr = observeAttachedHerdr(
+    session,
+    {
+      url,
+      tokenFile,
+      cwd: options.cwd ?? process.cwd(),
+      stateDir: stateRoot,
+      color: options.color,
+      verbose: options.verbose,
+      primaryAgentId: process.env.AYA_AGENT_ID,
+    },
+    {
+      ready: false,
+      warn: (reason) =>
+        console.error(
+          reason === "unsupported"
+            ? "Herdr reporting unavailable: this native attach route cannot be represented safely for restore. Chat is unchanged."
+            : "Herdr report was not acknowledged; its displayed state or restore command may be stale. Chat is unchanged.",
+        ),
+    },
+  );
   try {
     save();
     unsubscribe = session.subscribe(() => {
@@ -190,9 +214,18 @@ export async function runAttachSubcommand(argv: string[]): Promise<number> {
     await settingsManager.initialize({ readOnly: true });
     const { render } = await import("ink");
     const { AttachedApp } = await import("@/cli/attached/AttachedApp");
-    const app = render(<AttachedApp session={session} />, {
-      exitOnCtrlC: false,
-    });
+    const app = render(
+      <AttachedApp
+        session={session}
+        onReady={herdr.ready}
+        onIntentionalExit={() => {
+          intentionalExit = true;
+        }}
+      />,
+      {
+        exitOnCtrlC: false,
+      },
+    );
     await app.waitUntilExit();
     return 0;
   } catch (error) {
@@ -201,6 +234,7 @@ export async function runAttachSubcommand(argv: string[]): Promise<number> {
   } finally {
     unsubscribe();
     framesUnsubscribe();
+    await herdr.close(intentionalExit);
     session.close();
   }
 }

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { AppServerSocketLike } from "@/app-server-client";
+import { observeAttachedHerdr } from "./attached-herdr";
 import { AttachedSession } from "./attached-session";
+import type { HerdrReport } from "./herdr-transport";
 
 type Frame = Record<string, unknown> & {
   type: string;
@@ -133,6 +135,77 @@ const connect = () =>
 afterEach(() => {
   FakeSocket.instances = [];
   FakeSocket.hook = undefined;
+});
+
+test("Herdr observes real attached session transitions without input replay or release on server disconnect", async () => {
+  const session = await connect();
+  const socket = required(FakeSocket.instances[0]);
+  const reports: HerdrReport[] = [];
+  const observer = observeAttachedHerdr(
+    session,
+    {
+      url: "ws://127.0.0.1/ws",
+      tokenFile: "/fixture/token",
+      stateDir: "/fixture/state",
+      cwd: "/fixture/workspace",
+      color: true,
+      verbose: false,
+    },
+    {
+      env: {
+        HERDR_ENV: "1",
+        HERDR_PANE_ID: "p",
+        HERDR_SOCKET_PATH: "/fixture/herdr.sock",
+      },
+      invocation: {
+        executable: "/bin/node",
+        entry: "/fixture/letta.js",
+        platform: "linux",
+      },
+      send: async (_path, report) => {
+        reports.push(report);
+        return true;
+      },
+    },
+  );
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+  await tick();
+  expect(reports.at(-1)?.params.state).toBe("idle");
+  socket.receive({
+    ...envelope,
+    type: "update_loop_status",
+    loop_status: {
+      status: "WAITING_FOR_API_RESPONSE",
+      active_run_ids: ["remote-run"],
+      executing_tool_call_ids: [],
+    },
+  });
+  await tick();
+  expect(reports.at(-1)?.params.state).toBe("working");
+  socket.receive({
+    ...envelope,
+    type: "update_loop_status",
+    loop_status: {
+      status: "WAITING_ON_APPROVAL",
+      active_run_ids: ["remote-run"],
+      executing_tool_call_ids: [],
+    },
+  });
+  await tick();
+  expect(reports.at(-1)?.params.state).toBe("blocked");
+  socket.close();
+  await observer.close(false);
+  expect(reports.at(-1)?.params.message).toBe("AEON connection unavailable");
+  expect(reports.every((report) => report.method === "pane.report_agent")).toBe(
+    true,
+  );
+  expect(
+    socket.sent.some((frame) =>
+      ["input", "abort_message", "runtime_start"].includes(frame.type),
+    ),
+  ).toBe(false);
+  expect(reports.at(-1)?.params.resume_argv).toContain("conv");
+  session.close();
 });
 
 describe("attached session", () => {
