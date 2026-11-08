@@ -791,6 +791,10 @@ async function handleChannelsCommand(
     : "Error: ChannelGateway returned an invalid slash-command response.";
 }
 
+/**
+ * Handle remote reflection selections, preferring the cloud owner when available.
+ * Native launches return admission status now and deliver completion separately.
+ */
 async function handleReflectCommand(
   socket: WebSocket,
   conversationRuntime: ConversationRuntime,
