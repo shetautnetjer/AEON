@@ -214,9 +214,13 @@ globalThis.fetch = (input, init) => {
       cutover = false;
       for (const alias of ["dream", "reflect", "reflection"]) {
         frame.command_id = alias;
-        expect(await send("--recent 2")).toMatchObject({
+        expect(await send("--auto")).toMatchObject({
           success: false,
           output: expect.stringContaining("Use the TUI"),
+        });
+        expect(await send("--recent 2")).toMatchObject({
+          success: true,
+          output: expect.stringContaining("memory filesystem"),
         });
         expect(await send('--instruction "remember this"')).toMatchObject({
           success: true,
