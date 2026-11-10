@@ -288,7 +288,7 @@ test.skipIf(!process.env.AEON_BRAIN_TEST_SOURCE).each([false, true])(
       await mkdir(join(directory, "vault", "projects"), { recursive: true });
       await writeFile(
         join(directory, "vault", "projects", "fixture.md"),
-        "---\ntype: project\nstatus: draft\n---\n- Pelican fixture fact [source: test:canonical; added: 2026-11-07; status: superseded; drops: abcdef12]\n",
+        "---\ntype: project\nstatus: draft\n---\n- Retired pelican fixture retiredpelicanonly [source: test:canonical; added: 2026-11-07; status: superseded; drops: abcdef12]\n- Current pelican fixture fact [source: test:canonical; added: 2026-11-07; status: active; drops: abcdef12]\n",
       );
       __testSetBackend(new FakeHeadlessBackend());
       const context = await prepareToolExecutionContextForSpecificTools(
@@ -322,14 +322,53 @@ test.skipIf(!process.env.AEON_BRAIN_TEST_SOURCE).each([false, true])(
       );
       expect(recalled.status).toBe("success");
       const results = JSON.parse(String(recalled.toolReturn)).results;
+      expect(results).toHaveLength(1);
       expect(results[0].path).toBe("projects/fixture.md");
+      expect(results[0].line).toContain("Current pelican fixture fact");
       expect(results[0].document_status).toBe("draft");
       expect(results[0].provenance).toEqual({
         source: ["test:canonical"],
         added: "2026-11-07",
-        status: "superseded",
+        status: "active",
         drops: ["abcdef12"],
       });
+      const retired = await executeTool(
+        "BrainRecall",
+        { query: "retiredpelicanonly", limit: 2 },
+        { toolContextId: context.contextId },
+      );
+      expect(retired.status).toBe("success");
+      const retiredResults = JSON.parse(String(retired.toolReturn)).results;
+      expect(retiredResults).toHaveLength(1);
+      expect(retiredResults[0].provenance.status).toBe("active");
+      expect(retiredResults[0].line).not.toContain("retiredpelicanonly");
+      const history = Bun.spawnSync({
+        cmd: [
+          "/usr/bin/python3",
+          "-m",
+          "brain.cli",
+          "--home",
+          directory,
+          "recall",
+          "--json",
+          "--history",
+          "--",
+          "retiredpelicanonly",
+        ],
+        env: {
+          PATH: process.env.PATH ?? "/usr/bin:/bin",
+          HOME: directory,
+          PYTHONPATH: source,
+          PYTHONNOUSERSITE: "1",
+        },
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      expect(history.exitCode).toBe(0);
+      const historical = JSON.parse(history.stdout.toString());
+      expect(historical).toHaveLength(1);
+      expect(historical[0].line).toContain("retiredpelicanonly");
+      expect(historical[0].provenance.status).toBe("superseded");
       await expect(
         readFile(join(directory, "state", "ledger.sqlite")),
       ).rejects.toThrow();

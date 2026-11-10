@@ -55,6 +55,17 @@ output without structured metadata maps to null. Unknown status strings stay
 literal; nothing silently becomes active. Malformed JSON, invalid typed
 metadata or excess results produce an error, not an empty-success fallback.
 
+With the currentness-capable Brain selected for host adoption, ordinary recall
+omits superseded/retracted facts. Explicit historical inspection remains available
+through Brain's native `recall --history` CLI. The real-Brain integration control
+checks current and superseded facts in the same note, excludes superseded excerpts
+even when the query matches historical words, and confirms that explicit history
+still returns them. Matching a note's historical text can select its current
+excerpt; an empty result is not required by this note-level search contract.
+The older fixture expected a superseded fact as an ordinary hit; that expectation
+predated Brain's approved current/history behavior. Synthetic legacy-adapter tests
+still require literal metadata preservation rather than inventing an active status.
+
 `BrainDrop({text})` accepts non-empty UTF-8 text up to 64 KiB. It invokes:
 
 ```text
